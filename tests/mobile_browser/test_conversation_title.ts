@@ -16,7 +16,7 @@ export const tests: BrowserTest[] = [
       try {
         await gotoRoot(page, base);
         await postFixture(base, "seed-conversation-title");
-        await page.locator("#new-top").click();
+        await page.locator("#new-top:visible, #new-side:visible").click();
         expect(await page.locator("#conv-title").innerText()).toBe("New agent");
         const created = page.waitForResponse(
           (response) =>

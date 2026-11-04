@@ -180,15 +180,6 @@ export const tests: BrowserTest[] = [
     await page.locator(".agent").first().waitFor();
     await page.locator("#menu-btn").tap();
     await page.locator("#sidebar.open").waitFor();
-    const mark = page.locator("#brand img");
-    expect(await mark.isVisible()).toBe(true);
-    expect(await mark.getAttribute("src")).toBe("/static/brand/mark.svg");
-    await page.waitForFunction(
-      "document.querySelector('#brand img')?.complete && document.querySelector('#brand img').naturalWidth > 0",
-    );
-    expect(
-      await mark.evaluate((image) => image.getBoundingClientRect().width),
-    ).toBe(24);
     await page.locator("#settings-btn").tap();
     await page.locator("#settings-overlay.on").waitFor();
     const nav = page.locator("#settings-nav");
@@ -256,21 +247,14 @@ export const tests: BrowserTest[] = [
       await page.reload();
       await page.locator("#settings-btn").waitFor({ state: "attached" });
       expect(await page.title()).toBe(customName);
-      expect(await page.locator("#brand").textContent()).toBe(customName);
       const favicon = await page
         .locator('link[rel="icon"]')
         .last()
         .getAttribute("href");
       expect(favicon).toStartWith("/app-icon?v=");
-      expect(await page.locator("#brand img").getAttribute("src")).toBe(
-        favicon,
-      );
       expect(
         await page.locator('link[rel="apple-touch-icon"]').getAttribute("href"),
       ).toBe(favicon);
-      await page.waitForFunction(
-        "document.querySelector('#brand img')?.naturalWidth > 0",
-      );
       const direct = await context.newPage();
       await direct.goto(base + favicon!.slice(1));
       expect(
@@ -305,13 +289,9 @@ export const tests: BrowserTest[] = [
       await section.getByRole("status").filter({ hasText: "Saved." }).waitFor();
       await page.reload();
       expect(await page.title()).toBe(originalTitle);
-      expect(await page.locator("#brand").textContent()).toBe(originalTitle);
       expect(
         await page.locator('link[rel="icon"]').last().getAttribute("href"),
       ).toBe(originalIcon);
-      expect(await page.locator("#brand img").getAttribute("src")).toBe(
-        "/static/brand/mark.svg",
-      );
       expect(errors).toEqual([]);
     } finally {
       await context.request.post(base + "api/settings/branding", {

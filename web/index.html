@@ -37,11 +37,12 @@
     border-right: 1px solid var(--frame-border);
     display: flex; flex-direction: column; position: relative;
   }
-  #brand { display: flex; align-items: center; gap: var(--space-3);
-    padding: var(--space-5) var(--space-5) var(--space-3); }
-  #brand, .backend-heading strong { font-weight: 600; font-size: 0.84375rem; color: var(--text); }
-  .backend-heading strong { color: color-mix(in srgb, var(--text) 70%, var(--muted)); }
-  #brand img { width: 24px; height: 24px; flex: none; }
+  /* Desktop sidebar header: the New button, level with the topbar. Phones keep
+     New in the topbar, so the drawer has no header. */
+  #sidebar-head { display: flex; flex: none; align-items: center; height: 48px;
+    padding: 0 var(--space-3); }
+  .backend-heading strong { font-weight: 600; font-size: 0.84375rem;
+    color: color-mix(in srgb, var(--text) 70%, var(--muted)); }
 
   #agent-list { flex: 1; min-width: 0; min-height: 0; max-width: 100%;
     overflow-x: hidden; overflow-y: scroll; overscroll-behavior-y: contain;
@@ -95,8 +96,8 @@
     background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
   #agent-list .agent.cursor:not(.dismiss-armed, .armed, .drop-ok, .drop-bad, .drag-source) { border-color: transparent;
     outline-width: 1px; outline-offset: -1px; }
-  #sidebar #brand { padding: var(--space-3) var(--space-5); gap: var(--space-3); }
-  #brand, .backend-heading strong { font-size: 0.9375rem; }
+  #sidebar-head { display: none; }
+  .backend-heading strong { font-size: 0.9375rem; }
   #agent-list .agent .agent-state { width: 12px; min-width: 12px; height: 12px; }
   #agent-list .agent .kids { padding-block: 0; }
   }
@@ -250,6 +251,9 @@
   #conv-titlebar { position: relative; display: flex; flex: 1; align-items: center; gap: var(--space-3); min-width: 0; }
   #conv-title { flex: 1; min-height: 44px; line-height: 44px; }
   #sidebar.desktop-hidden { display: none; }
+  @media (min-width: 701px) {
+    #sidebar:not(.desktop-hidden) ~ #main #new-top { display: none; }
+  }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
     padding: 1px var(--space-3); font: 600 0.65625rem/1.2 var(--font-mono);
@@ -276,7 +280,7 @@
     touch-action: none; }
   .top-act:hover { color: var(--accent); background: var(--panel); }
   .top-act:disabled { color: var(--text-disabled); cursor: default; background: none; }
-  #new-top { min-width: 44px; min-height: 44px; justify-content: center;
+  #new-top, #new-side { min-width: 44px; min-height: 44px; justify-content: center;
     color: var(--text); }
   .top-act svg { flex: none; }
   .top-act .lbl { line-height: 1; white-space: nowrap; }
@@ -289,7 +293,7 @@
     align-items: center; justify-content: center; padding: 0; }
   #takeover-btn.on { display: inline-flex; }
   #takeover-btn:disabled.on { cursor: wait; opacity: .65; }
-  #share-link-btn[hidden], #new-top[hidden], .backend-new-agent[hidden] { display: none; }
+  #share-link-btn[hidden], #new-top[hidden], #new-side[hidden], .backend-new-agent[hidden] { display: none; }
 #trash-btn:hover { color: var(--danger); border-color: var(--danger); }
   /* armed: one tap in, awaiting the confirming second tap — red like #conv-title.armed */
   #trash-btn.armed { color: var(--danger); border-color: var(--danger);
@@ -1802,7 +1806,11 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
 <body data-version="__VERSION__">
 
 <aside id="sidebar" tabindex="-1">
-  <div id="brand"><img src="/static/brand/mark.svg" width="24" height="24" alt="">__APP__</div>
+  <div id="sidebar-head">
+    <button class="top-act" id="new-side" title="New top-level agent" data-key-hint="tt">
+      <span class="lbl">New</span>
+    </button>
+  </div>
   <nav id="agent-list" aria-label="Agent tree" role="tree"></nav>
   <div id="sidebar-foot">
     <details id="shortcut-pane">

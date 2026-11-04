@@ -26,7 +26,7 @@ export const tests: BrowserTest[] = [
       const selected = page.locator('.agent[aria-current="page"]');
       await selected.waitFor();
       if (width === 1280) await selected.focus();
-      await page.locator("#new-top").click();
+      await page.locator("#new-top:visible, #new-side:visible").click();
       await page.locator(".draft-row.cursor").waitFor();
       expect(
         await page.locator('.agent[data-id][aria-current="page"]').count(),
@@ -348,7 +348,8 @@ export const tests: BrowserTest[] = [
           list.scrollTop = list.scrollHeight;
         });
         if (width === 412) await page.locator("#menu-btn").click();
-        if (start !== "keyboard") await page.locator("#new-top").click();
+        if (start !== "keyboard")
+          await page.locator("#new-top:visible, #new-side:visible").click();
         else {
           await page.locator("#input").press("Escape");
           await page.keyboard.press("t");

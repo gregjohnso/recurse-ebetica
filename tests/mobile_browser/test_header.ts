@@ -461,8 +461,7 @@ export const tests: BrowserTest[] = [
           "#conv-status",
           "#conv-title",
           "#chip-kids",
-          "#new-top",
-          ...(width === 412 ? ["#pane-fab"] : []),
+          ...(width === 412 ? ["#new-top", "#pane-fab"] : []),
         ].map((id) => page.locator(id).boundingBox()),
       );
       const header = (await page.locator("#topbar").boundingBox())!;
@@ -488,8 +487,7 @@ export const tests: BrowserTest[] = [
         "#menu-btn",
         "#up-top",
         "#conv-title",
-        "#new-top",
-        ...(width === 412 ? ["#pane-fab"] : []),
+        ...(width === 412 ? ["#new-top", "#pane-fab"] : ["#new-side"]),
       ]) {
         const box = (await page.locator(id).boundingBox())!;
         expect(box.width).toBeGreaterThanOrEqual(44);
@@ -497,13 +495,21 @@ export const tests: BrowserTest[] = [
       }
       await shot("closed");
       if (width === 1280) {
-        const sidebarHeader = await page.locator("#brand").boundingBox();
+        const sidebarHeader = await page.locator("#sidebar-head").boundingBox();
+        const newSide = (await page.locator("#new-side").boundingBox())!;
+        expect(
+          Math.abs(
+            newSide.y + newSide.height / 2 - (header.y + header.height / 2),
+          ),
+        ).toBeLessThan(2);
+        expect(await page.locator("#new-top").isVisible()).toBe(false);
         await page.locator("#menu-btn").click();
         expect(await page.locator("#sidebar").isVisible()).toBe(false);
+        expect(await page.locator("#new-top").isVisible()).toBe(true);
         expect((await page.locator("#topbar").boundingBox())!.height).toBe(48);
         await shot("sidebar-collapsed");
         await page.locator("#menu-btn").click();
-        expect(await page.locator("#brand").boundingBox()).toEqual(
+        expect(await page.locator("#sidebar-head").boundingBox()).toEqual(
           sidebarHeader,
         );
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);

@@ -980,9 +980,11 @@ export function startDraft(spec: DraftSpec): void {
   refreshUpBtn();
   inputEl.focus();
 }
-const newTop = $<HTMLButtonElement>("#new-top")!;
-newTop.hidden = sharedTrees !== null;
-newTop.onclick = () => startDraft({ parent: null });
+for (const id of ["#new-top", "#new-side"]) {
+  const button = $<HTMLButtonElement>(id)!;
+  button.hidden = sharedTrees !== null;
+  button.onclick = () => startDraft({ parent: null });
+}
 
 sendEl.onclick = (event: MouseEvent) => {
   // Invariant: A long-press only peeked at the tip; it must neither send nor

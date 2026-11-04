@@ -49,6 +49,7 @@ for (const [id, icon] of [
   ["up-btn", UP_ICON],
   ["up-top", UP_ICON],
   ["new-top", NEW_ICON],
+  ["new-side", NEW_ICON],
   ["pane-fab", MORE_ICON],
 ])
   $("#" + id)!.insertAdjacentHTML("afterbegin", icon);

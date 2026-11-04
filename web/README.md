@@ -185,7 +185,8 @@ templates; do not add another lint stack just for that gap.
 mint inner window, with plain top bars. The colour mark, favicon and wordmark use
 `#2F855A` outer and `#A7E8C5` inner in both light and dark mode. App tiles are
 `#2F855A` with white outer and `#A7E8C5` inner windows. [mark.svg](brand/mark.svg)
-is the small UI mark; the sidebar uses it at 24 px. [wordmark.svg](brand/wordmark.svg)
+is the small UI mark. The sidebar header holds the New button instead of a
+logo; phones keep New in the topbar. [wordmark.svg](brand/wordmark.svg)
 pairs it with the name in a fixed mid-grey `#6E7781` that stays readable on light
 and dark pages. The `-mono.svg` variants use `currentColor` when embedded inline.
 
