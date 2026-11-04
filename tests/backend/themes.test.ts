@@ -60,7 +60,12 @@ test("custom palettes validate independently, appear in choices, and generate se
   const custom = {
     ...themePalettes.find((p) => p.name === "Solarized Light")!,
     name: " Warm solarized ",
-    tokens: { accent: "#0078d4", "radius-sm": "2px", "input-bg": "#31313180" },
+    tokens: {
+      accent: "#0078d4",
+      "radius-sm": "2px",
+      "input-bg": "#31313180",
+      "content-inset": "8px",
+    },
   };
   try {
     const bad = [
@@ -126,6 +131,7 @@ test("custom palettes validate independently, appear in choices, and generate se
     expect(result.css).toContain("--accent:#0078d4;");
     expect(result.css).toContain("--radius-sm:2px;");
     expect(result.css).toContain("--input-bg:#31313180");
+    expect(result.css).toContain("--content-inset:8px");
     const selected = await writeTheme(path, { theme: "system" });
     expect(selected.appearance).toBe("light");
     expect(selected.css).not.toContain("@media");

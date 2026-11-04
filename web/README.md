@@ -170,8 +170,9 @@ for the conversation on screen.
 shadows, motion and layers, as CSS custom properties. Checks in `tests/check.sh web`
 (`tests/checks/*_check.ts`) reject literal values elsewhere, so a theme can change them
 in one place. A custom palette in `config/themes.json` may add a `tokens` object
-that overrides generated colours, the layout colours (`input-bg`, `row-selected`,
-`rail-btn-bg` and their borders), the `radius-*` scale and `focus-width`;
+that overrides generated colours, the layout colours in theme.css (inputs, rows,
+rail buttons, the shell and frame), the `radius-*` scale, `focus-width`, and
+`content-inset`/`content-radius`, which float the chat and panes as inset cards;
 [src/themes.ts](../src/themes.ts) validates the names and values. [icons.ts](icons.ts) holds every inline SVG icon; the server fills
 `index.html`'s `<svg data-icon="NAME">` slots from it. Oxlint does not cover Lit
 templates; do not add another lint stack just for that gap.

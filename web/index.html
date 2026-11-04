@@ -26,15 +26,15 @@
     html, body { height: 100dvh; }
   }
   body {
-    background: var(--bg); color: var(--text);
+    background: var(--shell-bg); color: var(--text);
     font: 0.9375rem/1.6 var(--font-sans);
     display: flex; overscroll-behavior: none;
   }
 
   /* ---------- sidebar: agent forest ---------- */
   #sidebar {
-    width: 400px; flex: none; background: var(--panel);
-    border-right: 1px solid var(--border);
+    width: 400px; flex: none; background: var(--frame-bg);
+    border-right: 1px solid var(--frame-border);
     display: flex; flex-direction: column; position: relative;
   }
   #brand { display: flex; align-items: center; gap: var(--space-3);
@@ -84,7 +84,7 @@
   .agent.dismiss-armed .title { color: var(--danger); }
   .agent:hover { background: var(--panel-2); }
   .agent.selected { background: var(--row-selected); border-color: var(--row-selected-border); }
-  .agent.cursor { border-color: var(--accent); outline: var(--focus-width) solid var(--accent); outline-offset: calc(-1 * var(--focus-width)); }
+  .agent.cursor { border-color: var(--row-cursor); outline: var(--focus-width) solid var(--row-cursor); outline-offset: calc(-1 * var(--focus-width)); }
   /* Spec: compact sidebar overrides apply only on phones. */
   @media (max-width: 700px) {
   :root { font-size: 100%; }
@@ -193,7 +193,7 @@
      append this removed hover-summary node. Keep it inert, including its .on state. */
   #agent-tip, #agent-tip.on { display: none !important; }
 
-  #sidebar-foot { padding: var(--space-3) var(--space-5) var(--space-4); border-top: 1px solid var(--border);
+  #sidebar-foot { padding: var(--space-3) var(--space-5) var(--space-4); border-top: 1px solid var(--frame-border);
     font-size: 0.65625rem; color: var(--muted); }
   #shortcut-pane > summary { cursor: pointer; color: var(--text); font-size: 0.71875rem;
     font-weight: 600; list-style-position: inside; }
@@ -212,15 +212,17 @@
   #sidebar-foot .note { margin-top: var(--space-3); padding-top: var(--space-3);
     border-top: 1px solid var(--border); line-height: 1.6; }
   #settings-btn { display: flex; align-items: center; gap: var(--space-3); width: 100%;
-    background: none; border: 0; border-top: 1px solid var(--border);
+    background: none; border: 0; border-top: 1px solid var(--frame-border);
     color: var(--muted); font-family: inherit; font-size: 0.78125rem; cursor: pointer;
     padding: var(--space-4) var(--space-5); text-align: left; }
   #settings-btn:hover { color: var(--accent); }
   #settings-btn svg { flex: none; }
 
   /* ---------- main pane ---------- */
-  #main { flex: 1; min-width: 0; min-height: 0; height: 100%;
-    display: flex; flex-direction: column; overflow: hidden; }
+  #main { flex: 1; min-width: 0; min-height: 0; height: calc(100% - 2 * var(--content-inset));
+    display: flex; flex-direction: column; overflow: hidden;
+    margin: var(--content-inset); border-radius: var(--content-radius);
+    background: var(--bg); box-shadow: var(--content-ring); }
   #topbar { height: 48px; flex: none; min-width: 0; display: flex; align-items: center;
     position: relative; z-index: auto; padding: 0 var(--space-5);
     font-weight: 600; font-size: 0.84375rem; gap: var(--space-2); background: var(--bg); }
@@ -1686,6 +1688,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
       padding-bottom: env(safe-area-inset-bottom);
       transform: translateX(-102%); transition: transform var(--motion-move); }
     #sidebar.open { transform: none; }
+    #main { margin: 0; height: 100%; border-radius: 0; box-shadow: none; }
     #backdrop.on { display: block; position: fixed; inset: 0; z-index: calc(var(--z-drawer) + 2);
       background: color-mix(in srgb, var(--shadow) 50%, transparent); }
     #menu-btn { display: inline-flex; }

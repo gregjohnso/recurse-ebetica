@@ -20,6 +20,17 @@
   --row-selected-border: var(--border-strong);
   --rail-btn-bg: var(--panel-2);
   --rail-btn-border: var(--border);
+  --row-cursor: var(--accent);
+  --shell-bg: var(--bg);
+  --frame-bg: var(--panel);
+  --frame-border: var(--border);
+  --pane-border: var(--border);
+  --content-border: transparent;
+  /* The chat and each open pane can sit as inset cards on the shell colour,
+     --content-inset from the window edges, with --content-radius corners. */
+  --content-inset: 0px;
+  --content-radius: 0px;
+  --content-ring: 0 0 0 1px var(--content-border);
   /* Corner radii, small to large, and the keyboard focus ring width. Pills
      (999px) and circles (50%) stay literal. */
   --radius-sm: 6px;

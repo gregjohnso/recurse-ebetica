@@ -273,6 +273,12 @@ const LAYOUT_COLOR_TOKENS = [
   "row-selected-border",
   "rail-btn-bg",
   "rail-btn-border",
+  "row-cursor",
+  "shell-bg",
+  "frame-bg",
+  "frame-border",
+  "pane-border",
+  "content-border",
 ];
 const LENGTH_TOKENS = [
   "radius-sm",
@@ -280,6 +286,8 @@ const LENGTH_TOKENS = [
   "radius-lg",
   "radius-xl",
   "focus-width",
+  "content-inset",
+  "content-radius",
 ];
 const HEX = /^#[\da-f]{6}(?:[\da-f]{2})?$/i;
 const LENGTH = /^(?:0|\d{1,2}(?:\.\d+)?px)$/;
