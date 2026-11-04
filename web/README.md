@@ -172,7 +172,9 @@ shadows, motion and layers, as CSS custom properties. Checks in `tests/check.sh 
 in one place. A custom palette in `config/themes.json` may add a `tokens` object
 that overrides generated colours, the layout colours in theme.css (inputs, rows,
 rail buttons, the shell and frame), the `radius-*` scale, `focus-width`, and
-`content-inset`/`content-radius`, which float the chat and panes as inset cards;
+`content-inset`/`content-radius`, which float the chat and panes as inset cards,
+`icon-radius` for icon-only buttons, and the `font-sans`/`font-mono` stacks. The
+build publishes Inter ([inter/](inter/), OFL) for stacks that name it;
 [src/themes.ts](../src/themes.ts) validates the names and values. [icons.ts](icons.ts) holds every inline SVG icon; the server fills
 `index.html`'s `<svg data-icon="NAME">` slots from it. Oxlint does not cover Lit
 templates; do not add another lint stack just for that gap.

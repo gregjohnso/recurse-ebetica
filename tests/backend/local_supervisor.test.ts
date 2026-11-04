@@ -460,7 +460,8 @@ test("native frontend build publishes all HTML and bundle assets", async () => {
 }, 60_000);
 
 function fakeVendorAssets(root: string): void {
-  cpSync(join(ROOT, "web/brand"), join(root, "web/brand"), { recursive: true });
+  for (const dir of ["web/brand", "web/inter"])
+    cpSync(join(ROOT, dir), join(root, dir), { recursive: true });
   for (const name of new Bun.Glob("**/*.css").scanSync({
     cwd: join(ROOT, "web"),
     onlyFiles: true,

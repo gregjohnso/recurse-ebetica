@@ -239,7 +239,7 @@
   #up-btn.on { display: flex; }
   #up-btn:hover { color: var(--accent); }
   #up-top { display: none; flex: none; width: 44px; height: 44px;
-    padding: 0; border: 0; border-radius: var(--radius-md); background: none;
+    padding: 0; border: 0; border-radius: var(--icon-radius, var(--radius-md)); background: none;
     color: var(--text); align-items: center; justify-content: center; cursor: pointer; }
   #up-top.on { display: inline-flex; }
   #up-top:hover { background: var(--panel); }
@@ -284,7 +284,7 @@
   /* Conversation actions keep their availability/confirmation classes inside
      the overflow; app.css supplies the full-width menu-item geometry. */
   #takeover-btn, #trash-btn { display: none; flex: none;
-    width: 30px; height: 30px; border-radius: var(--radius-md); border: 1px solid var(--border);
+    width: 30px; height: 30px; border-radius: var(--icon-radius, var(--radius-md)); border: 1px solid var(--border);
     background: var(--panel-2); color: var(--text); cursor: pointer;
     align-items: center; justify-content: center; padding: 0; }
   #takeover-btn.on { display: inline-flex; }
@@ -732,7 +732,7 @@
      A little clearance above keeps it off the preceding block footer. */
   .activity-group-body:has(> .activity-group-hide), .activity-group-part:has(> .activity-group-hide) {
     margin-top: var(--space-2); }
-  .activity-group-hide { position: absolute; z-index: var(--z-raised); top: -1px; transform: translateY(-50%); right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--muted); cursor: pointer; }
+  .activity-group-hide { position: absolute; z-index: var(--z-raised); top: -1px; transform: translateY(-50%); right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--icon-radius, var(--radius-sm)); background: var(--panel-2); color: var(--muted); cursor: pointer; }
   .activity-group-hide::before { content: ""; position: absolute; width: 44px; height: 44px; left: -11px; top: -11px; }
   .activity-group-hide svg { width: 16px; height: 16px; display: block; }
   .activity-group-hide:hover, .activity-group-hide:focus-visible { color: var(--text); border-color: var(--text); }
@@ -1442,7 +1442,7 @@
   .agent-option-path { color: var(--muted); font: 0.65625rem/1.35 var(--font-mono); white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; }
   #composer button, .composer-box button { flex: none; width: 28px; height: 28px; margin-bottom: var(--space-2);
-    border: 0; border-radius: var(--radius-md); cursor: pointer;
+    border: 0; border-radius: var(--icon-radius, var(--radius-md)); cursor: pointer;
     display: flex; align-items: center; justify-content: center; }
   /* Touch targets extend beyond the visible controls without sizing the row. */
   @media (pointer: coarse) {

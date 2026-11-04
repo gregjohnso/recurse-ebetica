@@ -65,6 +65,8 @@ test("custom palettes validate independently, appear in choices, and generate se
       "radius-sm": "2px",
       "input-bg": "#31313180",
       "content-inset": "8px",
+      "icon-radius": "999px",
+      "font-sans": '"Inter", sans-serif',
     },
   };
   try {
@@ -87,6 +89,7 @@ test("custom palettes validate independently, appear in choices, and generate se
       { ...custom, tokens: { "color-scheme": "#000000" } },
       { ...custom, tokens: { accent: "blue" } },
       { ...custom, tokens: { "radius-sm": "2em" } },
+      { ...custom, tokens: { "font-sans": "x;}body{" } },
     ];
     await writeFile(
       path,
@@ -111,6 +114,7 @@ test("custom palettes validate independently, appear in choices, and generate se
     expect(result.problems.join(" ")).toContain("unknown token color-scheme");
     expect(result.problems.join(" ")).toContain("token accent must be");
     expect(result.problems.join(" ")).toContain("token radius-sm must be");
+    expect(result.problems.join(" ")).toContain("token font-sans must be");
     expect(result.custom.map((p) => p.name)).toEqual(["Warm solarized"]);
     const settings = await readThemeSettings(path);
     expect(
@@ -132,6 +136,8 @@ test("custom palettes validate independently, appear in choices, and generate se
     expect(result.css).toContain("--radius-sm:2px;");
     expect(result.css).toContain("--input-bg:#31313180");
     expect(result.css).toContain("--content-inset:8px");
+    expect(result.css).toContain("--icon-radius:999px");
+    expect(result.css).toContain('--font-sans:"Inter", sans-serif');
     const selected = await writeTheme(path, { theme: "system" });
     expect(selected.appearance).toBe("light");
     expect(selected.css).not.toContain("@media");

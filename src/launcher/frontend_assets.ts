@@ -17,9 +17,8 @@ export async function copyFrontendAssets(
 ): Promise<void> {
   const webDir = join(codeDir, "web");
   await mkdir(outputDir, { recursive: true });
-  await cp(join(webDir, "brand"), join(outputDir, "brand"), {
-    recursive: true,
-  });
+  for (const dir of ["brand", "inter"])
+    await cp(join(webDir, dir), join(outputDir, dir), { recursive: true });
   for (const name of await readdir(webDir))
     if (name.endsWith(".css"))
       await copyFile(join(webDir, name), join(outputDir, name));

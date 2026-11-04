@@ -1,6 +1,12 @@
 /* Base colours are generated from terminal palettes by src/themes.ts and
    injected after app.css. Context categories keep a distinct fixed palette;
    derived tokens and media constants also live here. */
+/* Inter (OFL, web/inter/LICENSE.txt) for themes that name it in --font-sans.
+   Browsers download a face only when a page uses it. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900;
+  font-display: swap; src: url("inter/InterVariable.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: italic; font-weight: 100 900;
+  font-display: swap; src: url("inter/InterVariable-Italic.woff2") format("woff2"); }
 :root {
   --context-system: #a575e8;
   --context-prompt: #3794d6;
@@ -31,6 +37,9 @@
   --content-inset: 0px;
   --content-radius: 0px;
   --content-ring: 0 0 0 1px var(--content-border);
+  /* Icon-only buttons use --icon-radius when a theme sets it (999px makes
+     them round); initial keeps each button's own radius. */
+  --icon-radius: initial;
   /* Corner radii, small to large, and the keyboard focus ring width. Pills
      (999px) and circles (50%) stay literal. */
   --radius-sm: 6px;

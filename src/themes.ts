@@ -288,9 +288,12 @@ const LENGTH_TOKENS = [
   "focus-width",
   "content-inset",
   "content-radius",
+  "icon-radius",
 ];
+const FONT_TOKENS = ["font-sans", "font-mono"];
 const HEX = /^#[\da-f]{6}(?:[\da-f]{2})?$/i;
-const LENGTH = /^(?:0|\d{1,2}(?:\.\d+)?px)$/;
+const LENGTH = /^(?:0|\d{1,3}(?:\.\d+)?px)$/;
+const FONT_STACK = /^[\w\s,"'-]{1,200}$/;
 
 /** Generated tokens with the palette's overrides applied. */
 function themeTokens(palette: ThemePalette): Record<string, string> {
@@ -310,12 +313,14 @@ function tokensProblem(tokens: unknown): string {
   for (const [key, value] of Object.entries(tokens)) {
     const pattern = LENGTH_TOKENS.includes(key)
       ? LENGTH
-      : colors.has(key)
-        ? HEX
-        : undefined;
+      : FONT_TOKENS.includes(key)
+        ? FONT_STACK
+        : colors.has(key)
+          ? HEX
+          : undefined;
     if (!pattern) return `unknown token ${key}`;
     if (typeof value !== "string" || !pattern.test(value))
-      return `token ${key} must be ${pattern === HEX ? "#rrggbb or #rrggbbaa" : "0 or a px length"}`;
+      return `token ${key} must be ${pattern === HEX ? "#rrggbb or #rrggbbaa" : pattern === LENGTH ? "0 or a px length" : "a font list of names, quotes and commas"}`;
   }
   return "";
 }

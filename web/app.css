@@ -197,7 +197,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn, .pane-powerbar-overflow > summary {
   box-sizing: border-box; width: 32px; height: 32px; display: inline-flex;
   align-items: center; justify-content: center; padding: 0; border: 0;
-  border-radius: var(--radius-md); background: none; color: var(--muted); cursor: pointer;
+  border-radius: var(--icon-radius, var(--radius-md)); background: none; color: var(--muted); cursor: pointer;
   text-decoration: none; }
 :is(.icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn, .pane-powerbar-overflow > summary) svg {
   width: 16px; height: 16px; }
@@ -240,7 +240,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 #pane-rail > button svg { width: 16px; height: 16px; }
 #pane-rail > button > span { position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.rail-btn { width: 38px; height: 38px; border-radius: var(--radius-lg); position: relative;
+.rail-btn { width: 38px; height: 38px; border-radius: var(--icon-radius, var(--radius-lg)); position: relative;
   border: 1px solid var(--rail-btn-border); background: var(--rail-btn-bg); color: var(--muted);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   font: 600 0.84375rem/1 var(--font-sans); }
@@ -264,7 +264,7 @@ body.resizing { cursor: col-resize; user-select: none; }
    Phone actions precede panels and retain press-slide-release navigation.
    Desktop actions and panes share the rail instead. */
 #pane-fab { display: none; flex: none; position: relative;
-  width: 44px; height: 44px; border-radius: var(--radius-md); border: 0;
+  width: 44px; height: 44px; border-radius: var(--icon-radius, var(--radius-md)); border: 0;
   background: transparent; color: var(--text); cursor: pointer;
   align-items: center; justify-content: center; padding: 0;
   /* Own the touch gesture (mirrors .top-act): without touch-action:none the
