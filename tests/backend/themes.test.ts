@@ -60,6 +60,7 @@ test("custom palettes validate independently, appear in choices, and generate se
   const custom = {
     ...themePalettes.find((p) => p.name === "Solarized Light")!,
     name: " Warm solarized ",
+    tokens: { accent: "#0078d4", "radius-sm": "2px", "input-bg": "#31313180" },
   };
   try {
     const bad = [
@@ -77,6 +78,10 @@ test("custom palettes validate independently, appear in choices, and generate se
         ...custom,
         palette: custom.palette.map((c, i) => (i === 5 ? "oops" : c)),
       },
+      { ...custom, tokens: [] },
+      { ...custom, tokens: { "color-scheme": "#000000" } },
+      { ...custom, tokens: { accent: "blue" } },
+      { ...custom, tokens: { "radius-sm": "2em" } },
     ];
     await writeFile(
       path,
@@ -97,6 +102,10 @@ test("custom palettes validate independently, appear in choices, and generate se
     expect(result.problems.join(" ")).toContain("reserved or duplicated");
     expect(result.problems.join(" ")).toContain("exactly 16");
     expect(result.problems.join(" ")).toContain("#rrggbb");
+    expect(result.problems.join(" ")).toContain("tokens must be an object");
+    expect(result.problems.join(" ")).toContain("unknown token color-scheme");
+    expect(result.problems.join(" ")).toContain("token accent must be");
+    expect(result.problems.join(" ")).toContain("token radius-sm must be");
     expect(result.custom.map((p) => p.name)).toEqual(["Warm solarized"]);
     const settings = await readThemeSettings(path);
     expect(
@@ -108,12 +117,15 @@ test("custom palettes validate independently, appear in choices, and generate se
       result.themes.find((p) => p.name === "Warm solarized"),
     ).toMatchObject({
       appearance: "light",
-      swatches: expect.arrayContaining([custom.background]),
+      swatches: expect.arrayContaining([custom.background, "#0078d4"]),
     });
     expect([result.theme, result.dark, result.light]).toEqual(
       Array(3).fill("Warm solarized"),
     );
     expect(result.css).toContain(`--bg:${custom.background}`);
+    expect(result.css).toContain("--accent:#0078d4;");
+    expect(result.css).toContain("--radius-sm:2px;");
+    expect(result.css).toContain("--input-bg:#31313180");
     const selected = await writeTheme(path, { theme: "system" });
     expect(selected.appearance).toBe("light");
     expect(selected.css).not.toContain("@media");

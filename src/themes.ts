@@ -1,6 +1,6 @@
 // Pi palettes generate web tokens; themes.json selects family/appearance.
 // Operator bubbles keep Pi lightness/hue with capped chroma.
-// Legacy theme values remain readable; custom palettes are singles.
+// Legacy values stay readable; custom singles may override tokens.
 // Report invalid entries; atomic writes retain unknown keys.
 import {
   colorToHex,
@@ -20,6 +20,7 @@ export interface ThemePalette {
   background: string;
   foreground: string;
   palette: string[];
+  tokens?: Record<string, string>;
 }
 type Generator = (input: {
   background: ReturnType<typeof colorToRgb>;
@@ -264,9 +265,56 @@ export function generateTheme(palette: ThemePalette): Record<string, string> {
   return tokens;
 }
 
+/** Layout tokens from web/theme.css that custom palettes may override. */
+const LAYOUT_COLOR_TOKENS = [
+  "input-bg",
+  "input-border",
+  "row-selected",
+  "row-selected-border",
+  "rail-btn-bg",
+  "rail-btn-border",
+];
+const LENGTH_TOKENS = [
+  "radius-sm",
+  "radius-md",
+  "radius-lg",
+  "radius-xl",
+  "focus-width",
+];
+const HEX = /^#[\da-f]{6}(?:[\da-f]{2})?$/i;
+const LENGTH = /^(?:0|\d{1,2}(?:\.\d+)?px)$/;
+
+/** Generated tokens with the palette's overrides applied. */
+function themeTokens(palette: ThemePalette): Record<string, string> {
+  return { ...generateTheme(palette), ...palette.tokens };
+}
+
+/** Why a custom palette's token overrides are invalid, or "". */
+function tokensProblem(tokens: unknown): string {
+  if (tokens === undefined) return "";
+  if (!tokens || typeof tokens !== "object" || Array.isArray(tokens))
+    return "tokens must be an object";
+  const colors = new Set([
+    ...Object.keys(generateTheme(themePalettes[0]!)),
+    ...LAYOUT_COLOR_TOKENS,
+  ]);
+  colors.delete("color-scheme");
+  for (const [key, value] of Object.entries(tokens)) {
+    const pattern = LENGTH_TOKENS.includes(key)
+      ? LENGTH
+      : colors.has(key)
+        ? HEX
+        : undefined;
+    if (!pattern) return `unknown token ${key}`;
+    if (typeof value !== "string" || !pattern.test(value))
+      return `token ${key} must be ${pattern === HEX ? "#rrggbb or #rrggbbaa" : "0 or a px length"}`;
+  }
+  return "";
+}
+
 /** Render one early, deterministic CSS override. */
 export function renderThemeCss(palette: ThemePalette): string {
-  return `:root{${Object.entries(generateTheme(palette))
+  return `:root{${Object.entries(themeTokens(palette))
     .map(
       ([key, value]) => `${key === "color-scheme" ? key : `--${key}`}:${value}`,
     )
@@ -295,7 +343,7 @@ export const defaultThemeCss = renderThemeCss(
   themePalettes.find((p) => p.name === themeDefaults.theme)!,
 );
 const choice = (palette: ThemePalette) => {
-  const tokens = generateTheme(palette);
+  const tokens = themeTokens(palette);
   return {
     name: palette.name,
     css: renderThemeCss(palette),
@@ -351,7 +399,7 @@ function selection(raw: Record<string, unknown>, problems: string[]) {
                   (c) => typeof c === "string" && /^#[\da-f]{6}$/i.test(c),
                 )
               ? "colours must be #rrggbb"
-              : "";
+              : tokensProblem(entry.tokens);
     if (reason) {
       problems.push(`${label}: ${reason}.`);
       continue;
@@ -361,6 +409,7 @@ function selection(raw: Record<string, unknown>, problems: string[]) {
       background: entry.background,
       foreground: entry.foreground,
       palette: entry.palette,
+      ...(entry.tokens === undefined ? {} : { tokens: { ...entry.tokens } }),
     };
     try {
       generateTheme(palette);

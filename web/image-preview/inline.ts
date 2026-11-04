@@ -5,7 +5,7 @@
 
 // Block-sized, capped, lazy images bound layout and network work.
 export const INLINE_IMAGE_STYLE =
-  "display:block;max-width:100%;max-height:360px;border-radius:10px;" +
+  "display:block;max-width:100%;max-height:360px;border-radius:var(--radius-lg);" +
   "border:1px solid var(--border);margin:var(--space-2) 0 0;";
 
 // Single-leading-slash upload path; no protocol-relative or absolute URLs.

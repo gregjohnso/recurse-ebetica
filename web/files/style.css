@@ -32,7 +32,7 @@
 .image-comment-sidebar { position: absolute; display: flex; flex-direction: column; min-height: 0;
   inset-inline: var(--space-3); bottom: calc(var(--image-overlay-lift, 0px) + max(var(--space-3), env(safe-area-inset-bottom)));
   max-width: 560px; margin-inline: auto; max-height: calc(var(--image-visible-height, 100dvh) - 64px);
-  overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+  overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--panel); }
 .image-popout .image-comment-sidebar .report-comments { display: none; margin: 0; border: 0;
   padding: var(--space-3); max-height: min(40dvh, calc(var(--image-visible-height, 100dvh) * .4));
   min-height: 0; overflow: auto; overscroll-behavior: contain; }
@@ -57,8 +57,8 @@
 .image-comment-sidebar .report-comment-popover-actions { justify-content: space-between; }
 .image-popout .image-comment-sidebar:has(.report-comment-popover:not([hidden])) :is(.report-comments, .report-bar, .image-comment-heading) { display: none; }
 /* The jump highlight is a one-shot attention cue with its own timing. */
-.file-jump-target { outline: 2px solid var(--accent); outline-offset: 4px;
-  border-radius: 8px; animation: file-jump-fade 1.8s ease-out; } /* motion-check: allow */
+.file-jump-target { outline: var(--focus-width) solid var(--accent); outline-offset: 4px;
+  border-radius: var(--radius-md); animation: file-jump-fade 1.8s ease-out; } /* motion-check: allow */
 @keyframes file-jump-fade { 0%, 55% { outline-color: var(--accent); }
   100% { outline-color: transparent; } }
 .pane-body[data-pane="files"] { padding: 0 var(--space-1) env(safe-area-inset-bottom); }
@@ -73,7 +73,7 @@
 .files-kind svg { width: 16px; height: 16px; }
 .files-thumb { flex: none; width: 32px; height: 32px; }
 .files-thumb { cursor: pointer; }
-.files-thumb .files-image { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+.files-thumb .files-image { width: 32px; height: 32px; border-radius: var(--radius-sm); object-fit: cover; }
 .files-thumb .files-preview-placeholder { width: 32px; height: 32px; min-height: 0;
   padding: 0; font-size: 0; }
 .files-thumb .files-preview-placeholder::after { content: "↻"; font-size: 13.5px; }
@@ -126,7 +126,7 @@ button.files-preview-placeholder { cursor: pointer; }
 .files-jump-status { color: var(--muted); font-size: 0.71875rem; }
 .files-versions { display: inline; }
 .files-versions select { max-width: 160px; margin-inline-end: var(--space-2); padding: 0 var(--space-1); border: 1px solid var(--border);
-  border-radius: 6px; background: var(--panel); color: var(--muted); font: inherit; }
+  border-radius: var(--radius-sm); background: var(--panel); color: var(--muted); font: inherit; }
 .files-media { display: block; width: 100%; max-height: 80vh; }
 video.files-media { background: var(--media-backdrop); }
 .files-pdf { display: grid; gap: var(--space-3); padding: var(--space-3) 0; }
@@ -148,7 +148,7 @@ video.files-media { background: var(--media-backdrop); }
 mark.report-cbox { position: absolute; pointer-events: none; }
 .files-box-hint { position: absolute; z-index: var(--z-raised); pointer-events: none;
   max-width: calc(100% - 16px); width: max-content; padding: var(--space-2) var(--space-3);
-  border-radius: 6px; background: var(--text); color: var(--panel); font-size: 0.78125rem;
+  border-radius: var(--radius-sm); background: var(--text); color: var(--panel); font-size: 0.78125rem;
   transform: translateY(-100%); animation: files-box-hint-fade 2s ease-out; } /* motion-check: allow */
 @keyframes files-box-hint-fade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
 mark.files-box-start { min-width: 16px; min-height: 16px; border: 2px solid var(--accent);

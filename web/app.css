@@ -13,7 +13,7 @@
 .btn, .settings-section button:is(.primary, .ghost, .secondary) {
   box-sizing: border-box; display: inline-flex; align-items: center;
   justify-content: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-4);
-  border: 1px solid var(--border); border-radius: 8px; background: none;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: none;
   color: var(--text); font: inherit; font-size: 0.78125rem; font-weight: 600;
   line-height: 1.2; cursor: pointer; }
 .btn.sm { min-height: 32px; }
@@ -27,7 +27,7 @@
   border-color: var(--accent-hover); background: var(--accent-hover); }
 .btn:disabled, .settings-section button:is(.primary, .ghost, .secondary):disabled {
   opacity: .5; cursor: default; }
-.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
 @media (pointer: coarse) {
   .btn, .btn.sm { min-height: 44px; }
 }
@@ -66,11 +66,11 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
    keyboard-selected row is highlighted. Each menu keeps its own placement and
    open/closed display. */
 .menu { box-sizing: border-box; padding: var(--space-3); color: var(--text);
-  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg);
   box-shadow: var(--menu-shadow); }
 .menu-item { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-3);
   width: 100%; min-height: 44px; margin: 0; padding: var(--space-3) var(--space-4); border: 0;
-  border-radius: 8px; background: none; color: var(--text); font: inherit;
+  border-radius: var(--radius-md); background: none; color: var(--text); font: inherit;
   font-size: 0.84375rem; line-height: 1.35; text-align: start; cursor: pointer; }
 .menu-item:is(:hover, :focus-visible, .hot, [aria-selected="true"]) {
   background: var(--panel-2); outline: none; }
@@ -86,7 +86,7 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
    the context window details, and the background-shell and active-agent
    cards. Each keeps its own size and placement. */
 .dialog { background: var(--panel); border: 1px solid var(--border);
-  border-radius: 14px; box-shadow: var(--dialog-shadow); }
+  border-radius: var(--radius-xl); box-shadow: var(--dialog-shadow); }
 
 /* ---------- soft edges ----------
    Bars that content scrolls under fade into it instead of drawing a hard
@@ -112,7 +112,7 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
 .text-field, .settings-section :where(input:not([type="checkbox"], [type="radio"], [type="range"]),
   select, textarea) {
   box-sizing: border-box; padding: var(--space-3) var(--space-4); border: 1px solid var(--border);
-  border-radius: 8px; background: var(--panel-2); color: var(--text);
+  border-radius: var(--radius-md); background: var(--panel-2); color: var(--text);
   font: inherit; font-size: 0.84375rem; outline: none; }
 .text-field.sm { padding: var(--space-2) var(--space-3); font-size: 0.78125rem; }
 :is(.text-field, .settings-section :where(input, select, textarea)):focus {
@@ -133,18 +133,18 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
 .theme-appearance { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
 .theme-appearance button[aria-pressed="true"] { color: var(--text); background: var(--panel-2); }
 .theme-appearance[aria-disabled="false"] button[aria-pressed="true"] { opacity: 1;
-  outline: 2px solid var(--accent); outline-offset: 2px; }
+  outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
 .theme-appearance[aria-disabled="true"] button[aria-pressed="true"] { border-color: var(--muted); }
 .theme-card-preview { display: flex; margin: var(--space-3) calc(-1 * var(--space-5)) calc(-1 * var(--space-1)) 0; gap: var(--space-2); }
-.theme-card-variant { flex: 1; min-width: 0; padding: var(--space-3); color: var(--text); background: var(--bg); border-radius: 6px; }
-.theme-card-bubble { display: block; width: fit-content; margin-left: auto; padding: var(--space-1) var(--space-3); background: var(--user-bubble); border-radius: 6px; }
-.theme-cards button { overflow-wrap: anywhere; position: relative; min-width: 0; min-height: 64px; padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4); text-align: left; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
-.theme-cards button[aria-pressed="true"] { outline: 2px solid var(--theme-selection-accent); outline-offset: 1px; }
+.theme-card-variant { flex: 1; min-width: 0; padding: var(--space-3); color: var(--text); background: var(--bg); border-radius: var(--radius-sm); }
+.theme-card-bubble { display: block; width: fit-content; margin-left: auto; padding: var(--space-1) var(--space-3); background: var(--user-bubble); border-radius: var(--radius-sm); }
+.theme-cards button { overflow-wrap: anywhere; position: relative; min-width: 0; min-height: 64px; padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4); text-align: left; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+.theme-cards button[aria-pressed="true"] { outline: var(--focus-width) solid var(--theme-selection-accent); outline-offset: 1px; }
 .theme-cards button:hover { box-shadow: inset 0 0 0 1px var(--text); }
 .theme-card-check { display: none; position: absolute; top: 8px; right: 8px; width: 16px; height: 16px; }
 .theme-cards button[aria-pressed="true"] .theme-card-check { display: block; }
 .theme-card-swatches { display: flex; gap: var(--space-1); margin-top: var(--space-3); }
-.theme-card-swatches span { flex: 1; max-width: 20px; min-width: 0; height: 12px; border-radius: 6px; border: 1px solid var(--swatch-border); }
+.theme-card-swatches span { flex: 1; max-width: 20px; min-width: 0; height: 12px; border-radius: var(--radius-sm); border: 1px solid var(--swatch-border); }
 
 /* ---------- disclosures ----------
    Every show/hide toggle uses one caret: muted and pointing right while
@@ -196,7 +196,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn, .pane-powerbar-overflow > summary {
   box-sizing: border-box; width: 32px; height: 32px; display: inline-flex;
   align-items: center; justify-content: center; padding: 0; border: 0;
-  border-radius: 8px; background: none; color: var(--muted); cursor: pointer;
+  border-radius: var(--radius-md); background: none; color: var(--muted); cursor: pointer;
   text-decoration: none; }
 :is(.icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn, .pane-powerbar-overflow > summary) svg {
   width: 16px; height: 16px; }
@@ -211,7 +211,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .artifact-version-item:focus-visible, .artifact-version-restore:focus-visible,
 .report-comment-popover button:focus-visible,
 .report-comment-del:focus-visible, .report-sendbar button:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px; }
+  outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
 .pane-body { flex: 1; overflow-y: auto; padding: var(--space-5);
   transition: opacity var(--motion-fast) ease; }
 /* Retained content remains spatial context while its pane request settles, but
@@ -239,8 +239,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 #pane-rail > button svg { width: 16px; height: 16px; }
 #pane-rail > button > span { position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.rail-btn { width: 38px; height: 38px; border-radius: 10px; position: relative;
-  border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+.rail-btn { width: 38px; height: 38px; border-radius: var(--radius-lg); position: relative;
+  border: 1px solid var(--rail-btn-border); background: var(--rail-btn-bg); color: var(--muted);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   font: 600 0.84375rem/1 var(--font-sans); }
 .rail-btn .rail-count { position: absolute; inset-inline-end: -4px; bottom: -4px;
@@ -263,7 +263,7 @@ body.resizing { cursor: col-resize; user-select: none; }
    Phone actions precede panels and retain press-slide-release navigation.
    Desktop actions and panes share the rail instead. */
 #pane-fab { display: none; flex: none; position: relative;
-  width: 44px; height: 44px; border-radius: 8px; border: 0;
+  width: 44px; height: 44px; border-radius: var(--radius-md); border: 0;
   background: transparent; color: var(--text); cursor: pointer;
   align-items: center; justify-content: center; padding: 0;
   /* Own the touch gesture (mirrors .top-act): without touch-action:none the
@@ -273,7 +273,7 @@ body.resizing { cursor: col-resize; user-select: none; }
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none; }
 #pane-fab:hover, #new-top:hover { background: transparent; color: var(--text); }
-#pane-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#pane-fab:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: -2px; }
 #pane-fab svg { position: relative; z-index: var(--z-raised); pointer-events: none; }
 #pane-fab.on { display: inline-flex; }
 #pane-menu { display: none; position: fixed; z-index: calc(var(--z-drawer) + 2);
@@ -328,11 +328,11 @@ html[data-embed] :is(#sidebar, #topbar, #panes, #pane-rail, #pane-menu, #pane-ba
 .artifact-header { position: relative; display: flex; align-items: center; gap: var(--space-2);
   margin-bottom: var(--space-4); }
 .artifact-title-select, .side-picker { flex: 1 1 auto; min-width: 0; text-overflow: ellipsis;
-  background: none; border: 1px solid transparent; border-radius: 8px;
+  background: none; border: 1px solid transparent; border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3); color: var(--text); font: inherit; font-size: 1.0625rem; font-weight: 600;
   line-height: 1.3; outline: none; cursor: pointer; }
 :is(.artifact-title-select, .side-picker):hover:not(:disabled) { background: var(--panel-2); }
-:is(.artifact-title-select, .side-picker):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(.artifact-title-select, .side-picker):focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
 :is(.artifact-title-select, .side-picker):disabled { cursor: default; }
 .artifact-flag { flex: none; padding: 1px var(--space-3); border: 1px solid var(--border);
   border-radius: 999px; color: var(--muted); font-size: 0.71875rem; text-transform: capitalize; }
@@ -341,7 +341,7 @@ html[data-embed] :is(#sidebar, #topbar, #panes, #pane-rail, #pane-menu, #pane-ba
 .artifact-actions { flex: none; display: flex; align-items: center; gap: var(--space-1); }
 .artifact-delete-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .artifact-icon-btn { position: relative; }
-.artifact-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.artifact-icon-btn:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
 .artifact-icon-btn[disabled] { opacity: .5; cursor: default; }
 .artifact-version-btn.off-current { color: var(--accent); }
 .artifact-version-dot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px;
@@ -365,10 +365,10 @@ html[data-embed] :is(#sidebar, #topbar, #panes, #pane-rail, #pane-menu, #pane-ba
 .artifact-doc .content img, .artifact-image { max-width: 100%; max-height: none; height: auto;
   border: 0; margin: 0; }
 .artifact-image-placeholder { display: block; box-sizing: border-box;
-  width: 100%; min-height: 150px; border: 1px solid var(--border); border-radius: 10px;
+  width: 100%; min-height: 150px; border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: linear-gradient(100deg, var(--panel-2) 30%, var(--panel) 48%, var(--panel-2) 66%);
   background-size: 240% 100%; animation: artifact-placeholder 1.35s ease-in-out infinite; }
-.artifact-image-frame { display: inline-grid; max-width: 100%; vertical-align: top; border-radius: 10px;
+.artifact-image-frame { display: inline-grid; max-width: 100%; vertical-align: top; border-radius: var(--radius-lg);
   overflow: hidden; }
 .artifact-image-frame > * { grid-area: 1 / 1; }
 /* The frame follows the image's own size, capped to the pane: a small photo
@@ -381,17 +381,17 @@ html[data-embed] :is(#sidebar, #topbar, #panes, #pane-rail, #pane-menu, #pane-ba
   .artifact-image-placeholder { animation: none; }
 }
 .artifact-plain { box-sizing: border-box; margin: 0; padding: var(--space-4);
-  border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--panel-2);
   white-space: pre; }
-.artifact-file-card { padding: var(--space-5); border: 1px solid var(--border); border-radius: 10px;
+.artifact-file-card { padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: var(--panel-2); overflow-wrap: anywhere; }
 .artifact-file-card p { margin: var(--space-2) 0 0; color: var(--muted); }
 .artifact-blocked-image { display: inline-block; padding: var(--space-3); border: 1px dashed var(--border);
-  border-radius: 6px; color: var(--muted); font-size: 0.78125rem; }
+  border-radius: var(--radius-sm); color: var(--muted); font-size: 0.78125rem; }
 .artifact-link-host { color: var(--muted); font-size: .9em; }
 .artifact-blocked-link { color: var(--muted); text-decoration: line-through; }
 .report-embed { width: 100%; height: 220px; border: 1px solid var(--border);
-  border-radius: 10px; background: var(--panel-2); margin: .6em 0 1em; }
+  border-radius: var(--radius-lg); background: var(--panel-2); margin: .6em 0 1em; }
 /* An HTML artifact fills the pane body: the artifact view stretches to the
    visible pane height and the live preview takes the remaining space, so
    interactive content is framed like a page, not a 220px strip. */
@@ -406,7 +406,7 @@ html[data-embed] :is(#sidebar, #topbar, #panes, #pane-rail, #pane-menu, #pane-ba
 .artifact-view:has(.artifact-embed-page) .report-doc { margin: 0; }
 /* Errors the live app page reported, above the page. */
 .artifact-errors { flex: none; margin: .6em 0 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--danger);
-  border-radius: 10px; background: color-mix(in srgb, var(--danger) 8%, transparent); font-size: 0.78125rem; }
+  border-radius: var(--radius-lg); background: color-mix(in srgb, var(--danger) 8%, transparent); font-size: 0.78125rem; }
 .artifact-errors[hidden] { display: none; }
 .artifact-errors-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center;
  color: var(--danger); }
@@ -432,7 +432,7 @@ mark.report-cmark:hover { background: color-mix(in srgb, var(--highlight) 42%, t
 .report-comments:not(:empty) { margin-top: var(--space-4);
   border-top: 1px solid var(--border); padding-top: var(--space-4); }
 .report-comment { background: var(--panel-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: var(--space-3) var(--space-4); }
+  border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); }
 .report-comment-quote { margin: 0 0 var(--space-2);
   padding: var(--space-1) 0 var(--space-1) var(--space-3);
   border-left: 2px solid var(--accent-dim); color: var(--muted);
@@ -543,7 +543,7 @@ mark.report-cmark:hover { background: color-mix(in srgb, var(--highlight) 42%, t
   box-sizing: border-box;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: var(--menu-shadow);
 }
 .selection-comment-offer {
@@ -558,6 +558,6 @@ mark.report-cmark:hover { background: color-mix(in srgb, var(--highlight) 42%, t
   filter: brightness(1.08);
 }
 .selection-comment-offer:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-width) solid var(--accent);
   outline-offset: 2px;
 }

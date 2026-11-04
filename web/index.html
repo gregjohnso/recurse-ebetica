@@ -65,9 +65,9 @@
   #agent-list::-webkit-scrollbar { width: 10px; }
   #agent-list::-webkit-scrollbar-track { background: transparent; }
   #agent-list::-webkit-scrollbar-thumb { background: var(--muted);
-    border-radius: 6px; border: 2px solid var(--panel); }
+    border-radius: var(--radius-sm); border: 2px solid var(--panel); }
   #agent-list::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
-  .agent { padding: var(--space-2) var(--space-3); margin: 1px 0; border-radius: 8px; cursor: pointer;
+  .agent { padding: var(--space-2) var(--space-3); margin: 1px 0; border-radius: var(--radius-md); cursor: pointer;
     border: 1px solid transparent;
     /* keep vertical list scrolling native, but hand horizontal swipes to JS
        (swipe-to-dismiss) so preventDefault there doesn't fight the scroll */
@@ -83,8 +83,8 @@
   .agent.dismiss-armed { background: color-mix(in srgb, var(--danger) 14%, transparent); border-color: var(--danger); }
   .agent.dismiss-armed .title { color: var(--danger); }
   .agent:hover { background: var(--panel-2); }
-  .agent.selected { background: var(--panel-2); border-color: var(--border-strong); }
-  .agent.cursor { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
+  .agent.selected { background: var(--row-selected); border-color: var(--row-selected-border); }
+  .agent.cursor { border-color: var(--accent); outline: var(--focus-width) solid var(--accent); outline-offset: calc(-1 * var(--focus-width)); }
   /* Spec: compact sidebar overrides apply only on phones. */
   @media (max-width: 700px) {
   :root { font-size: 100%; }
@@ -166,7 +166,7 @@
   .agent .rename-input { flex: 1; min-width: 0; font-family: inherit;
     font-size: 0.84375rem; font-weight: 600; color: var(--text);
     background: var(--panel); border: 1px solid var(--accent);
-    border-radius: 6px; padding: 1px var(--space-2);
+    border-radius: var(--radius-sm); padding: 1px var(--space-2);
     margin: calc(-1 * var(--space-1)) 0; outline: none; }
   .agent .kids, .agent .queue-badge { max-width: 100%; overflow: hidden; }
   .agent .agent-model { flex: none; max-width: 45%; overflow: hidden;
@@ -207,7 +207,7 @@
     white-space: nowrap; }
   #sidebar-foot kbd { font-family: inherit; font-size: 0.65625rem; color: var(--text);
     background: var(--panel-2); border: 1px solid var(--border);
-    border-bottom-color: var(--kbd-edge); border-radius: 6px; padding: 1px var(--space-2);
+    border-bottom-color: var(--kbd-edge); border-radius: var(--radius-sm); padding: 1px var(--space-2);
     line-height: 1.4; }
   #sidebar-foot .note { margin-top: var(--space-3); padding-top: var(--space-3);
     border-top: 1px solid var(--border); line-height: 1.6; }
@@ -228,7 +228,7 @@
     border: 0; color: var(--text); cursor: pointer; padding: var(--space-2) var(--space-3);
     margin-left: calc(-1 * var(--space-3)); align-items: center; justify-content: center; }
   #menu-btn svg { width: 20px; height: 20px; }
-  #menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #menu-btn:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: -2px; }
   /* up-to-parent affordance: shown when the selected agent has a routing parent
      open, the visible twin of the phone's back button */
   #up-btn { display: none; background: none; border: 0; color: var(--muted);
@@ -237,11 +237,11 @@
   #up-btn.on { display: flex; }
   #up-btn:hover { color: var(--accent); }
   #up-top { display: none; flex: none; width: 44px; height: 44px;
-    padding: 0; border: 0; border-radius: 8px; background: none;
+    padding: 0; border: 0; border-radius: var(--radius-md); background: none;
     color: var(--text); align-items: center; justify-content: center; cursor: pointer; }
   #up-top.on { display: inline-flex; }
   #up-top:hover { background: var(--panel); }
-  #up-top:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #up-top:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: -2px; }
   #topbar .spacer { flex: 1; }
   #top-actions { flex: none; }
   /* The title takes the remaining width without moving actions onto a new row. */
@@ -262,11 +262,11 @@
     background: color-mix(in srgb, var(--accent) 8%, transparent); outline: 1px solid var(--accent-dim); }
   #top-actions.prefix-on .top-act[data-key-hint]::after { content: attr(data-key-hint);
     display: inline-flex; color: var(--text); background: var(--panel-2);
-    border: 1px solid var(--accent-dim); border-radius: 6px; padding: 1px var(--space-2);
+    border: 1px solid var(--accent-dim); border-radius: var(--radius-sm); padding: 1px var(--space-2);
     font: 600 0.65625rem/1.2 var(--font-mono); }
   .top-act { display: inline-flex; align-items: center; gap: var(--space-2);
     background: none; border: 0; color: var(--muted); cursor: pointer;
-    padding: var(--space-2) var(--space-3); border-radius: 8px;
+    padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
     font: 600 0.78125rem/1 var(--font-sans);
     /* the press-slide gesture must not select text, pop the touch callout, or be
        stolen by the browser as a scroll when you slide down onto the menu */
@@ -282,7 +282,7 @@
   /* Conversation actions keep their availability/confirmation classes inside
      the overflow; app.css supplies the full-width menu-item geometry. */
   #takeover-btn, #trash-btn { display: none; flex: none;
-    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+    width: 30px; height: 30px; border-radius: var(--radius-md); border: 1px solid var(--border);
     background: var(--panel-2); color: var(--text); cursor: pointer;
     align-items: center; justify-content: center; padding: 0; }
   #takeover-btn.on { display: inline-flex; }
@@ -299,7 +299,7 @@
      own titles and labels carry the meaning. */
   .hold-tip { display: none; position: fixed; z-index: var(--z-toast);
     padding: var(--space-3) var(--space-4);
-    border-radius: 8px; border: 1px solid var(--border);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
     background: var(--panel-2); color: var(--text); font-size: 0.78125rem;
     line-height: 1.35; white-space: normal; width: max-content;
     max-width: min(360px, calc(100vw - 24px));
@@ -351,7 +351,7 @@
   #connection-status { position: fixed; z-index: var(--z-dialog); top: 56px; right: 14px;
     display: none; align-items: center; gap: var(--space-3); max-width: calc(100vw - 28px);
     padding: var(--space-2) var(--space-3); border: 1px solid var(--danger);
-    border-left-width: 3px; border-radius: 10px; background: var(--panel-2);
+    border-left-width: 3px; border-radius: var(--radius-lg); background: var(--panel-2);
     color: var(--text); box-shadow: var(--expanded-lift);
     font-size: 0.71875rem; line-height: 1.2; font-weight: 600; }
   #connection-status.on { display: flex; }
@@ -394,7 +394,7 @@
   /* Invariant: top is the 72px head less 4, so the nav sticks just under it. */
   #settings-nav { flex: none; width: 180px; display: flex; flex-direction: column;
     gap: var(--space-1); position: sticky; top: 68px; }
-  #settings-nav button { background: none; border: 0; border-radius: 8px;
+  #settings-nav button { background: none; border: 0; border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4); font: inherit; font-size: 0.84375rem; color: var(--muted);
     text-align: left; cursor: pointer; }
   #settings-nav button:hover { color: var(--text); background: var(--panel); }
@@ -416,7 +416,7 @@
     #settings-nav button { flex: none; white-space: nowrap; } }
   #settings-sections { flex: 1; min-width: 0; }
   .settings-cat[hidden] { display: none; }
-  .settings-section { border: 1px solid var(--border); border-radius: 10px;
+  .settings-section { border: 1px solid var(--border); border-radius: var(--radius-lg);
     background: var(--panel); padding: var(--space-5); }
   .settings-section + .settings-section { margin-top: var(--space-4); }
   .settings-section .sec-head { display: flex; align-items: center; gap: var(--space-3);
@@ -464,7 +464,7 @@
     display: flex; flex-direction: column; gap: var(--space-2); }
   .settings-section .model-box-input { width: 100%; box-sizing: border-box; }
   .settings-section .model-box-list { max-height: 400px; overflow-y: auto;
-    border: 1px solid var(--border); border-radius: 8px;
+    border: 1px solid var(--border); border-radius: var(--radius-md);
     background: var(--panel-2); }
   .settings-section .model-box-list[hidden] { display: none; }
   .settings-section .model-box-option { display: grid;
@@ -544,7 +544,7 @@
   .settings-section textarea { width: 100%; resize: vertical;
     font: 0.78125rem/1.5 var(--font-mono); }
   .settings-section pre.cmd, .settings-section pre.cmdpy { background: var(--code-bg);
-    border: 1px solid var(--border); border-radius: 10px; padding: var(--space-4);
+    border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4);
     color: var(--text); font: 0.78125rem/1.5 var(--font-mono);
     white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 var(--space-3);
     user-select: all; }
@@ -606,17 +606,17 @@
     font-size: 0.78125rem; font-weight: 600; color: var(--muted);
     text-transform: uppercase; letter-spacing: .04em; margin: 0 0 var(--space-3); }
   .prompt-copy { margin-left: auto; background: none; border: 1px solid var(--border);
-    border-radius: 8px; padding: var(--space-1) var(--space-4); color: var(--muted); cursor: pointer;
+    border-radius: var(--radius-md); padding: var(--space-1) var(--space-4); color: var(--muted); cursor: pointer;
     font: 600 0.71875rem/1.4 var(--font-sans); }
   .prompt-copy:hover { color: var(--text); border-color: var(--text); }
   .prompt-copy.copied { color: var(--accent); border-color: var(--accent-dim); }
   .prompt-block pre { background: var(--code-bg); border: 1px solid var(--border);
-    border-radius: 10px; padding: var(--space-4) var(--space-5); margin: 0; max-height: 46vh;
+    border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin: 0; max-height: 46vh;
     overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
     font: 0.78125rem/1.55 var(--font-mono); color: var(--text); }
   /* Compact tool rows disclose owner-scoped full payloads on demand. */
   .tool-calls { list-style: none; margin: 0; padding: 0; max-height: min(65vh, 720px);
-    overflow: auto; border: 1px solid var(--border); border-radius: 10px;
+    overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg);
     background: var(--code-bg); min-width: 0; }
   .tool-call { display: block; min-width: 0; padding: 0;
     border-top: 1px solid var(--border);
@@ -663,7 +663,7 @@
   .tool-copy { position: absolute; z-index: var(--z-raised); top: 6px; right: 6px;
     display: inline-flex; width: 27px; height: 27px; align-items: center;
     justify-content: center; padding: var(--space-2); border: 1px solid var(--border);
-    border-radius: 6px; background: var(--panel-2); color: var(--muted); cursor: pointer;
+    border-radius: var(--radius-sm); background: var(--panel-2); color: var(--muted); cursor: pointer;
     opacity: 0; transition: opacity var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast); }
   .tool-copy svg { width: 16px; height: 16px; }
   .tool-payload:hover .tool-copy, .tool-payload:focus-within .tool-copy,
@@ -677,7 +677,7 @@
     padding: var(--space-3) 40px var(--space-3) var(--space-4); /* space-check: allow copy-button room */
     overflow: auto; white-space: pre-wrap;
     overflow-wrap: anywhere; word-break: break-word; tab-size: 2;
-    border: 1px solid var(--border); border-radius: 8px; background: var(--code-bg);
+    border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--code-bg);
     color: var(--text); font: 0.71875rem/1.5 var(--font-mono); }
   @media (hover: none), (pointer: coarse) { .tool-copy { opacity: 1; } }
   .tool-limit { margin: var(--space-2) 1px 0; color: var(--warn); font-size: 0.65625rem; }
@@ -698,7 +698,7 @@
     font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
   .compaction-jump-link:hover, .compaction-jump-link:focus-visible {
     color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
-  .compaction-jump-link:focus-visible { outline: 2px solid var(--accent);
+  .compaction-jump-link:focus-visible { outline: var(--focus-width) solid var(--accent);
     outline-offset: 1px; border-radius: 2px; } /* radius-check: allow a focus outline */
   .thread-marker.pending { font-style: italic; opacity: .75; }
 
@@ -713,13 +713,13 @@
   .activity-group-toggle { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .activity-group-toggle .turn-summary { min-width: 0; align-self: center; }
   .activity-group-toggle:focus { outline: none; }
-  .activity-group-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .activity-group-toggle:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   /* A visible reply inside an opened row stays untinted at its closed width. */
   .activity-group-body.split { padding: 0; background: none; box-shadow: none; }
   .activity-group-part { position: relative; display: flex; flex-direction: column;
-    gap: var(--space-3); padding: var(--space-4); border-radius: 10px; }
+    gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); }
   .activity-group-body { position: relative; display: flex; flex-direction: column;
-    gap: var(--space-3); padding: var(--space-4); border-radius: 10px; background: var(--panel); }
+    gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--panel); }
   .activity-group-body .agent-message-row .lead, .activity-group-body .agent-message-row .sub { flex: none; }
   .activity-group-body .agent-message-row, .activity-group-body .turn-series-toggle { min-height: 0; }
   .activity-group-body .agent-message-row[aria-expanded] { padding: 0; background: transparent; }
@@ -730,12 +730,12 @@
      A little clearance above keeps it off the preceding block footer. */
   .activity-group-body:has(> .activity-group-hide), .activity-group-part:has(> .activity-group-hide) {
     margin-top: var(--space-2); }
-  .activity-group-hide { position: absolute; z-index: var(--z-raised); top: -1px; transform: translateY(-50%); right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: var(--space-2); border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); color: var(--muted); cursor: pointer; }
+  .activity-group-hide { position: absolute; z-index: var(--z-raised); top: -1px; transform: translateY(-50%); right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--muted); cursor: pointer; }
   .activity-group-hide::before { content: ""; position: absolute; width: 44px; height: 44px; left: -11px; top: -11px; }
   .activity-group-hide svg { width: 16px; height: 16px; display: block; }
   .activity-group-hide:hover, .activity-group-hide:focus-visible { color: var(--text); border-color: var(--text); }
   .activity-group-hide:focus { outline: none; }
-  .activity-group-hide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .activity-group-hide:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   .agent-message-preview { overflow: hidden; text-overflow: ellipsis; white-space: normal; min-width: 0; color: var(--muted); font-weight: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .activity-group:not(.open) .activity-group-body { display: none; }
   .turn-summary { align-self: stretch; color: var(--muted); font-size: 0.78125rem; }
@@ -767,7 +767,7 @@
     align-items: center; gap: var(--turn-button-gap); }
   .turn-expand, .turn-tokens { flex: none; display: inline-flex;
     align-items: center; justify-content: center; box-sizing: border-box;
-    width: var(--turn-button-size); height: var(--turn-button-size); padding: 0; border-radius: 6px;
+    width: var(--turn-button-size); height: var(--turn-button-size); padding: 0; border-radius: var(--radius-sm);
     background: transparent; border: 1px solid transparent; color: var(--muted);
     cursor: pointer; opacity: 0; transition: opacity var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast); }
   .turn-expand svg, .turn-tokens svg { width: 14px; height: 14px; display: block; }
@@ -775,7 +775,7 @@
   .turn-expand.on { color: var(--accent); border-color: var(--accent); }
   .turn-tokens:hover, .turn-expand:hover { color: var(--text); border-color: var(--text); }
   .turn-expand:focus, .turn-tokens:focus { outline: none; }
-  .turn-expand:focus-visible, .turn-tokens:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .turn-expand:focus-visible, .turn-tokens:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   /* one tool row of an expanded turn: what ran, then what it did in counts. Its
      full input/output is fetched lazily and rendered by .tool-detail-body. */
   .turn-tool { align-self: stretch; max-width: 100%; font-size: 0.78125rem; }
@@ -880,7 +880,7 @@
      scaffolding, collapsed by default, revealed inline on click. */
   .prompt-banner { align-self: stretch; max-width: 100%; }
   .prompt-banner-row { display: flex; align-items: center; gap: var(--space-3); width: 100%;
-    background: var(--panel-2); border: 1px dashed var(--border); border-radius: 10px;
+    background: var(--panel-2); border: 1px dashed var(--border); border-radius: var(--radius-lg);
     padding: var(--space-3) var(--space-4); color: var(--muted); cursor: pointer; text-align: left;
     font: inherit; transition: border-color var(--motion-fast), color var(--motion-fast); }
   .prompt-banner-row:hover { border-color: var(--accent-dim); color: var(--text); }
@@ -890,7 +890,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .prompt-banner-body { margin-top: var(--space-3); }
   .prompt-banner-body pre { background: var(--code-bg); border: 1px solid var(--border);
-    border-radius: 10px; padding: var(--space-4) var(--space-5); margin: 0; max-height: 320px;
+    border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin: 0; max-height: 320px;
     overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
     font: 0.78125rem/1.55 var(--font-mono); color: var(--text); }
 
@@ -922,7 +922,7 @@
   #thread-loading.on { display: block; }
   .msg.user { align-self: flex-end; max-width: 82%; }
   .msg.user .bubble { background: var(--user-bubble); border: 1px solid var(--border-strong);
-    padding: var(--space-3) var(--space-5); border-radius: 14px 14px 6px 14px;
+    padding: var(--space-3) var(--space-5); border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl);
     white-space: pre-wrap; word-wrap: break-word; }
   .agent-message { align-self: flex-end; max-width: 82%; }
   .agent-message-row, .agent-message-inline-head { display: flex; align-items: baseline;
@@ -930,7 +930,7 @@
   .agent-message-row { width: 100%; border: 0; background: transparent;
     cursor: pointer; text-align: left; font: inherit; font-size: 0.78125rem; }
   .agent-message-row[aria-expanded="false"] { padding: var(--space-3);
-    border-radius: 8px; background: var(--panel-2); }
+    border-radius: var(--radius-md); background: var(--panel-2); }
   .platform-interruption :is(.agent-message-row, .agent-message-inline-head) .lead { color: var(--warn); }
   .agent-message-row:hover, .agent-message-row:focus-visible { color: var(--text); }
   .agent-message-row .lead, .agent-message-inline-head .lead {
@@ -949,14 +949,14 @@
   /* The seated summary is a disclosure; its completion notice stays quiet. */
   .compacted-head { display: inline-flex; align-items: center; gap: var(--space-3);
     min-height: 34px; padding: var(--space-2) var(--space-4); border: 1px solid var(--border);
-    border-radius: 8px; background: var(--panel-2);
+    border-radius: var(--radius-md); background: var(--panel-2);
     font: inherit; color: var(--text); cursor: pointer; }
   .compacted-head:hover { border-color: var(--muted); }
   .compacted-head:focus { outline: none; }
-  .compacted-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .compacted-head:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   .compacted-activity:focus { outline: none; }
   .compacted-activity.file-jump-target { outline: none; animation: none; }
-  .compacted-activity:focus-visible .thread-marker { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .compacted-activity:focus-visible .thread-marker { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   .agent-message-body { display: grid; grid-template-columns: minmax(0, 1fr) auto;
     align-items: start; gap: var(--space-3); min-width: 0; margin-top: var(--space-3);
     padding: 0 var(--space-2) 0 var(--space-5);
@@ -966,7 +966,7 @@
   .agent-message-content img { display: block; max-width: 100%; max-height: 280px; }
   .agent-message-inspect { flex: none; display: inline-flex; align-items: center;
     justify-content: center; width: 30px; height: 28px; padding: 0;
-    border: 1px solid var(--border); border-radius: 6px; background: transparent;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent;
     color: var(--muted); cursor: pointer;
     transition: opacity var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast); }
   .agent-message-inspect svg { width: 16px; height: 16px; display: block; }
@@ -978,7 +978,7 @@
     .agent-message-inspect:focus-visible { opacity: 1; }
   }
   .disclosure-body { margin-top: var(--space-3); padding: var(--space-4); border: 1px solid var(--border);
-    border-radius: 10px; background: var(--panel-2); }
+    border-radius: var(--radius-lg); background: var(--panel-2); }
   .disclosure-body-head { display: flex; align-items: center; gap: var(--space-3);
     margin-bottom: var(--space-3);
     color: var(--muted); font-size: 0.71875rem; font-weight: 600; }
@@ -1029,13 +1029,13 @@
   .agent-attachments.images-many { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .agent-attachment-item { width: 100%; min-width: 0; }
   .agent-attachment-item.image { position: relative; overflow: hidden; aspect-ratio: 4 / 3;
-    max-height: 390px; border: 1px solid var(--border); border-radius: 10px;
+    max-height: 390px; border: 1px solid var(--border); border-radius: var(--radius-lg);
     background: var(--panel-2); }
   .agent-attachment-preview { display: block; width: 100%; height: 100%; padding: 0;
     border: 0; background: transparent; cursor: zoom-in; }
   .agent-attachment-preview img { display: block; width: 100%; height: 100%;
     object-fit: contain; }
-  .agent-attachment-preview:focus-visible { outline: 2px solid var(--accent);
+  .agent-attachment-preview:focus-visible { outline: var(--focus-width) solid var(--accent);
     outline-offset: -3px; }
   .agent-attachment-download-icon { position: absolute; z-index: var(--z-raised); top: 8px; right: 8px;
     display: inline-flex; align-items: center; justify-content: center; width: 36px;
@@ -1046,15 +1046,15 @@
   .agent-attachment-item.image:hover .agent-attachment-download-icon,
   .agent-attachment-download-icon:focus-visible { opacity: 1; }
   .agent-attachment-download-icon:hover { background: color-mix(in srgb, var(--scrim) 82%, transparent); }
-  .agent-attachment-download-icon:focus-visible { outline: 2px solid var(--accent);
+  .agent-attachment-download-icon:focus-visible { outline: var(--focus-width) solid var(--accent);
     outline-offset: 2px; }
   /* A published file is one compact line: icon, name, size, then download. */
   .agent-attachment-item.file, .agent-attachment.unavailable { grid-column: 1 / -1;
     justify-self: start; width: auto; max-width: 100%; box-sizing: border-box; display: inline-flex;
     align-items: center; min-height: 32px; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--panel-2); font-size: 0.78125rem; }
+    border-radius: var(--radius-md); background: var(--panel-2); font-size: 0.78125rem; }
   .agent-attachment { min-width: 0; display: inline-flex; align-items: center;
-    gap: var(--space-2); align-self: stretch; padding: 0 var(--space-3); border: 0; border-radius: 8px 0 0 8px;
+    gap: var(--space-2); align-self: stretch; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md) 0 0 var(--radius-md);
     background: transparent; color: var(--text); }
   button.agent-attachment { font: inherit; text-align: start; cursor: pointer; }
   .agent-attachment.unavailable { padding: 0 var(--space-4); color: var(--muted); }
@@ -1067,7 +1067,7 @@
     font-size: 0.71875rem; }
   .agent-attachment-file-download { flex: none; align-self: stretch; display: grid;
     place-items: center; width: 32px; border-left: 1px solid var(--border);
-    border-radius: 0 8px 8px 0; color: var(--accent); }
+    border-radius: 0 var(--radius-md) var(--radius-md) 0; color: var(--accent); }
   button.agent-attachment:hover, button.agent-attachment:focus-visible,
   .agent-attachment-file-download:hover, .agent-attachment-file-download:focus-visible {
     background: var(--panel); outline: none; box-shadow: inset 0 0 0 1px var(--accent-dim); }
@@ -1094,7 +1094,7 @@
     min-height: 22px; }
   .msg .error-note { color: var(--danger); font-size: 0.78125rem;
     border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); background: color-mix(in srgb, var(--danger) 7%, transparent);
-    padding: var(--space-3) var(--space-4); border-radius: 8px; margin-top: var(--space-2); }
+    padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); margin-top: var(--space-2); }
   /* a refused turn, left out of later requests: dimmed, with its note at full
      contrast and a Resend button */
   .activity-boundary.refused :is(.msg.user .bubble, .msg.assistant > .content) { opacity: 0.55; }
@@ -1106,10 +1106,10 @@
      from the red error note, and pre-wrapped since reasons can be multi-line */
   .msg .notice-note { color: var(--notice); font-size: 0.78125rem; white-space: pre-wrap;
     border: 1px solid color-mix(in srgb, var(--notice) 30%, transparent); background: color-mix(in srgb, var(--notice) 7%, transparent);
-    padding: var(--space-3) var(--space-4); border-radius: 8px; margin-top: var(--space-2); }
+    padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); margin-top: var(--space-2); }
   .history-unavailable { align-self: stretch; color: var(--danger);
     border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 9%, transparent);
-    padding: var(--space-4) var(--space-5); border-radius: 10px; font-size: 0.84375rem;
+    padding: var(--space-4) var(--space-5); border-radius: var(--radius-lg); font-size: 0.84375rem;
     line-height: 1.45; }
   .history-unavailable strong { display: block; margin-bottom: var(--space-1); font-size: 0.84375rem; }
   /* routine lifecycle state, not an error: the muted twin of the retry alert */
@@ -1129,7 +1129,7 @@
      state, so streaming updates never move the thread. */
   .live-panel-box { display: flex; flex-direction: column; align-items: stretch;
     gap: 0; width: 100%; min-width: 0; max-width: 100%; height: 34px;
-    padding: 0 var(--space-4); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg);
     --live-dot: 7px;
     background: var(--panel-2); overflow: hidden; }
   .live-panel-head { display: flex; align-items: center; gap: var(--space-3);
@@ -1174,7 +1174,7 @@
     white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.35; }
   .live-panel-box:has(.live-thinking-summary) .live-thinking-copy { cursor: pointer; }
   .live-panel-box:has(.live-thinking-summary):focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px; }
+    outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
   /* Inset edges do not change disclosure geometry or scroll anchoring. */
   .activity-group-body, .activity-group-part, .turn-series-body, .agent-message-body,
   .disclosure-body, .turn-thinking-body, .tool-detail-body, .prompt-banner-body pre,
@@ -1186,7 +1186,7 @@
   /* Nested disclosures read as an inset, not another raised box. */
   .activity-group-body :is(.turn-series-body, .agent-message-body, .turn-thinking-body, .tool-detail-body) {
     background: color-mix(in srgb, var(--expanded-bg) 50%, var(--panel));
-    border-radius: 6px; box-shadow: none; }
+    border-radius: var(--radius-sm); box-shadow: none; }
   .turn-series-toggle[aria-expanded="true"],
   .agent-message-row[aria-expanded="true"],
   .agent-message-row[aria-expanded="true"] .agent-message-preview,
@@ -1204,7 +1204,7 @@
   /* The live eye is the same turn-level disclosure as history. Its current
      segment summary then reveals finished/in-flight calls in .work-activity. */
   .working .work-eye { flex: none; display: inline-flex; align-items: center;
-    justify-content: center; width: 30px; height: 30px; padding: var(--space-2); border-radius: 8px;
+    justify-content: center; width: 30px; height: 30px; padding: var(--space-2); border-radius: var(--radius-md);
     background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
     cursor: pointer; transition: color var(--motion-fast), border-color var(--motion-fast); }
   .working .work-eye svg { width: 16px; height: 16px; display: block; }
@@ -1214,7 +1214,7 @@
   /* The current segment summary reveals its in-flight calls. Background shells
      stay out of the thread until the compact chip is opened. */
   .work-activity { min-width: 0; max-width: 100%; margin-top: var(--space-3); border: 1px solid var(--border);
-    border-radius: 10px; background: var(--code-bg); overflow: hidden; }
+    border-radius: var(--radius-lg); background: var(--code-bg); overflow: hidden; }
   .work-activity section { padding: var(--space-4); }
   .work-activity h3 { margin: 0 0 var(--space-3); color: var(--muted);
     font-size: 0.71875rem; font-weight: 600; line-height: 1.4; text-transform: uppercase;
@@ -1233,7 +1233,7 @@
      every breakpoint. Coarse-pointer hit areas are transparent pseudo-elements
      below; they must not stretch the chip or let its label escape the pill. */
   .shell-chip:focus-visible, .agent-chip:focus-visible {
-    outline: 2px solid var(--text); outline-offset: 2px; }
+    outline: var(--focus-width) solid var(--text); outline-offset: 2px; }
   #context-overlay { position: fixed; z-index: calc(var(--z-dialog) + 1); inset: 0; display: none;
     align-items: center; justify-content: center;
     padding: 56px var(--space-5) var(--space-6); /* space-check: allow clears the topbar */
@@ -1274,7 +1274,7 @@
     padding: 0 var(--space-1) 0 0; display: flex; flex-direction: column; gap: var(--space-3);
     overflow-y: auto; }
   .shell-row { min-width: 0; padding: var(--space-3) var(--space-4); background: var(--panel-2);
-    border: 1px solid var(--border); border-radius: 8px; }
+    border: 1px solid var(--border); border-radius: var(--radius-md); }
   .shell-command { color: var(--text); font: 0.78125rem/1.45 var(--font-mono); overflow-wrap: anywhere; white-space: pre-wrap; }
   .shell-meta { margin-bottom: var(--space-2); display: flex; align-items: center;
     flex-wrap: wrap; gap: var(--space-2) var(--space-3); color: var(--muted); font-size: 0.65625rem; }
@@ -1288,7 +1288,7 @@
   .agent-surface .shell-surface-head { align-items: center; gap: var(--space-3);
     margin-bottom: var(--space-2); padding-left: var(--space-3); }
   .active-agent-list .agent:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: -2px; }
+    outline: var(--focus-width) solid var(--accent); outline-offset: -2px; }
   .active-agent-list { list-style: none; min-height: 0; flex: 1 1 auto;
     margin: 0; padding: 0; overflow-y: auto; }
   button.agent { display: block; width: 100%; background: transparent;
@@ -1301,7 +1301,7 @@
   .draft-hello { color: var(--muted); text-align: center; margin: 12vh auto 0;
     max-width: 440px; }
   .draft-hello .icon { width: 46px; height: 46px; margin: 0 auto var(--space-4);
-    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center;
     background: linear-gradient(135deg, var(--accent), var(--accent-deep));
     box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 30%, transparent); color: var(--text-on-accent); }
   .draft-hello h2 { color: var(--text); font-size: 1.0625rem; margin: 0; }
@@ -1321,17 +1321,17 @@
   .content ul, .content ol { margin: .4em 0 .8em; padding-left: 1.4em; }
   .content li { margin: .2em 0; }
   .content code { background: var(--code-bg); border: 1px solid var(--border);
-    padding: var(--space-1) var(--space-2); border-radius: 6px;
+    padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
     font: 0.78125rem/1.5 var(--font-mono); }
   .content pre { background: var(--code-bg); border: 1px solid var(--border);
-    border-radius: 10px; padding: var(--space-4) var(--space-5); overflow-x: auto;
+    border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); overflow-x: auto;
     margin: .6em 0 1em; }
   .content pre code { background: none; border: 0; padding: 0; }
   /* An assistant image whose source isn't an allowed same-origin attachment is
      replaced by this inert marker instead of being rendered. */
   .content .blocked-image { display: inline-block; margin: var(--space-2) 0 0;
     padding: var(--space-2) var(--space-3);
-    border: 1px dashed var(--border); border-radius: 8px; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--muted);
     font-size: 0.78125rem; }
   .code-wrap { position: relative; }
   .code-wrap .copy-btn { position: absolute; top: 7px; right: 7px;
@@ -1350,7 +1350,7 @@
   .content th { background: var(--panel-2); }
   .content a { color: var(--accent); }
   .content img { display: block; max-width: 100%; max-height: 360px;
-    border-radius: 10px; border: 1px solid var(--border); margin: .5em 0; }
+    border-radius: var(--radius-lg); border: 1px solid var(--border); margin: .5em 0; }
 
   /* ---------- composer ---------- */
   #composer-wrap { flex: none; min-width: 0; padding: var(--space-2) var(--space-5) var(--space-4);
@@ -1388,8 +1388,8 @@
     transform: translateX(-50%) translateY(0); }
   #scroll-btn:hover { color: var(--text); border-color: var(--accent-dim); }
   #composer-shell { max-width: 780px; margin: 0 auto; position: relative; }
-  #composer, .composer-box { width: 100%; margin: 0; background: var(--panel-2);
-    border: 1px solid var(--border); border-radius: 14px;
+  #composer, .composer-box { width: 100%; margin: 0; background: var(--input-bg);
+    border: 1px solid var(--input-border); border-radius: var(--radius-xl);
     padding: var(--space-2);
     display: flex; align-items: flex-end; gap: var(--space-3); position: relative;
     transition: border-color var(--motion-fast); }
@@ -1420,7 +1420,7 @@
   #agent-finder [hidden] { display: none; }
   /* Two-line rows: a name above its description or path. The skill rows also
      undo the composer's square icon-button size. */
-  #skill-menu .skill-option { width: 100%; height: auto; margin: 0; border-radius: 8px;
+  #skill-menu .skill-option { width: 100%; height: auto; margin: 0; border-radius: var(--radius-md);
     align-items: stretch; }
   .menu-item:is(.skill-option, .agent-option) { flex-direction: column; align-items: stretch;
     justify-content: center; gap: var(--space-1); }
@@ -1440,7 +1440,7 @@
   .agent-option-path { color: var(--muted); font: 0.65625rem/1.35 var(--font-mono); white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; }
   #composer button, .composer-box button { flex: none; width: 28px; height: 28px; margin-bottom: var(--space-2);
-    border: 0; border-radius: 8px; cursor: pointer;
+    border: 0; border-radius: var(--radius-md); cursor: pointer;
     display: flex; align-items: center; justify-content: center; }
   /* Touch targets extend beyond the visible controls without sizing the row. */
   @media (pointer: coarse) {
@@ -1462,7 +1462,7 @@
   #send.stop.armed { color: var(--danger); border-color: var(--danger);
     background: color-mix(in srgb, var(--danger) 18%, transparent); }
   #send.stop.error { outline: 1px solid var(--danger); }
-  #send.stop:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  #send.stop:focus-visible { outline: var(--focus-width) solid var(--text); outline-offset: 2px; }
   #attach { background: none; color: var(--muted); }
   #attach:hover { color: var(--accent); background: var(--panel); }
   /* The model picker stays compact at the inline end. Its context button sits
@@ -1478,13 +1478,13 @@
     line-height: 1.4; }
   #model-controls.on { flex: 0 1 auto; }
   #context-indicator { display: none; flex: none; align-items: center; gap: var(--space-2);
-    min-height: 32px; padding: var(--space-2) var(--space-1); border: 0; border-radius: 6px;
+    min-height: 32px; padding: var(--space-2) var(--space-1); border: 0; border-radius: var(--radius-sm);
     background: transparent; color: var(--muted); font: inherit; cursor: pointer;
     white-space: nowrap; transition: color var(--motion-fast), background-color var(--motion-fast); }
   #context-indicator.on { display: inline-flex; }
   #context-indicator:hover, #context-indicator:focus-visible {
     color: var(--text); background: var(--panel); }
-  #context-indicator:focus-visible { outline: 2px solid var(--accent-dim);
+  #context-indicator:focus-visible { outline: var(--focus-width) solid var(--accent-dim);
     outline-offset: 1px; }
   #context-mini { display: flex; width: 48px; height: 5px; overflow: hidden;
     border-radius: 999px; background: var(--border); }
@@ -1496,11 +1496,11 @@
   #model-row.on { display: flex; }
   #model-trigger { display: inline-flex; align-items: center; gap: var(--space-3);
     max-width: 240px; min-height: 32px; padding: var(--space-2) var(--space-3); border: 0;
-    border-radius: 8px; background: transparent; color: var(--muted);
+    border-radius: var(--radius-md); background: transparent; color: var(--muted);
     font: inherit; font-size: 0.78125rem; cursor: pointer; }
   #model-trigger:hover, #model-trigger:focus-visible { background: var(--panel-2);
     color: var(--text); }
-  #model-trigger:focus-visible { outline: 2px solid var(--accent-dim); }
+  #model-trigger:focus-visible { outline: var(--focus-width) solid var(--accent-dim); }
   #model-trigger.pending .model-name { font-weight: 700; color: var(--text); }
   #model-trigger > svg { flex: none; width: 12px; height: 12px; }
   #model-trigger .model-name { width: 14ch; overflow: hidden; text-overflow: ellipsis;
@@ -1533,7 +1533,7 @@
   #effort-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%;
     background: var(--text); border: 3px solid var(--accent);
     box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow) 45%, transparent); } /* shadow-check: allow slider thumb */
-  #effort-range:focus-visible { outline: 2px solid var(--accent-dim);
+  #effort-range:focus-visible { outline: var(--focus-width) solid var(--accent-dim);
     outline-offset: 2px; }
   #effort-range:disabled { opacity: .55; cursor: default; }
   #effort-slider.legacy #effort-range::-webkit-slider-runnable-track {
@@ -1562,7 +1562,7 @@
   .draft-model-host #model-menu.draft-open { display: block; }
   #model-row [hidden] { display: none; }
   #safety-btn:focus-visible {
-    outline: 2px solid var(--accent-dim); outline-offset: 1px; }
+    outline: var(--focus-width) solid var(--accent-dim); outline-offset: 1px; }
 
   /* Per-conversation safety toggle: review each action before it runs, or skip.
      Sits at the inline start of the model row and only shows for a saved chat
@@ -1573,7 +1573,7 @@
   #safety-btn { display: inline-flex; align-items: center; gap: var(--space-2);
     min-height: 32px; background: none; border: 0; padding: var(--space-2) var(--space-1);
     color: var(--muted); font: inherit; font-size: 0.78125rem; cursor: pointer;
-    border-radius: 6px; white-space: nowrap; transition: color var(--motion-fast); }
+    border-radius: var(--radius-sm); white-space: nowrap; transition: color var(--motion-fast); }
   #safety-btn:hover:not(:disabled) { color: var(--text); }
 #safety-btn { position: relative; }
 #safety-btn.unavailable .lbl { transform: translateY(-5px); }
@@ -1634,13 +1634,13 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   #attachments { max-width: 780px; margin: 0 auto; display: flex; flex-wrap: wrap;
     gap: var(--space-3); padding: 0 0 var(--space-3); }
   #attachments:empty { display: none; }
-  .attach-chip { position: relative; width: 60px; height: 60px; border-radius: 10px;
+  .attach-chip { position: relative; width: 60px; height: 60px; border-radius: var(--radius-lg);
     overflow: hidden; border: 1px solid var(--border); background: var(--panel); }
   .attach-chip img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* uploaded image chips wrap their thumbnail in a button that opens the preview */
   .attach-chip .preview { display: block; width: 100%; height: 100%; padding: 0;
     margin: 0; border: 0; background: none; cursor: zoom-in; }
-  .attach-chip .preview:focus-visible { outline: 2px solid var(--accent);
+  .attach-chip .preview:focus-visible { outline: var(--focus-width) solid var(--accent);
     outline-offset: 2px; }
   .attach-chip.file { width: auto; max-width: 200px; display: flex; align-items: center;
     padding: 0 var(--space-6) 0 var(--space-4); color: var(--text); }
@@ -1649,7 +1649,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   .attach-chip.uploading { opacity: .55; }
   .attach-chip.failed { border-color: var(--danger); }
   .attach-chip .retry { position: absolute; left: 4px; bottom: 4px; border: 0;
-    border-radius: 6px; padding: var(--space-1) var(--space-2); background: color-mix(in srgb, var(--shadow) 72%, transparent); color: var(--on-media);
+    border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); background: color-mix(in srgb, var(--shadow) 72%, transparent); color: var(--on-media);
     font-size: 0.65625rem; line-height: 1.4; cursor: pointer; }
   .attach-chip .rm { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
     border: 0; border-radius: 50%; background: color-mix(in srgb, var(--shadow) 60%, transparent); color: var(--on-media);
@@ -1722,7 +1722,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
     #model-trigger { max-width: min(240px, calc(100vw - 120px)); }
     #context-overlay { align-items: flex-end; padding: 0; }
     #context-surface { width: 100%; max-width: none; max-height: calc(100dvh - var(--mobile-shell-height));
-      border-radius: 14px 14px 0 0; border-bottom: 0; }
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0; }
     .context-surface-head { padding-left: var(--space-5); }
     #context-body { padding: 0 var(--space-5) max(var(--space-5), env(safe-area-inset-bottom)); }
     .context-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1758,7 +1758,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
       align-items: flex-start; justify-content: stretch; }
     .shell-surface { width: 100%; max-width: none;
       max-height: calc(100dvh - var(--mobile-shell-height) - 112px);
-      padding: var(--space-5); border-radius: 14px; }
+      padding: var(--space-5); border-radius: var(--radius-xl); }
   }
   @media (pointer: coarse) {
     /* Panel chips keep their 18 px badge height in the panel. Their
@@ -1787,7 +1787,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   }
 
   ::-webkit-scrollbar { width: 9px; }
-  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 6px;
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: var(--radius-sm);
     border: 2px solid var(--bg); }
   ::-webkit-scrollbar-track { background: transparent; }
 </style>
