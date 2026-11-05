@@ -106,7 +106,8 @@ attachment). Invariants:
   `.env*`, `id_rsa*`, `*.pem`, `*.key`, `*.tfstate*`, `.netrc`,
   `.vault-token`, `.htpasswd`, credentials files, `.git/config`,
   `.kube/config`, `.docker/config.json`, `.config/gh/hosts.yml`, anything
-  under `.ssh/`, and anything in Recurse's data directory.
+  under `.ssh/`, and anything in Recurse's data directory except files inside
+  a managed worktree (`worktrees/<name>/`), which follow the rules above.
 - Each listing reads at most 10,000 names lazily (past that, `more` is a lower
   bound), returns 1,000 entries, folders first, and runs one bounded
   `git check-ignore --stdin` with the scrubbed Git environment and

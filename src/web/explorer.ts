@@ -95,9 +95,16 @@ export function credentialPath(path: string, dataDir: string): boolean {
     CREDENTIAL_SUFFIXES.some((suffix) =>
       suffix.every((part, index) => parts.at(index - suffix.length) === part),
     ) ||
-    path === dataDir ||
-    path.startsWith(`${dataDir.replace(/\/$/, "")}/`)
+    recurseStatePath(path, dataDir)
   );
+}
+
+/** True inside Recurse's data dir, except files of a managed worktree. */
+function recurseStatePath(path: string, dataDir: string): boolean {
+  const base = dataDir.replace(/\/$/, "");
+  if (path !== base && !path.startsWith(`${base}/`)) return false;
+  const [top, name, ...rest] = path.slice(base.length + 1).split("/");
+  return !(top === "worktrees" && name && !name.startsWith(".") && rest.length);
 }
 
 /** Validated components of a root-relative path; 422 for anything else. */

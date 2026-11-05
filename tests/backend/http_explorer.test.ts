@@ -288,3 +288,48 @@ test("explorer refuses relayed agents and Recurse's data directory under the roo
     await app.running.close();
   }
 });
+
+test("explorer previews managed worktrees but not the rest of Recurse's data directory", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "explorer-data-"));
+  dirs.push(dir);
+  const data = join(dir, "data");
+  const tree = join(data, "worktrees", "x");
+  await mkdir(join(tree, "src"), { recursive: true });
+  await mkdir(join(data, "worktrees", ".markers"), { recursive: true });
+  await writeFile(join(tree, "src", "app.ts"), "export {};\n");
+  await writeFile(join(data, "worktrees", ".markers", "x.json"), "{}");
+  await writeFile(join(data, "server.json"), '{"token":"secret"}');
+  let root = tree;
+  const app = await buildAuthApp(join(dir, "auth"), {
+    backendKeys: true,
+    extraRoutes: (router) =>
+      registerExplorerRoutes(router, {
+        store: {
+          load: (cid) => ({ id: cid }),
+          effectiveWorkdir: () => root,
+        },
+        env: process.env,
+        dataDir: data,
+      }),
+  });
+  const { key } = await new BackendKeys(join(dir, "auth")).mint("home");
+  const status = async (path: string) =>
+    (
+      await fetch(
+        `http://127.0.0.1:${app.running.port}/api/conversations/c1/tree/file?path=${path}`,
+        { headers: { authorization: `Bearer ${key}` } },
+      )
+    ).status;
+  try {
+    expect(await status("src/app.ts")).toBe(200);
+    root = data;
+    expect(await status("server.json")).toBe(403);
+    expect(await status("worktrees/x/src/app.ts")).toBe(200);
+    expect(await status("worktrees/.markers/x.json")).toBe(403);
+    root = dir;
+    expect(await status("data/server.json")).toBe(403);
+    expect(await status("data/worktrees/x/src/app.ts")).toBe(200);
+  } finally {
+    await app.running.close();
+  }
+});
