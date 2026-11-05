@@ -1332,6 +1332,13 @@ function titleOf(id: string): string {
 
 /** Where a new dock panel goes: tools left, files and Artifacts right. */
 function dockPlacement(id: string): DockPlacement {
+  if (id === EXPLORER) {
+    return {
+      background: nextBackground,
+      leftmost: true,
+      width: explorerWidth(),
+    };
+  }
   const kind = dockKindOf(id);
   const ids = dock?.ids() ?? [];
   const same = (other: string) => dockKindOf(other) === kind;
@@ -1345,6 +1352,23 @@ function dockPlacement(id: string): DockPlacement {
       ? { id: anchor, direction: kind === "tool" ? "left" : "right" }
       : undefined,
   };
+}
+
+const EXPLORER = "explorer";
+const EXPLORER_WIDTH_KEY = "recurse.explorerWidth";
+const clampExplorer = (width: number): number =>
+  Math.round(Math.max(180, Math.min(600, width)));
+
+/** The Explorer's opening width: the user's last, or a default. */
+function explorerWidth(): number {
+  const saved = Number(localStorage.getItem(EXPLORER_WIDTH_KEY));
+  return Number.isFinite(saved) && saved > 0 ? clampExplorer(saved) : 280;
+}
+
+function rememberExplorerWidth(): void {
+  const width = dock?.width(EXPLORER);
+  if (width)
+    localStorage.setItem(EXPLORER_WIDTH_KEY, String(clampExplorer(width)));
 }
 
 /** A tab's icon: the pane's rail icon, the chat's, or a file's. */
@@ -1443,6 +1467,7 @@ function loadDock(): void {
           element: dockElement,
           closed: dockClosed,
           icon: dockIcon,
+          resized: rememberExplorerWidth,
           // Invariant: dockview reports changes while panes.ts is still
           // adding a panel; resync afterwards, never re-entrantly.
           changed: () =>

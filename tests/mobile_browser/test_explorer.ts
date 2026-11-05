@@ -101,6 +101,71 @@ export const tests: BrowserTest[] = [
     const tabs = page.locator(".dv-tab");
     expect(await tabs.count()).toBe(4);
     expect(await page.locator(".dv-groupview").count()).toBe(3);
+    const widthOf = async (title: string) =>
+      (await page
+        .locator(".dv-groupview")
+        .filter({ has: page.locator(".dv-tab", { hasText: title }) })
+        .boundingBox())!.width;
+    expect(Math.abs((await widthOf("Explorer")) - 280)).toBeLessThanOrEqual(2);
+    const before = {
+      explorer: await widthOf("Explorer"),
+      chat: await widthOf("Chat"),
+      readme: await widthOf("README.md"),
+    };
+    await panels.first().click();
+    await page.locator("#explorer").waitFor({ state: "detached" });
+    await page.waitForFunction(
+      (width) =>
+        Math.abs(
+          [...(globalThis as any).document.querySelectorAll(".dv-groupview")]
+            .find((group: any) => group.textContent.includes("Chat"))
+            .getBoundingClientRect().width - width,
+        ) <= 2,
+      before.chat + before.explorer,
+    );
+    expect(
+      Math.abs((await widthOf("README.md")) - before.readme),
+    ).toBeLessThanOrEqual(2);
+    await panels.first().click();
+    await docs.waitFor();
+    expect(Math.abs((await widthOf("Explorer")) - 280)).toBeLessThanOrEqual(2);
+    expect(
+      Math.abs((await widthOf("README.md")) - before.readme),
+    ).toBeLessThanOrEqual(2);
+    expect(Math.abs((await widthOf("Chat")) - before.chat)).toBeLessThanOrEqual(
+      2,
+    );
+    const edge = (await explorerGroup.boundingBox())!;
+    const sash = await page.evaluate((x) => {
+      const sashes = [
+        ...(globalThis as any).document.querySelectorAll("#dock .dv-sash"),
+      ];
+      const rect = sashes
+        .map((element: any) => element.getBoundingClientRect())
+        .find(
+          (r: any) => Math.abs(r.left + r.width / 2 - x) <= 4 && r.height > 100,
+        );
+      return (
+        rect && { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      );
+    }, edge.x + edge.width);
+    expect(sash).toBeTruthy();
+    await page.mouse.move(sash!.x, sash!.y);
+    await page.mouse.down();
+    await page.mouse.move(sash!.x + 40, sash!.y, { steps: 6 });
+    await page.mouse.up();
+    const resized = await widthOf("Explorer");
+    expect(Math.abs(resized - 320)).toBeLessThanOrEqual(3);
+    await panels.first().click();
+    await page.locator("#explorer").waitFor({ state: "detached" });
+    await panels.first().click();
+    await docs.waitFor();
+    expect(Math.abs((await widthOf("Explorer")) - resized)).toBeLessThanOrEqual(
+      2,
+    );
+    expect(
+      Math.abs((await widthOf("README.md")) - before.readme),
+    ).toBeLessThanOrEqual(2);
     await guideTab.click();
     await guideDoc.waitFor();
     expect(await readmeDoc.isVisible()).toBe(false);

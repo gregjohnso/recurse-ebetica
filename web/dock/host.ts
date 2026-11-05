@@ -4,6 +4,7 @@
 // scroll; layouts save and restore per conversation. Phones never load it.
 import {
   createDockview,
+  type DockviewApi,
   type AddPanelPositionOptions,
   type IDockviewPanel,
   type SerializedDockview,
@@ -27,6 +28,10 @@ export interface DockPlacement {
   withPanel?: string;
   /** Otherwise split beside this panel, on the given side. */
   beside?: { id: string; direction: "left" | "right" };
+  /** Otherwise split at the far left, narrowing only the leftmost window. */
+  leftmost?: boolean;
+  /** The new split's width in pixels; half the split window by default. */
+  width?: number;
 }
 
 export interface DockCallbacks {
@@ -38,6 +43,8 @@ export interface DockCallbacks {
   changed(): void;
   /** SVG markup shown before panel `id`'s tab title. */
   icon(id: string): string;
+  /** The user finished dragging a divider between windows. */
+  resized(): void;
 }
 
 export interface DockHost {
@@ -46,11 +53,41 @@ export interface DockHost {
   has(id: string): boolean;
   visible(id: string): boolean;
   ids(): string[];
+  /** Panel `id`'s window width in pixels, if it is open. */
+  width(id: string): number | undefined;
   /** The most recently active panel that passes `test`. */
   lastActive(test: (id: string) => boolean): string | undefined;
   save(): DockLayout;
   restore(layout: DockLayout | null): void;
   dispose(): void;
+}
+
+type DockGroup = DockviewApi["groups"][number];
+
+/** The windows touching `gone` on each side: [before, after, vertical]. It
+ * was stacked in a column when a window of exactly its width sits above or
+ * below it; otherwise its neighbours are the windows to its left and right. */
+function adjacent(
+  gone: DOMRect,
+  sizes: Map<DockGroup, DOMRect>,
+  removed: DockGroup,
+): [DockGroup[], DockGroup[], boolean] {
+  const near = (a: number, b: number) => Math.abs(a - b) < 2;
+  const rects = [...sizes].filter(([group]) => group !== removed);
+  const touching = (test: (rect: DOMRect) => boolean) =>
+    rects.filter(([, rect]) => test(rect)).map(([group]) => group);
+  const column = (rect: DOMRect) =>
+    near(rect.left, gone.left) && near(rect.right, gone.right);
+  const row = (rect: DOMRect) =>
+    rect.top < gone.bottom - 1 && rect.bottom > gone.top + 1;
+  const above = touching((r) => near(r.bottom, gone.top) && column(r));
+  const below = touching((r) => near(r.top, gone.bottom) && column(r));
+  if (above.length || below.length) return [above, below, true];
+  return [
+    touching((r) => near(r.right, gone.left) && row(r)),
+    touching((r) => near(r.left, gone.right) && row(r)),
+    false,
+  ];
 }
 
 /** Move `child` into `parent`, keeping its focus, caret and scroll offsets. */
@@ -209,6 +246,57 @@ export function createDockHost(
   };
   api.onDidMovePanel(refocus);
   container.addEventListener("dragend", refocus);
+  // Invariant: When a window closes, only its neighbour toward the chat (or
+  // its only neighbour) takes the freed space; every other window keeps its
+  // size. Sizes are recorded before any close a pointer or panes.ts starts.
+  let sizes = new Map<DockGroup, DOMRect>();
+  const record = (): void => {
+    sizes = new Map(
+      api.groups.map((group) => [group, group.element.getBoundingClientRect()]),
+    );
+  };
+  container.addEventListener(
+    "pointerdown",
+    (event) => {
+      record();
+      if (!(event.target as Element).closest?.(".dv-sash")) return;
+      addEventListener("pointerup", () => callbacks.resized(), { once: true });
+    },
+    true,
+  );
+  api.onDidRemoveGroup((removed) => {
+    const gone = sizes.get(removed);
+    if (!gone) return;
+    const chat = api.groups.find((group) =>
+      group.panels.some((panel) => kept.has(panel.id)),
+    );
+    const neighbours = adjacent(gone, sizes, removed);
+    const towardChat = chat && sizes.get(chat);
+    const pick = (side: DockGroup[][]): DockGroup[] =>
+      side.find((groups) => groups.length) ?? [];
+    const [before, after, vertical] = neighbours;
+    const chatAfter = towardChat
+      ? vertical
+        ? towardChat.top >= gone.bottom
+        : towardChat.left >= gone.right
+      : false;
+    const growing = pick(chatAfter ? [after, before] : [before, after]);
+    if (!growing.length) return;
+    const keep = [...sizes].filter(
+      ([group]) => group !== removed && api.groups.includes(group),
+    );
+    queueMicrotask(() => {
+      for (let pass = 0; pass < 2; pass++)
+        for (const [group, rect] of keep) {
+          const grow = growing.includes(group);
+          group.api.setSize(
+            vertical
+              ? { height: rect.height + (grow ? gone.height : 0) }
+              : { width: rect.width + (grow ? gone.width : 0) },
+          );
+        }
+    });
+  });
   api.onDidActivePanelChange(({ panel }) => {
     if (panel) recent = [...recent.filter((id) => id !== panel.id), panel.id];
     callbacks.changed();
@@ -232,14 +320,25 @@ export function createDockHost(
       if (spec.tooltip) tooltips.set(spec.id, spec.tooltip);
       if (spec.keep) kept.add(spec.id);
       const near = placement.withPanel && api.getPanel(placement.withPanel);
-      const beside = placement.beside && api.getPanel(placement.beside.id);
+      const left = (group: { element: HTMLElement }) =>
+        group.element.getBoundingClientRect().left;
+      const leftmost = placement.leftmost
+        ? api.groups.reduce<(typeof api.groups)[number] | undefined>(
+            (best, group) => (!best || left(group) < left(best) ? group : best),
+            undefined,
+          )
+        : undefined;
+      const besidePanel = placement.beside && api.getPanel(placement.beside.id);
+      const beside = leftmost
+        ? { group: leftmost }
+        : besidePanel
+          ? { group: besidePanel.group }
+          : undefined;
+      const direction = leftmost ? "left" : placement.beside?.direction;
       const position: AddPanelPositionOptions | undefined = near
         ? { referenceGroup: near.group }
         : beside
-          ? {
-              referenceGroup: beside.group,
-              direction: placement.beside!.direction,
-            }
+          ? { referenceGroup: beside.group, direction: direction! }
           : undefined;
       // Invariant: A new split takes space only from the group it splits;
       // every other group keeps its width.
@@ -250,7 +349,14 @@ export function createDockHost(
               .map((group) => [group, group.api.width] as const)
           : [];
       const shared =
-        !near && beside ? Math.round(beside.group.api.width / 2) : 0;
+        !near && beside
+          ? Math.round(
+              Math.min(
+                placement.width ?? beside.group.api.width / 2,
+                beside.group.api.width - 120,
+              ),
+            )
+          : 0;
       api.addPanel({
         id: spec.id,
         component: "panel",
@@ -269,12 +375,14 @@ export function createDockHost(
       place();
     },
     remove(id) {
+      record();
       const panel = api.getPanel(id);
       if (panel) silently(() => api.removePanel(panel));
     },
     has: (id) => !!api.getPanel(id),
     visible: (id) => !!api.getPanel(id)?.api.isVisible,
     ids: () => api.panels.map((panel) => panel.id),
+    width: (id) => api.getPanel(id)?.group.api.width,
     lastActive: (test) => recent.filter(test).at(-1),
     save: () => api.toJSON(),
     restore(layout) {
