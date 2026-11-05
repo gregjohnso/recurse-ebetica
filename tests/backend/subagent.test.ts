@@ -407,3 +407,30 @@ test("subagent create rejects invalid worktree flags before spawning", async () 
     expect(got.calls).toEqual([]);
   }
 });
+
+test("subagent move --top-level clears the parent", async () => {
+  const conversations: Record<string, unknown>[] = [
+    { id: "aaaaaaaaaaaa", parent: null },
+    { id: "bbbbbbbbbbbb", parent: "aaaaaaaaaaaa" },
+  ];
+  const moved = await runOne({
+    input: {
+      args: ["move", "bbbbbbbbbbbb", "--top-level"],
+      api: { conversations },
+    },
+  } as Case);
+  expect(moved.exit).toBe(0);
+  expect(moved.out).toContain("will become top-level");
+  expect(moved.calls).toContainEqual(
+    expect.objectContaining({
+      method: "POST",
+      path: "/api/conversations/<ID>/reparent",
+      body: { parent: null },
+    }),
+  );
+  const ambiguous = await runOne({
+    input: { args: ["move", "bbbbbbbbbbbb"], api: { conversations } },
+  } as Case);
+  expect(ambiguous.exit).toBe(2);
+  expect(ambiguous.err).toContain("choose exactly one of --to or --top-level");
+});

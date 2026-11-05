@@ -39,7 +39,7 @@
  *       List labels, URLs, states, reasons and last contact, never keys.
  *   tail <cid|cid@label>
  *   wait <cid|cid@label> [<cid|cid@label> ...] [--timeout S]
- *   move <cid> --to <new-parent-cid>
+ *   move <cid> (--to <new-parent-cid> | --top-level)
  *   rm <cid|cid@label> [<cid|cid@label> ...]
  *       Queue removal and detached worktree cleanup; neither waits for deletion.
  *   revive <id-or-query> [--top-level | --parent <cid>]
@@ -157,7 +157,7 @@ options:
   -h, --help   show this help message and exit
   --timeout S  give up after S seconds (1-86400)
 `,
-  move: `usage: subagent.py move [-h] --to new-parent-cid cid
+  move: `usage: subagent.py move [-h] (--to new-parent-cid | --top-level) cid
 
 positional arguments:
   cid                  the subagent to move
@@ -165,6 +165,7 @@ positional arguments:
 options:
   -h, --help           show this help message and exit
   --to new-parent-cid  the new parent agent's id
+  --top-level          make the agent top-level, with no parent
 `,
   rm: `usage: subagent.py rm [-h] cid [cid ...]
 
@@ -493,6 +494,7 @@ function parseArguments(args: string[]): Parsed {
       break;
     case "move":
       takesValue.add("--to");
+      switches.add("--top-level");
       break;
     case "revive":
       takesValue.add("--from");
@@ -562,7 +564,7 @@ function parseArguments(args: string[]): Parsed {
     messages: { min: 1, max: 1 },
     tail: { min: 1, max: 1 },
     wait: { min: 1, max: Infinity },
-    move: { min: 1, max: 1, required: ["--to"] },
+    move: { min: 1, max: 1 },
     rm: { min: 1, max: Infinity },
     revive: {
       min: options.has("--from") ? 0 : 1,
@@ -1157,6 +1159,16 @@ function descendantIds(
 
 async function cmdMove(parsed: Parsed, stdout: string): Promise<string> {
   const cid = parsed.positional[0]!;
+  if (parsed.options.has("--to") === parsed.options.has("--top-level"))
+    parserFailure("move", "choose exactly one of --to or --top-level");
+  if (parsed.options.has("--top-level")) {
+    const convs = await loadAllConvs();
+    if (!convs.has(cid)) throw new CliFailure(`No such agent '${cid}'.\n`);
+    if (!convs.get(cid)!.parent)
+      return `${stdout}Agent ${cid} is already top-level; nothing to do.\n`;
+    await api("POST", `/api/conversations/${cid}/reparent`, { parent: null });
+    return `${stdout}Move requested: agent ${cid} (and its subtree) will become top-level; its worktree is unchanged.\n`;
+  }
   const newParent = parsed.options.get("--to") as string;
   if (newParent === cid)
     throw new CliFailure("Cannot move an agent under itself.\n");

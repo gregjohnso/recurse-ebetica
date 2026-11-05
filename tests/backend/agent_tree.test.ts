@@ -290,6 +290,31 @@ test("integral-float effort is accepted (named difference)", async () => {
   expect(o.level).toBe(2);
 });
 
+test("a subagent moves under another agent and back to top level", async () => {
+  const t = setup();
+  await seed(t, { id: "a" });
+  await seed(t, { id: "b" });
+  await seed(t, { id: "kid", parent: "a" });
+  expect(await t.tree.requestReparent("kid", "b")).toMatchObject({
+    ok: true,
+    from: "a",
+    to: "b",
+  });
+  expect(await t.tree.requestReparent("b", "kid")).toMatchObject({
+    ok: false,
+  });
+  expect(await t.tree.requestReparent("kid", null)).toEqual({
+    ok: true,
+    from: "b",
+    to: null,
+    moved: true,
+  });
+  expect(t.world.conversations.load("kid")?.parent ?? null).toBeNull();
+  expect(await t.tree.requestReparent("kid", null)).toMatchObject({
+    moved: false,
+  });
+});
+
 test("outcome scan stops at the row cap and warns", async () => {
   const t = setup();
   mkdirSync(t.outcomeDir, { recursive: true });

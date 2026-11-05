@@ -217,7 +217,7 @@ export interface ConversationsRoutesDeps {
     recordSpawnIntent(item: unknown): Promise<void>;
     requestReparent(
       cid: string,
-      parent: string,
+      parent: string | null,
       options: { by: string | null },
     ): Promise<Rec>;
     requestStop(
@@ -1167,9 +1167,10 @@ export function registerConversationRoutes(
     const cid = ex.params.cid!;
     const body = await dictBody(ex);
     if (!pyTruthy(store.load(cid))) throw new HttpError(404);
+    // Spec: A null parent makes the agent top-level.
     const parent = body.parent;
-    if (typeof parent !== "string" || !parent)
-      throw new HttpError(422, "parent must be an agent id");
+    if (parent !== null && (typeof parent !== "string" || !parent))
+      throw new HttpError(422, "parent must be an agent id or null");
     const result = await deps.tree.requestReparent(cid, parent, {
       by: agentHeader(ex),
     });
