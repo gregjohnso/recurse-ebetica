@@ -136,6 +136,13 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-split.png`,
       });
+    const heights = await page.evaluate(() => {
+      const document = (globalThis as any).document;
+      const height = (selector: string) =>
+        document.querySelector(selector).getBoundingClientRect().height;
+      return [height("#agent-list .agent.selected"), height("#dock .dv-tab")];
+    });
+    expect(Math.abs(heights[0] - heights[1])).toBeLessThan(0.5);
     const arranged = await dockLayout(page);
     await page.waitForFunction(() =>
       Object.values((globalThis as any).localStorage).some((value) =>

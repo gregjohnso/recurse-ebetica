@@ -1,7 +1,8 @@
 /* Desktop dock (dockview). dockview's stylesheet supplies tabs, groups,
    sashes and drop overlays; this maps its variables to our tokens in an
    editor's style: the dock area wears the chat card's frame, windows inside it
-   meet at 1px dividers, and each window has a flat 35px tab strip. */
+   meet at 1px dividers, and each window has a tab strip as tall as an agent
+   row. */
 #panes.docked { flex-direction: column; z-index: var(--z-raised); }
 #panes.docked.on { margin: var(--content-inset); }
 #panes.docked > .resize-grip { display: none; }
@@ -14,12 +15,12 @@
   --dv-border-radius: 0px;
   --dv-spacing-padding: 0px;
   --dv-group-view-background-color: var(--bg);
-  /* Tabs: background tabs share the strip's darker shade; the visible tab is
-     the window's own colour and merges with it; only the focused window's
-     visible tab is full strength, with an accent line on its top edge. */
+  /* Tabs: background tabs are flat in the strip's darker shade; the visible
+     tab is the window's own colour, with rounded top corners and flared feet
+     that flow into the window; only the focused window's is full strength. */
   --dock-strip: var(--frame-bg);
   --dv-tabs-and-actions-container-background-color: var(--dock-strip);
-  --dv-tabs-and-actions-container-height: 35px;
+  --dv-tabs-and-actions-container-height: var(--row-height);
   --dv-tabs-and-actions-container-font-size: 13px;
   --dv-tab-font-size: 13px;
   --dv-tab-margin: 0;
@@ -50,11 +51,24 @@
   box-shadow: inset 0 -1px 0 var(--border); }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
 #dock .dv-tabs-container { scrollbar-width: thin; }
-#dock .dv-tab { position: relative; height: 35px; box-sizing: border-box; padding: 0 6px 0 10px;
-  min-width: 80px; max-width: 220px; border-right: 1px solid var(--border);
-  box-shadow: inset 0 -1px 0 var(--border); font-weight: 400; }
-#dock .dv-tab.dv-active-tab { box-shadow: none; }
-#dock .dv-active-group .dv-tab.dv-active-tab { box-shadow: inset 0 1px 0 var(--accent); }
+#dock .dv-tabs-container { padding: 0 var(--space-3); }
+#dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
+  padding: 0 6px 0 10px; min-width: 80px; max-width: 220px; font-weight: 400;
+  box-shadow: inset 0 -1px 0 var(--border); }
+#dock .dv-tab.dv-inactive-tab + .dv-tab.dv-inactive-tab .dv-default-tab::before { content: "";
+  position: absolute; left: -10px; top: 25%; bottom: 25%; width: 1px; background: var(--border); }
+#dock .dv-tab.dv-active-tab { z-index: 1; box-shadow: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0; }
+#dock .dv-tab.dv-active-tab .dv-default-tab::before,
+#dock .dv-tab.dv-active-tab .dv-default-tab::after {
+  content: ""; position: absolute; bottom: 0; width: var(--radius-md); height: var(--radius-md);
+  pointer-events: none; }
+#dock .dv-tab.dv-active-tab .dv-default-tab::before { left: calc(-10px - var(--radius-md));
+  background: radial-gradient(circle at 0 0, transparent calc(var(--radius-md) - 0.5px),
+    var(--bg) var(--radius-md)); }
+#dock .dv-tab.dv-active-tab .dv-default-tab::after { right: calc(-6px - var(--radius-md));
+  background: radial-gradient(circle at 100% 0, transparent calc(var(--radius-md) - 0.5px),
+    var(--bg) var(--radius-md)); }
 #dock .dv-default-tab { gap: 0; min-width: 0; }
 #dock .dv-default-tab-content { min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; padding: 0; margin: 0 4px 0 6px; }

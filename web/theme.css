@@ -46,6 +46,9 @@
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  /* One agent row's height (a 0.84375rem title at line-height 1.6, padding
+     and border); dock tabs match it. */
+  --row-height: calc(0.84375rem * 1.6 + 2 * var(--space-2) + 2px);
   --focus-width: 2px;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
