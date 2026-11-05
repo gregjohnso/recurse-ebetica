@@ -54,6 +54,8 @@ export const tests: BrowserTest[] = [
       ).toEqual(["trash-btn", "takeover-btn"]);
       const first = page.locator("#pane-rail [data-pane]").first();
       const childTop = (await first.boundingBox())!.y;
+      const takeoverTop = (await page.locator("#takeover-btn").boundingBox())!
+        .y;
       expect((await page.locator("#trash-btn").boundingBox())!.height).toBe(44);
       expect((await page.locator("#takeover-btn").boundingBox())!.height).toBe(
         44,
@@ -138,7 +140,8 @@ export const tests: BrowserTest[] = [
       const parentGeometry = await parentBox.jsonValue();
       await parentBox.dispose();
       if (!parentGeometry) throw new Error("Parent rail button is not visible");
-      expect(childTop - parentGeometry.y).toBe(44);
+      expect(childTop).toBeGreaterThan(takeoverTop);
+      expect(parentGeometry.y).toBe(takeoverTop);
       expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(
         true,
       );
@@ -515,6 +518,13 @@ export const tests: BrowserTest[] = [
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);
         expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(
           true,
+        );
+        const rail = (await page.locator("#pane-rail").boundingBox())!;
+        const trash = (await page
+          .locator("#pane-rail #trash-btn")
+          .boundingBox())!;
+        expect(rail.y + rail.height - (trash.y + trash.height)).toBeLessThan(
+          24,
         );
         await context.close();
         continue;

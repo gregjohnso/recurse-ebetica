@@ -235,6 +235,11 @@ body.resizing { cursor: col-resize; user-select: none; }
   min-height: 44px; padding: 0; margin: 0; border: 0; background: transparent; color: var(--text);
   justify-content: center; }
 #pane-rail > :is(#trash-btn, #takeover-btn).on { display: flex; }
+/* Delete sits alone at the rail's bottom; the panel list keeps the top, with
+   its divider only under a visible take-over control. */
+#pane-rail > #trash-btn { order: 1; margin-top: auto; }
+#pane-rail > #takeover-btn:not(.on) ~ #pane-rail-panels { margin-top: 0; padding-top: 0;
+  border-top: 0; }
 #pane-rail > button:not(.armed):hover { background: var(--panel-2); color: var(--text); }
 #pane-rail > #trash-btn.armed { color: var(--danger); background: var(--panel-2); }
 #pane-rail > button svg { width: 16px; height: 16px; }
