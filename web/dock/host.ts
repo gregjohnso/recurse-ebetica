@@ -97,20 +97,24 @@ function insetPx(container: HTMLElement): number {
   return width;
 }
 
-const stylesheet = (): void => {
-  if (document.getElementById("dockview-css")) return;
-  const link = document.createElement("link");
-  link.id = "dockview-css";
-  link.rel = "stylesheet";
-  link.href = "/static/dockview.css";
-  document.head.append(link);
-};
+let styles: Promise<void> | null = null;
+/** Load dockview's stylesheet; the dock is built once it applies. */
+export function loadDockStyles(): Promise<void> {
+  styles ??= new Promise((resolve) => {
+    const link = document.createElement("link");
+    link.id = "dockview-css";
+    link.rel = "stylesheet";
+    link.href = "/static/dockview.css";
+    link.onload = link.onerror = () => resolve();
+    document.head.append(link);
+  });
+  return styles;
+}
 
 export function createDockHost(
   container: HTMLElement,
   callbacks: DockCallbacks,
 ): DockHost {
-  stylesheet();
   let quiet = 0;
   const tooltips = new Map<string, string>();
   const kept = new Set<string>();
@@ -118,13 +122,26 @@ export function createDockHost(
   // Invariant: Content is placed once dockview has put a panel in the page,
   // so moves keep focus and scroll; kept content parks in the page meanwhile.
   const pending = new Map<HTMLElement, string>();
+  let placing = 0;
+  let waited = 0;
   const place = (): void => {
     for (const [element, id] of pending) {
       if (!element.isConnected) continue;
+      // Invariant: Kept content (the chat) moves once its panel is laid out,
+      // so it never shows squeezed; a panel that stays hidden gets it anyway.
+      if (kept.has(id) && !element.getBoundingClientRect().width && waited < 30)
+        continue;
       pending.delete(element);
       const content = callbacks.element(id);
       if (content) adopt(element, content);
     }
+    if (!pending.size) waited = 0;
+    else if (!placing)
+      placing = requestAnimationFrame(() => {
+        placing = 0;
+        waited++;
+        place();
+      });
   };
   const parking = document.createElement("div");
   parking.className = "dock-parking";
@@ -160,6 +177,8 @@ export function createDockHost(
   api.onDidRemovePanel((panel) => {
     tooltips.delete(panel.id);
     recent = recent.filter((id) => id !== panel.id);
+    for (const [element, id] of pending)
+      if (id === panel.id) pending.delete(element);
     if (!quiet) callbacks.closed(panel.id);
   });
   // Invariant: Dragging a tab must not take focus from the panel that had

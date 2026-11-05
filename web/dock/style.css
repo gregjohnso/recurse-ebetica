@@ -11,6 +11,7 @@
   color-scheme: inherit;
   font-family: var(--font-sans);
   --dv-border-radius: var(--content-radius);
+  --dv-spacing-padding: 0px;
   --dv-group-view-background-color: var(--bg);
   --dv-tabs-and-actions-container-background-color: var(--bg);
   --dv-tabs-and-actions-container-height: 48px;

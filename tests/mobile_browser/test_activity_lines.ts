@@ -163,9 +163,24 @@ export const testRecordedActivityLines: BrowserTest = async (browser, base) => {
           thinking_elapsed_ms: 4200,
         }),
       ];
+      const settled = async () => {
+        if (!mobile) await page.locator("#dock #main").waitFor();
+        await page.locator(".live-panel-box").evaluate((element) =>
+          Promise.all(
+            element
+              .getAnimations({ subtree: true })
+              .filter(
+                (animation) =>
+                  animation.effect?.getTiming().iterations !== Infinity,
+              )
+              .map((animation) => animation.finished),
+          ),
+        );
+      };
       await page.reload();
       const livePill = page.locator(".live-panel-box");
       await livePill.waitFor();
+      await settled();
       expect(await livePill.innerText()).toContain("Drafting");
       expect(
         (await livePill.locator(".live-thinking-head").innerText()).startsWith(
@@ -175,6 +190,7 @@ export const testRecordedActivityLines: BrowserTest = async (browser, base) => {
       thread.rows.at(-1)!.thinking_title = "Analyzing settings and artifacts";
       await page.reload();
       await livePill.waitFor();
+      await settled();
       expect(await livePill.locator(".live-thinking-title").innerText()).toBe(
         "Analyzing settings and artifacts",
       );
@@ -237,7 +253,7 @@ export const testRecordedActivityLines: BrowserTest = async (browser, base) => {
       await liveToggle.click();
       expect(await liveToggle.getAttribute("aria-expanded")).toBe("false");
       const pillBox = async () => {
-        if (!mobile) await page.locator("#dock #main").waitFor();
+        await settled();
         const box = await page.locator(".live-panel-box").boundingBox();
         if (!box) throw new Error("live pill is not laid out");
         return { width: box.width, height: box.height };

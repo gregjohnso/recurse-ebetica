@@ -76,7 +76,7 @@ export const tests: BrowserTest[] = [
         }
         if (width === 1280)
           await page.locator("#panes").evaluate((node) => {
-            node.style.width = "330px";
+            node.style.width = "660px";
             node.style.flex = "none";
           });
         const pane = page.locator(`.pane-col[data-pane="${id}"]`);

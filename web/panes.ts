@@ -1220,6 +1220,9 @@ sidebarWatch.observe($("#sidebar")!, {
   attributes: true,
   attributeFilter: ["class"],
 });
+// Invariant: The dock starts loading at boot, beside the first conversation
+// fetch, so the chat moves into it before or as the thread first renders.
+queueMicrotask(loadDock);
 
 // ---- the per-poll sync (called from the conversation refresh) -------------
 let syncFailureAnnounced = false;
@@ -1376,32 +1379,37 @@ function clearDockOnly(): void {
 function loadDock(): void {
   if (dock || dockLoading || isMobile() || embedded) return;
   dockLoading = true;
-  void import("./dock/host.js").then(
-    ({ createDockHost }) => {
-      dockLoading = false;
-      if (dock || isMobile()) return;
-      const root = document.createElement("div");
-      root.id = "dock";
-      panesEl.append(root);
-      dock = createDockHost(root, {
-        element: dockElement,
-        closed: dockClosed,
-        // Invariant: dockview reports changes while panes.ts is still
-        // adding a panel; resync afterwards, never re-entrantly.
-        changed: () =>
-          queueMicrotask(() => {
-            railHash = "";
-            syncPanes();
-          }),
-      });
-      showChat();
-      layout();
-      syncPanes();
-    },
-    () => {
-      dockLoading = false;
-    },
-  );
+  void import("./dock/host.js")
+    .then(async (host) => {
+      await host.loadDockStyles();
+      return host;
+    })
+    .then(
+      ({ createDockHost }) => {
+        dockLoading = false;
+        if (dock || isMobile()) return;
+        const root = document.createElement("div");
+        root.id = "dock";
+        panesEl.append(root);
+        dock = createDockHost(root, {
+          element: dockElement,
+          closed: dockClosed,
+          // Invariant: dockview reports changes while panes.ts is still
+          // adding a panel; resync afterwards, never re-entrantly.
+          changed: () =>
+            queueMicrotask(() => {
+              railHash = "";
+              syncPanes();
+            }),
+        });
+        showChat();
+        layout();
+        syncPanes();
+      },
+      () => {
+        dockLoading = false;
+      },
+    );
 }
 
 function unloadDock(): void {
