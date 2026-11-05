@@ -3,11 +3,22 @@
 // only regular non-credential files open. One directory and one bounded Git
 // ignore check per request; agent-marked requests are refused (README.md).
 import { constants, type Stats } from "node:fs";
-import { open, realpath, type FileHandle } from "node:fs/promises";
+import {
+  lstat,
+  open,
+  readlink,
+  realpath,
+  type FileHandle,
+} from "node:fs/promises";
 import { resolve } from "node:path";
 import { contentDisposition } from "../agents/runtime/attachments/published";
 import { inlineRasterMediaType } from "../agents/runtime/attachments/base";
-import { lstatAt, openAt, typedEntriesAt } from "../utils/dir_fd";
+import {
+  descriptorPath,
+  lstatAt,
+  openAt,
+  typedEntriesAt,
+} from "../utils/dir_fd";
 import { runBounded, safeGitEnv } from "../workdir_git";
 import { agentMarked } from "./request_auth";
 import { HttpError, jsonResponse, type Exchange, type Router } from "./router";
@@ -134,20 +145,37 @@ function failure(error: unknown): HttpError {
 
 const sameFile = (a: Stats, b: Stats) => a.dev === b.dev && a.ino === b.ino;
 
+/** The real path of the opened root, or a 409 if it no longer names it. */
+async function rootPath(dir: FileHandle, root: string): Promise<string> {
+  const path =
+    process.platform === "linux"
+      ? await readlink(descriptorPath(dir.fd))
+      : await realpath(root);
+  const [opened, named] = await Promise.all([
+    dir.stat(),
+    lstat(path).catch(() => null),
+  ]);
+  if (!named || !sameFile(opened, named))
+    throw new HttpError(409, "the folder changed; try again");
+  return path.replace(/\/$/, "");
+}
+
 async function openDirectory(root: string, parts: string[]) {
   // Invariant: Each component opens relative to its pinned parent with
-  // O_NOFOLLOW, so a symlink or swapped parent never widens the root.
+  // O_NOFOLLOW, so a symlink or swapped parent never widens the root, and
+  // credential checks use the path of the opened root, not a second lookup.
   let dir: FileHandle = await open(
     root,
     constants.O_RDONLY | (constants.O_DIRECTORY ?? 0),
   );
   try {
+    const realRoot = await rootPath(dir, root);
     for (const part of parts) {
       const next = await openAt(dir.fd, part, DIRECTORY_FLAGS);
       await dir.close();
       dir = next;
     }
-    return dir;
+    return { dir, realRoot };
   } catch (error) {
     await dir.close().catch(() => {});
     throw error;
@@ -215,12 +243,11 @@ async function gitPrefix(
 export async function listDirectory(
   root: string,
   parts: string[],
-  realRoot: string,
   dataDir: string,
   env: ExplorerRoutesDeps["env"],
   signal: AbortSignal,
 ): Promise<{ entries: ExplorerEntry[]; more: number; more_exact: boolean }> {
-  const dir = await openDirectory(root, parts);
+  const { dir, realRoot } = await openDirectory(root, parts);
   try {
     const { entries: scanned, complete } = await typedEntriesAt(
       dir.fd,
@@ -279,12 +306,11 @@ export async function listDirectory(
 export async function openRegularFile(
   root: string,
   parts: string[],
-  realRoot: string,
   dataDir: string,
 ): Promise<{ handle: FileHandle; stats: Stats; name: string }> {
   if (!parts.length) throw new HttpError(422, "not a file");
   const name = parts.at(-1)!;
-  const dir = await openDirectory(root, parts.slice(0, -1));
+  const { dir, realRoot } = await openDirectory(root, parts.slice(0, -1));
   try {
     // Invariant: FIFOs, devices and sockets are refused from lstat before any
     // open; O_NONBLOCK and the inode match cover a swap in between.
@@ -359,10 +385,6 @@ export function registerExplorerRoutes(
     return {
       root,
       parts,
-      realRoot: (await realpath(root).catch(() => resolve(root))).replace(
-        /\/$/,
-        "",
-      ),
       dataDir: await dataDir,
     };
   };
@@ -371,11 +393,11 @@ export function registerExplorerRoutes(
   router.get(
     "/api/conversations/{cid}/tree",
     async (ex) => {
-      const { root, parts, realRoot, dataDir } = await scope(ex);
+      const { root, parts, dataDir } = await scope(ex);
       const signal = ex.request.signal;
       try {
         const [listing, prefix] = await Promise.all([
-          listDirectory(root, parts, realRoot, dataDir, deps.env, signal),
+          listDirectory(root, parts, dataDir, deps.env, signal),
           parts.length ? null : gitPrefix(root, deps.env, signal),
         ]);
         return jsonResponse(
@@ -393,10 +415,10 @@ export function registerExplorerRoutes(
   router.get(
     "/api/conversations/{cid}/tree/file",
     async (ex) => {
-      const { root, parts, realRoot, dataDir } = await scope(ex);
+      const { root, parts, dataDir } = await scope(ex);
       let opened;
       try {
-        opened = await openRegularFile(root, parts, realRoot, dataDir);
+        opened = await openRegularFile(root, parts, dataDir);
       } catch (error) {
         throw failure(error);
       }
@@ -443,10 +465,10 @@ export function registerExplorerRoutes(
     ["GET", "HEAD"],
     "/api/conversations/{cid}/tree/raw",
     async (ex) => {
-      const { root, parts, realRoot, dataDir } = await scope(ex);
+      const { root, parts, dataDir } = await scope(ex);
       let opened;
       try {
-        opened = await openRegularFile(root, parts, realRoot, dataDir);
+        opened = await openRegularFile(root, parts, dataDir);
       } catch (error) {
         throw failure(error);
       }

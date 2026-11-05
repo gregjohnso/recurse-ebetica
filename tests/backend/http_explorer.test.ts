@@ -329,6 +329,9 @@ test("explorer previews managed worktrees but not the rest of Recurse's data dir
     root = dir;
     expect(await status("data/server.json")).toBe(403);
     expect(await status("data/worktrees/x/src/app.ts")).toBe(200);
+    await symlink(data, join(data, "worktrees", "y"));
+    root = join(data, "worktrees", "y");
+    expect(await status("server.json")).toBe(403);
   } finally {
     await app.running.close();
   }

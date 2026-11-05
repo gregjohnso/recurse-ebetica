@@ -108,6 +108,9 @@ attachment). Invariants:
   `.kube/config`, `.docker/config.json`, `.config/gh/hosts.yml`, anything
   under `.ssh/`, and anything in Recurse's data directory except files inside
   a managed worktree (`worktrees/<name>/`), which follow the rules above.
+  These checks use the path of the opened root folder (read from its descriptor
+  on Linux, verified by device and inode elsewhere); if the folder was swapped
+  after it was opened, the request fails with 409.
 - Each listing reads at most 10,000 names lazily (past that, `more` is a lower
   bound), returns 1,000 entries, folders first, and runs one bounded
   `git check-ignore --stdin` with the scrubbed Git environment and
