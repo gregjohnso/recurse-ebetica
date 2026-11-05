@@ -67,6 +67,7 @@ import {
   selectAgent,
   treeAscendOrCollapse,
   treeExpandIfCollapsed,
+  keepSubagentsOpen,
   armDelete,
   disarmDelete,
   killSelected,
@@ -362,6 +363,7 @@ function openCursor(): void {
   if (treeExpandIfCollapsed()) return;
   if (!state.nodes[state.cursorId]) return;
   if (state.cursorId !== state.selectedId && !guardLeaveComments()) return;
+  keepSubagentsOpen(state.cursorId);
   selectAgent(state.cursorId);
 }
 

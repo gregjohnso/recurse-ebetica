@@ -39,6 +39,8 @@ export function resolveLAction(
 
 export interface ForestProjectionOptions {
   collapsed?: ReadonlySet<string>;
+  /** Nodes the operator opened, which stay unfolded after selection moves. */
+  expanded?: ReadonlySet<string>;
   /** The first visual depth whose descendants fold by default. */
   autoCollapseDepth?: number;
   maxDepth?: number;
@@ -67,6 +69,7 @@ export function projectAgentForest(
   }
 
   const manuallyCollapsed = options.collapsed || new Set<string>();
+  const kept = options.expanded || new Set<string>();
   const autoCollapseDepth = Math.max(
     0,
     options.autoCollapseDepth ?? DEFAULT_AUTO_COLLAPSE_DEPTH,
@@ -77,9 +80,9 @@ export function projectAgentForest(
   const emitted = new Set<string>();
   const hiddenRoots = new Set<string>();
 
-  // Invariant: Expand the selected node and every real ancestor of it; this is
-  // the only automatic exception to default folding. A malformed cycle is
-  // bounded by `seen`.
+  // Invariant: Expand the selected node and every real ancestor of it; with
+  // operator-opened nodes, the only exceptions to default folding. A malformed
+  // cycle is bounded by `seen`.
   const selectedLineage = new Set<string>();
   let lineageId = selectedId;
   while (lineageId && !selectedLineage.has(lineageId)) {
@@ -96,7 +99,8 @@ export function projectAgentForest(
     const autoCollapsed =
       hasChildren &&
       depth >= autoCollapseDepth &&
-      !selectedLineage.has(node.id);
+      !selectedLineage.has(node.id) &&
+      !kept.has(node.id);
     const collapsed =
       hasChildren &&
       (manuallyCollapsed.has(node.id) || autoCollapsed || capped);

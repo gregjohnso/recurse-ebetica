@@ -436,6 +436,57 @@ export const tests: BrowserTest[] = [
       await context.close();
     }
   },
+  // Feature: an agent opened with l keeps its subagents listed after another agent is selected, until h collapses it.
+  async function test_opened_agent_keeps_its_subagents_listed(browser, base) {
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 800 },
+    });
+    const create = async (title: string, parent: string | null) => {
+      const response = await page.request.post(`${base}api/conversations`, {
+        data: { parent },
+      });
+      const id = (await response.json()).id as string;
+      await page.request.post(`${base}api/conversations/${id}/rename`, {
+        data: { title },
+      });
+      return id;
+    };
+    const other = await create("Kept other", null);
+    const opened = await create("Kept parent", null);
+    const child = await create("Kept child", opened);
+    const row = (id: string) => page.locator(`.agent[data-id="${id}"]`);
+    const current = (id: string) =>
+      page.locator(`.agent[data-id="${id}"][aria-current="page"]`);
+    await page.goto(`${base}#agent=${other}`);
+    await current(other).waitFor();
+    expect(await row(child).count()).toBe(0);
+    await row(other).focus();
+    const order = await page
+      .locator(".agent[data-id]")
+      .evaluateAll((rows) => rows.map((item) => item.getAttribute("data-id")));
+    const steps = order.indexOf(opened) - order.indexOf(other);
+    for (let step = 0; step < Math.abs(steps); step++)
+      await page.keyboard.press(steps > 0 ? "j" : "k");
+    expect(await page.locator(".agent.cursor").getAttribute("data-id")).toBe(
+      opened,
+    );
+    await page.keyboard.press("l");
+    await current(opened).waitFor();
+    await row(child).waitFor();
+    await row(other).click();
+    await current(other).waitFor();
+    expect(await row(child).isVisible()).toBe(true);
+    expect(await row(opened).getAttribute("aria-expanded")).toBe("true");
+    await row(opened).click();
+    await current(opened).waitFor();
+    await row(opened).focus();
+    await page.keyboard.press("h");
+    await row(child).waitFor({ state: "detached" });
+    await row(other).click();
+    await current(other).waitFor();
+    expect(await row(child).count()).toBe(0);
+    await page.close();
+  },
 ];
 if (import.meta.main) {
   if (process.argv.includes("--list"))

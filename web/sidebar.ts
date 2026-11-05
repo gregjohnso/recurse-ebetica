@@ -178,6 +178,7 @@ function visibleTree(): TreeEntry[] {
     state.selectedId,
     {
       collapsed: collapsedAnchor ? new Set([collapsedAnchor]) : undefined,
+      expanded: keptOpen,
       autoCollapseDepth: DEFAULT_FOLD_DEPTH,
     },
   ).map((e) => ({
@@ -209,6 +210,12 @@ function anchorId(): string {
 }
 
 let collapsedAnchor: string | null = null;
+// Agents opened with l/Right keep their subagents listed after selection moves,
+// until h/Left collapses them.
+const keptOpen = new Set<string>();
+export function keepSubagentsOpen(id: string): void {
+  if (anchorHasChildren(id)) keptOpen.add(id);
+}
 function anchorHasChildren(anchor: string): boolean {
   return (
     !!anchor &&
@@ -740,6 +747,7 @@ export function treeAscendOrCollapse(): void {
   );
   if (action === "collapse") {
     collapsedAnchor = anchor;
+    keptOpen.delete(anchor);
     renderSidebar();
     if (state.nodes[anchor])
       announceNode(state.nodes[anchor], "Collapsed subagents");
@@ -757,6 +765,7 @@ export function treeExpandIfCollapsed(): boolean {
   )
     return false;
   collapsedAnchor = null;
+  keepSubagentsOpen(anchor);
   renderSidebar();
   if (state.nodes[anchor])
     announceNode(state.nodes[anchor], "Expanded subagents");
