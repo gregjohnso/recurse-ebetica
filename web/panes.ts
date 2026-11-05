@@ -277,6 +277,7 @@ export function registerPane(def: PaneDef): void {
   if (def.cache && !validPaneCacheDef(def.cache))
     def = { ...def, cache: undefined };
   registry.push(def);
+  registry.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   railHash = "";
   syncPanes();
 }
@@ -528,10 +529,13 @@ function closePane(
     });
   return true;
 }
-function togglePane(id: string): void {
-  open.has(id)
-    ? closePane(id, true, true)
-    : openPane(id, { userInitiated: true });
+/** Open or close pane `id` as its rail button does; true when it opened. */
+export function togglePane(id: string): boolean {
+  if (open.has(id)) {
+    closePane(id, true, true);
+    return false;
+  }
+  return openPane(id, { userInitiated: true });
 }
 
 // ---- temporary fullscreen -------------------------------------------------

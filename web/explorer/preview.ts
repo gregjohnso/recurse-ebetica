@@ -1,4 +1,4 @@
-// The File pane previews one explorer file with the Files pane's renderers:
+// Previews one Explorer file below its tree with the Files pane's renderers:
 // document Markdown, plain text in a report-doc block, pdf.js and raster
 // images served only after the server's magic-byte check. Other files show
 // their size and a download link. Credential files show the server's refusal.
@@ -9,19 +9,13 @@ import { backendFor } from "../backends/backend.js";
 import { attachmentSize } from "../agent-attachments.js";
 import { renderDocumentMarkdown } from "../document-markdown.js";
 import {
-  ATTACHMENT_FILE_ICON,
   CHANGES_ICON,
+  CLOSE_ICON,
   COPY_ICON,
   FILE_DOWNLOAD_ICON,
   MESSAGE_ICON,
 } from "../icons.js";
-import { openPane, registerPane, syncPanes } from "../panes.js";
-import { renderPowerbarControls } from "../panes/powerbar.js";
 import { mountPdf, releasePdfs } from "../pdf-view.js";
-import { phoneListEntry } from "../phone-nav.js";
-import { selectAgent } from "../sidebar.js";
-import { state } from "../state.js";
-import type { PaneContext } from "../types.js";
 import {
   absolutePath,
   baseName,
@@ -35,8 +29,6 @@ import {
   treeFor,
   treeUrl,
 } from "./state.js";
-
-const PANE_ID = "explorer-file";
 
 interface Preview {
   cid: string;
@@ -55,23 +47,33 @@ interface PreviewEl extends HTMLElement {
 }
 
 let preview: Preview | null = null;
-let paneEl: PreviewEl | null = null;
-let syncHook: (cid: string) => void = () => {};
+/** The preview's element; the Explorer pane places it below the tree. */
+export const previewHost: PreviewEl = document.createElement("div");
+previewHost.className = "explorer-preview-host";
 
-/** Called on every pane sync with the open conversation. */
-export function onPaneSync(hook: (cid: string) => void): void {
-  syncHook = hook;
+/** Whether a file from conversation `cid` is being previewed. */
+export function previewShown(cid: string): boolean {
+  return preview?.cid === cid;
 }
 
-/** Preview `path` from conversation `cid` and open the File pane. */
+/** Close the preview, or only one belonging to another conversation. */
+export function closePreview(keepCid?: string): void {
+  if (!preview || preview.cid === keepCid) return;
+  treeFor(preview.cid).selected = "";
+  preview = null;
+  previewHost._markdownAbort?.abort();
+  previewHost._explorerKey = undefined;
+  releasePdfs(previewHost);
+  render(nothing, previewHost);
+  changed();
+}
+
+/** Preview `path` from conversation `cid` below the Explorer tree. */
 export async function openPreview(cid: string, path: string): Promise<void> {
   treeFor(cid).selected = path;
   const shown: Preview = { cid, path, status: "loading" };
   preview = shown;
   changed();
-  if (phoneListEntry()) selectAgent(cid);
-  syncPanes();
-  openPane(PANE_ID, { focusHeading: false });
   repaint();
   try {
     const response = await backendFor(cid).api(treeUrl(cid, "/file", path), {
@@ -109,8 +111,7 @@ export async function openPreview(cid: string, path: string): Promise<void> {
 }
 
 function repaint(): void {
-  if (paneEl?.isConnected && preview && preview.cid === state.selectedId)
-    renderPreview(paneEl, preview);
+  if (preview) renderPreview(previewHost, preview);
 }
 
 const icon = (svg: string) => unsafeHTML(svg);
@@ -229,37 +230,36 @@ function renderPreview(element: PreviewEl, shown: Preview): void {
   const tree = treeFor(shown.cid);
   const mark = changeMarks(shown.cid, tree.prefix).get(shown.path);
   const raw = treeUrl(shown.cid, "/raw", shown.path);
-  renderPowerbarControls(
-    element,
-    html`<span class="explorer-preview-name" title=${shown.path}
-        >${baseName(shown.path)}</span
-      >
-      ${mark
-        ? actionButton("Show changes", CHANGES_ICON, () =>
-            showChanges(mark.diffPath),
-          )
-        : nothing}
-      ${actionButton("Copy path", COPY_ICON, () =>
-        copyPath(absolutePath(tree, shown.path)),
-      )}
-      ${actionButton("Insert path into message", MESSAGE_ICON, () =>
-        insertPath(shown.path),
-      )}
-      ${shown.status === "ready"
-        ? html`<a
-            class="icon-btn explorer-action"
-            href=${raw}
-            download=${baseName(shown.path)}
-            title="Download"
-            aria-label="Download"
-            >${icon(FILE_DOWNLOAD_ICON)}</a
-          >`
-        : nothing}`,
-    true,
-  );
   const folder = parentPath(shown.path);
   render(
     html`<div class="explorer-preview">
+      <div class="explorer-preview-bar">
+        <span class="explorer-preview-name" title=${shown.path}
+          >${baseName(shown.path)}</span
+        >
+        ${mark
+          ? actionButton("Show changes", CHANGES_ICON, () =>
+              showChanges(mark.diffPath),
+            )
+          : nothing}
+        ${actionButton("Copy path", COPY_ICON, () =>
+          copyPath(absolutePath(tree, shown.path)),
+        )}
+        ${actionButton("Insert path into message", MESSAGE_ICON, () =>
+          insertPath(shown.path),
+        )}
+        ${shown.status === "ready"
+          ? html`<a
+              class="icon-btn explorer-action"
+              href=${raw}
+              download=${baseName(shown.path)}
+              title="Download"
+              aria-label="Download"
+              >${icon(FILE_DOWNLOAD_ICON)}</a
+            >`
+          : nothing}
+        ${actionButton("Close preview", CLOSE_ICON, () => closePreview())}
+      </div>
       <div class="explorer-preview-meta">
         ${folder ? `${folder}/` : ""}${baseName(shown.path)}
         ${shown.status === "ready" && shown.size !== undefined
@@ -271,32 +271,4 @@ function renderPreview(element: PreviewEl, shown: Preview): void {
     element,
   );
 }
-
-function available(ctx: PaneContext): boolean {
-  syncHook(ctx.agentId);
-  return preview?.cid === ctx.agentId;
-}
-
-function update(element: HTMLElement, ctx: PaneContext): void {
-  paneEl = element as PreviewEl;
-  if (preview?.cid === ctx.agentId) renderPreview(paneEl, preview);
-}
-
 onExplorerChange(repaint);
-
-registerPane({
-  id: PANE_ID,
-  title: "File",
-  icon: ATTACHMENT_FILE_ICON,
-  available,
-  visit(agentId) {
-    if (preview && preview.cid !== agentId) preview = null;
-  },
-  render: update,
-  refresh: update,
-  leave(element) {
-    (element as PreviewEl)._markdownAbort?.abort();
-    (element as PreviewEl)._explorerKey = undefined;
-    releasePdfs(element);
-  },
-});

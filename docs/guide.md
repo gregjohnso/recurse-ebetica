@@ -252,13 +252,13 @@ step of the plan-implement-merge loop in [Worktrees](#worktrees).
 
 ### Explorer
 
-The **Explorer** button at the far left (or `E`) swaps the agent list for the
+The **Explorer** panel (the first panel button on the right, or `E`) shows the
 open agent's working folder. Folders open as you expand them; files Git ignores
 are dimmed, and `M`/`U` mark changed and untracked files. Click a file to
-preview it, or right-click to copy its path or insert it into your message.
-The Explorer never follows symbolic links and never shows the contents of
-credential files such as `.env` or `*.pem`. On a phone, the files button in the
-agent list header switches views.
+preview it below the tree, or right-click to copy its path or insert it into
+your message. The Explorer never follows symbolic links and never shows the
+contents of credential files such as `.env` or `*.pem`. On a phone, open it
+from the **More actions** menu.
 
 ### Compact, clear, revive
 

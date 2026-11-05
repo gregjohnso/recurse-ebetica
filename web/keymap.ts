@@ -126,7 +126,7 @@ export const NORMAL_BINDINGS: readonly Binding[] = [
   {
     keys: ["E"],
     command: "toggle-explorer",
-    description: "switch agents / files",
+    description: "show / hide the Explorer",
   },
   { keys: ["j", "ArrowDown"], command: "next", description: "next agent" },
   {

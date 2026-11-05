@@ -1,22 +1,21 @@
-// The left activity bar switches the sidebar between Agents and a read-only
-// Explorer of the open conversation's working directory; the choice persists.
-// Folders load lazily on expand and re-read on Refresh, a settled turn or a
-// changed cwd (no watcher). Phones switch views from the agent list header.
+// The Explorer pane (first in the right-hand rail) shows a read-only tree of
+// the open conversation's working directory, with a file preview below it.
+// Folders load lazily on expand and re-read on Refresh, opening the pane, a
+// settled turn or a changed cwd (no watcher).
 import { html, nothing, render, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { $ } from "./dom.js";
-import {
-  AGENTS_ICON,
-  DISCLOSURE_ICON,
-  EXPLORER_ICON,
-  REFRESH_ICON,
-} from "./icons.js";
+import { DISCLOSURE_ICON, EXPLORER_ICON, REFRESH_ICON } from "./icons.js";
+import { registerPane, togglePane } from "./panes.js";
 import { DRAFT, state } from "./state.js";
-import { focusAgentTree } from "./sidebar.js";
 import { UI_REFRESH_EVENT } from "./ui-events.js";
-import { onPaneSync, openPreview } from "./explorer/preview.js";
+import {
+  closePreview,
+  openPreview,
+  previewHost,
+  previewShown,
+} from "./explorer/preview.js";
 import {
   absolutePath,
   baseName,
@@ -37,8 +36,7 @@ import {
   type ExplorerTree,
 } from "./explorer/state.js";
 
-type View = "agents" | "explorer";
-const VIEW_KEY = "recurse.sidebarView";
+const PANE_ID = "explorer";
 
 interface Row {
   path: string;
@@ -47,21 +45,9 @@ interface Row {
   note?: string;
 }
 
-const sidebar = $("#sidebar")!;
-const agentList = $("#agent-list")!;
-const bar = document.createElement("nav");
-bar.id = "activity-bar";
-bar.setAttribute("aria-label", "Sidebar views");
-sidebar.before(bar);
 const view = document.createElement("section");
 view.id = "explorer";
 view.setAttribute("aria-label", "Explorer");
-agentList.after(view);
-const phoneToggle = document.createElement("button");
-phoneToggle.id = "explorer-toggle";
-phoneToggle.className = "icon-btn lg";
-phoneToggle.type = "button";
-$("#agent-list-actions")?.prepend(phoneToggle);
 const menu = document.createElement("div");
 menu.id = "explorer-menu";
 menu.className = "menu";
@@ -69,10 +55,6 @@ menu.setAttribute("role", "menu");
 menu.hidden = true;
 document.body.append(menu);
 
-let current: View = "agents";
-try {
-  if (localStorage.getItem(VIEW_KEY) === "explorer") current = "explorer";
-} catch {}
 let shownCid: string | null = null;
 let rows: Row[] = [];
 
@@ -82,44 +64,12 @@ function explorerCid(): string | null {
   return id && id !== DRAFT ? id : null;
 }
 
-export function explorerVisible(): boolean {
-  return current === "explorer";
-}
-
-function setView(next: View): void {
-  current = next;
-  try {
-    localStorage.setItem(VIEW_KEY, next);
-  } catch {}
-  const cid = explorerCid();
-  if (next === "explorer" && cid && treeFor(cid).listings.has(""))
-    void refreshTree(treeFor(cid));
-  paint();
-}
-
-/** E: switch views, showing the sidebar and focusing the chosen view. */
+/** E: open or close the Explorer pane, focusing its tree when opened. */
 export function toggleExplorer(): void {
-  setView(current === "explorer" ? "agents" : "explorer");
-  if (sidebar.classList.contains("desktop-hidden"))
-    $<HTMLButtonElement>("#menu-btn")?.click();
-  if (current === "explorer") focusExplorer();
-  else focusAgentTree();
-}
-
-function focusExplorer(): void {
-  requestAnimationFrame(() =>
-    view.querySelector<HTMLElement>(".explorer-row[tabindex='0']")?.focus(),
-  );
-}
-
-function activate(next: View): void {
-  const hidden = sidebar.classList.contains("desktop-hidden");
-  if (next === current && !hidden) {
-    $<HTMLButtonElement>("#menu-btn")?.click();
-    return;
-  }
-  setView(next);
-  if (hidden) $<HTMLButtonElement>("#menu-btn")?.click();
+  if (togglePane(PANE_ID))
+    requestAnimationFrame(() =>
+      view.querySelector<HTMLElement>(".explorer-row[tabindex='0']")?.focus(),
+    );
 }
 
 function flatten(tree: ExplorerTree): Row[] {
@@ -216,35 +166,7 @@ function rowTemplate(
 }
 
 function paint(): void {
-  const explorer = current === "explorer";
-  sidebar.dataset.view = current;
-  render(
-    html`${(
-      [
-        ["agents", "Agents", AGENTS_ICON],
-        ["explorer", "Explorer", EXPLORER_ICON],
-      ] as const
-    ).map(
-      ([id, label, svg]) =>
-        html`<button
-          type="button"
-          class="activity-btn"
-          title=${`${label} (E switches)`}
-          aria-label=${label}
-          aria-pressed=${String(current === id)}
-          @click=${() => activate(id)}
-        >
-          ${unsafeHTML(svg)}
-        </button>`,
-    )}`,
-    bar,
-  );
-  phoneToggle.innerHTML = explorer ? AGENTS_ICON : EXPLORER_ICON;
-  phoneToggle.title = explorer ? "Show agents" : "Show files";
-  phoneToggle.setAttribute("aria-label", phoneToggle.title);
-  phoneToggle.onclick = () => setView(explorer ? "agents" : "explorer");
-  view.hidden = !explorer;
-  if (!explorer) return;
+  if (!view.isConnected) return;
   const cid = explorerCid();
   if (!cid) {
     rows = [];
@@ -295,9 +217,11 @@ function paint(): void {
           (row) => row.path,
           (row) => rowTemplate(tree, row, marks, folders),
         )}
-      </div>`,
+      </div>
+      ${previewShown(cid) ? previewHost : nothing}`,
     view,
   );
+  view.classList.toggle("previewing", previewShown(cid));
 }
 
 function activateRow(tree: ExplorerTree, row: Row, toChild = false): void {
@@ -439,15 +363,33 @@ document.addEventListener("pointerdown", (event) => {
   if (!menu.contains(event.target as Node)) menu.hidden = true;
 });
 
-onExplorerChange(() => {
-  if (current === "explorer") paint();
-});
-onPaneSync(() => {
-  if (current === "explorer") paint();
-});
+function mount(element: HTMLElement): void {
+  if (view.parentElement !== element) element.replaceChildren(view);
+  paint();
+}
+
+onExplorerChange(paint);
 window.addEventListener(UI_REFRESH_EVENT, (event: Event) => {
   const id = (event as CustomEvent<{ agentId?: unknown }>).detail?.agentId;
-  if (typeof id === "string" && id === explorerCid() && current === "explorer")
+  if (typeof id === "string" && id === explorerCid() && view.isConnected)
     void refreshTree(treeFor(id));
 });
-paint();
+
+registerPane({
+  id: PANE_ID,
+  title: "Explorer",
+  icon: EXPLORER_ICON,
+  order: -1,
+  available: (ctx) => ctx.agentId !== DRAFT && !!ctx.node,
+  visit: (agentId) => closePreview(agentId),
+  render(element) {
+    const cid = explorerCid();
+    const tree = cid ? treeFor(cid) : null;
+    if (tree?.listings.has("")) void refreshTree(tree);
+    mount(element);
+  },
+  refresh: mount,
+  leave() {
+    menu.hidden = true;
+  },
+});

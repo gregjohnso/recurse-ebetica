@@ -599,6 +599,8 @@ export interface PaneDef {
   id: string;
   title?: string;
   icon?: string;
+  // Rail position: lower first; equal orders keep registration order.
+  order?: number;
   available?(ctx: PaneContext): boolean;
   // Content generation: undefined unknown/error, null known empty, else stable.
   autoOpenGeneration?(ctx: PaneContext): string | null | undefined;
