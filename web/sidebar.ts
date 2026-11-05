@@ -210,8 +210,7 @@ function anchorId(): string {
 }
 
 let collapsedAnchor: string | null = null;
-// Agents opened with l/Right keep their subagents listed after selection moves,
-// until h/Left collapses them.
+// Agents opened with l/Right stay unfolded until h/Left collapses them.
 const keptOpen = new Set<string>();
 export function keepSubagentsOpen(id: string): void {
   if (anchorHasChildren(id)) keptOpen.add(id);

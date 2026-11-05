@@ -436,7 +436,6 @@ export const tests: BrowserTest[] = [
       await context.close();
     }
   },
-  // Feature: an agent opened with l keeps its subagents listed after another agent is selected, until h collapses it.
   async function test_opened_agent_keeps_its_subagents_listed(browser, base) {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 800 },
