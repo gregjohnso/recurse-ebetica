@@ -1,6 +1,7 @@
 // Markdown publication snapshots direct local references into ordinary owned
 // attachments. The parent manifest commits last; previews never read workspace
-// paths. Descriptor-relative no-follow opens confine dependencies to its folder.
+// paths. The explicit source may be a symlink; dependencies open no-follow and
+// descriptor-relative, confined to the source folder.
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";

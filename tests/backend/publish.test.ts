@@ -265,7 +265,6 @@ test("published Markdown pins direct local references without changing its bytes
     );
     expect(textManifest!.related_files).toBeUndefined();
     expect(namedMarkdown.item.related_files).toBeUndefined();
-    // Explicitly chosen symlinks are followed; dependency symlinks stay refused.
     await writeFile(join(workspace, "a", "report.md"), "![F](fenced.png)\n");
     await symlink("a/report.md", join(workspace, "report-link.md"));
     const linkedFile = await registerDocumentFile(
@@ -286,7 +285,6 @@ test("published Markdown pins direct local references without changing its bytes
       workspace,
     );
     expect(linkedDirectory.included).toBe(1);
-    // A dependency that grows after its size check cannot exceed the 100 MB total.
     await writeFile(join(workspace, "big.bin"), "x");
     await truncate(join(workspace, "big.bin"), 30 * 1024 * 1024);
     const growing = join(workspace, "grow.bin");
