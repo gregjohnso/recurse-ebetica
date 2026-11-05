@@ -332,11 +332,15 @@ function renderPreview(
           : nothing}
         ${actionButton("Close preview", CLOSE_ICON, () => handlers.close())}
       </div>
-      <div class="explorer-preview-meta">
-        ${folder ? `${folder}/` : ""}${baseName(shown.path)}
+      <div class="explorer-preview-meta" title=${shown.path}>
+        ${folder
+          ? html`<span class="explorer-preview-folder">${folder}/</span>`
+          : nothing}
         ${shown.status === "ready" && shown.size !== undefined
-          ? ` · ${attachmentSize(shown.size)}`
-          : ""}
+          ? html`<span
+              >${folder ? "\u00a0· " : ""}${attachmentSize(shown.size)}</span
+            >`
+          : nothing}
       </div>
       ${content(shown, element, handlers)}
       ${handlers.comments

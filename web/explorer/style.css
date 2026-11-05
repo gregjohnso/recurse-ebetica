@@ -41,7 +41,8 @@
 .explorer-preview-name { flex: 1; }
 .explorer-preview { padding: var(--space-3) var(--space-5) var(--space-5); }
 .explorer-preview-meta { margin-bottom: var(--space-3); color: var(--muted);
-  font: 0.71875rem/1.6 var(--font-mono); overflow-wrap: anywhere; }
+  font: 0.71875rem/1.6 var(--font-mono); display: flex; min-width: 0; white-space: nowrap; }
+.explorer-preview-folder { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .explorer-preview-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 0.8125rem; }
 .explorer-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;

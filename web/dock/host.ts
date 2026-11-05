@@ -89,16 +89,6 @@ function adopt(parent: HTMLElement, child: HTMLElement): void {
   }
 }
 
-/** The theme's gap between windows (--content-inset), in pixels. */
-function insetPx(container: HTMLElement): number {
-  const probe = document.createElement("div");
-  probe.style.cssText = "position:absolute;width:var(--content-inset)";
-  container.append(probe);
-  const width = probe.getBoundingClientRect().width;
-  probe.remove();
-  return width;
-}
-
 let styles: Promise<void> | null = null;
 /** Load dockview's stylesheet; the dock is built once it applies. */
 export function loadDockStyles(): Promise<void> {
@@ -149,7 +139,7 @@ export function createDockHost(
   parking.className = "dock-parking";
   container.after(parking);
   const api = createDockview(container, {
-    theme: { ...themeAbyssSpaced, gap: insetPx(container) },
+    theme: { ...themeAbyssSpaced, gap: 0 },
     disableFloatingGroups: true,
     defaultRenderer: "always",
     createComponent: () => {
