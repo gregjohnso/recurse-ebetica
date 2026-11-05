@@ -1099,6 +1099,42 @@ export const tests: BrowserTest[] = [
         );
         expect((await image.boundingBox())!.height).toBeGreaterThan(360);
         expect((await image.boundingBox())!.width).toBeGreaterThan(0);
+        const nested = detail.locator(
+          '.files-markdown img[alt="Nested figure"]',
+        );
+        await nested.evaluate((image: any) => image.decode());
+        expect(await nested.evaluate((image: any) => image.naturalWidth)).toBe(
+          1,
+        );
+        for (const [label, content] of [
+          ["Metrics", "captured,1"],
+          ["Alignment report", "Captured alignment report"],
+          ["Notebook", "Captured notebook"],
+          ["Notes", "Captured notes"],
+        ]) {
+          const href = await detail
+            .getByRole("link", { name: label, exact: true })
+            .getAttribute("href");
+          expect(href).toStartWith(
+            `/api/conversations/${fixture.demo}/attachments/`,
+          );
+          const response = await page.request.get(new URL(href!, base).href);
+          expect(response.ok()).toBeTrue();
+          expect(response.headers()["content-disposition"]).toStartWith(
+            "attachment;",
+          );
+          expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+          expect(await response.text()).toContain(content!);
+        }
+        expect(
+          await page.evaluate("globalThis.relatedFileScriptRan"),
+        ).toBeUndefined();
+        const original = await page.request.get(
+          `${base}api/conversations/${fixture.demo}/attachments/${fixture.id}`,
+        );
+        expect(await original.text()).toContain(
+          "![Local diagram](results/figs/diagram.svg)",
+        );
         expect(
           await detail
             .locator(".files-markdown table")

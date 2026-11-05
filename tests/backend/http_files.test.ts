@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readlinkSync } from "node:fs";
 import {
   appendFile,
+  mkdir,
   mkdtemp,
   rm,
   symlink,
@@ -15,8 +16,12 @@ import { join } from "node:path";
 
 import * as artifacts from "../../src/artifacts";
 import { ARTIFACT_ACTIVE_CSP } from "../../src/artifacts";
-import { registerFile } from "../../src/agents/runtime/attachments/publish";
-import { listPage } from "../../src/session_files";
+import {
+  registerFile,
+  removeFile,
+} from "../../src/agents/runtime/attachments/publish";
+import { registerDocumentFile } from "../../src/agents/runtime/attachments/document";
+import { listPage, previewSnippet } from "../../src/session_files";
 import { collectionSnapshot } from "../../src/agents/runtime/node_files";
 import { exchange, normalise, requestBytes } from "./http_corpus";
 import { Refs } from "./http_refs";
@@ -196,6 +201,41 @@ describe("owner scoping", () => {
     expect(part.headers["content-range"]).toBe("bytes 2-5/10");
     expect(Buffer.from(raw).toString("latin1")).toEndWith("\r\n\r\n2345");
     expect((await get(await upload("notes.zip", "PK"))).status).toBe(404);
+    const source = join(dir, "published-doc");
+    await mkdir(join(source, "results"), { recursive: true });
+    const markdown =
+      '# Report\n\n![Figure](results/figure.png)\n\n[Metrics](results/metrics.csv)\n\n<a href="results/report.html">Full report</a>\n';
+    await writeFile(join(source, "README.md"), markdown);
+    await writeFile(
+      join(source, "results/figure.png"),
+      new Uint8Array(Buffer.from(seed.png, "hex")),
+    );
+    await writeFile(
+      join(source, "results/metrics.csv"),
+      "label,value\ncaptured,1\n",
+    );
+    await writeFile(
+      join(source, "results/report.html"),
+      "<h1>Captured report</h1><script>alert(1)</script>",
+    );
+    const collection = app.temp.uploadsDir("20260925-owner-b");
+    const published = await registerDocumentFile(
+      collection,
+      "owner-b",
+      "c".repeat(32),
+      "call-doc",
+      join(source, "README.md"),
+      source,
+    );
+    expect(published.included).toBe(3);
+    expect(published.warnings).toEqual([]);
+    for (const name of [
+      "README.md",
+      "results/figure.png",
+      "results/metrics.csv",
+      "results/report.html",
+    ])
+      await unlink(join(source, name));
     await app.running.close();
     await rm(app.temp.config.paths.AGENT_TEMP_ROOT, {
       recursive: true,
@@ -228,6 +268,42 @@ describe("owner scoping", () => {
     );
     expect(normalise(restarted, "GET").status).toBe(206);
     expect(Buffer.from(restarted).toString("latin1")).toEndWith("\r\n\r\n2345");
+    const origin = `http://127.0.0.1:${app.running.port}`;
+    const prefix = `/api/conversations/owner-b/attachments/`;
+    expect(
+      await (await fetch(`${origin}${prefix}${published.item.id}`)).text(),
+    ).toBe(markdown);
+    const preview = (await previewSnippet(
+      snapshot,
+      { config: app.temp.config, boundSessionFile: () => null },
+      "published",
+      String(published.item.id),
+    ))!;
+    expect(preview).not.toBeNull();
+    expect(preview.text).toBe(markdown);
+    const related = preview.related_files!;
+    expect(Object.keys(related)).toHaveLength(3);
+    for (const id of [published.item.id, ...Object.values(related)])
+      expect(
+        (await get(`/api/conversations/owner-a/attachments/${id}`)).status,
+      ).toBe(404);
+    const image = await fetch(
+      `${origin}${prefix}${related["results/figure.png"]}/preview`,
+    );
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toBe("image/png");
+    for (const name of ["results/metrics.csv", "results/report.html"]) {
+      const response = await fetch(`${origin}${prefix}${related[name]}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-disposition")).toStartWith(
+        "attachment;",
+      );
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+    await removeFile(collection, "owner-b", related["results/figure.png"]!);
+    expect(
+      (await get(`${prefix}${related["results/figure.png"]}/preview`)).status,
+    ).toBe(404);
   });
 
   test("a large published file streams from its open blob", async () => {

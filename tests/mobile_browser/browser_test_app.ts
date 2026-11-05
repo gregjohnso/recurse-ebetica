@@ -6,10 +6,11 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import {
@@ -27,6 +28,7 @@ import {
   addUpload,
   registerFile,
 } from "../../src/agents/runtime/attachments/publish";
+import { publishedFiles } from "../../src/agents/runtime/attachments/published";
 import * as artifacts from "../../src/artifacts";
 import { CHECKOUT_ROOT } from "../../src/build_dir";
 import { buildApp } from "../../src/web/app";
@@ -558,15 +560,18 @@ async function publishTurn(
 async function publishDraftsTurn(
   cid: string,
   files: Record<string, string | Uint8Array>,
-): Promise<void> {
+  paths = Object.keys(files),
+): Promise<string> {
   const workdir = await mkdtemp(join(tmpdir(), "published-drafts-"));
-  for (const [name, body] of Object.entries(files))
+  for (const [name, body] of Object.entries(files)) {
+    await mkdir(dirname(join(workdir, name)), { recursive: true });
     await writeFile(join(workdir, name), body);
+  }
   durableFast.setResponses([
     fauxAssistantMessage(
       [
         fauxToolCall("publish", {
-          paths: Object.keys(files).map((name) => join(workdir, name)),
+          paths: paths.map((name) => join(workdir, name)),
         }),
       ],
       { stopReason: "toolUse" },
@@ -574,6 +579,7 @@ async function publishDraftsTurn(
     fauxAssistantMessage("Both drafts are published."),
   ]);
   await submitDurable(cid, "Publish the drafts.");
+  return workdir;
 }
 
 async function appendPiTurn(conv: Conv, entries: Json[]): Promise<void> {
@@ -910,18 +916,40 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
   "seed-published-markdown": async () => {
     if (publishedFixture !== null) return publishedFixture;
     const cid = "files-published";
-    if (load(cid) === null) await create(cid, "Published files", rootAgentId());
-    await publishTurn(
-      cid,
-      "diagram.svg",
-      '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="400"><rect width="160" height="400" fill="teal"/><text x="12" y="40" fill="white">Shared image</text></svg>',
-    );
-    const id = await publishTurn(
-      cid,
+    if (load(cid) === null)
+      await createDurable(cid, "Published files", "fauxfast/faux-1");
+    const names = [
       "report.md",
-      '# Weekly report\n\n- shipped **previews**\n\n```mermaid\ngraph LR\n A[Files] --> B[Artifacts]\n```\n\nInline \\(x^2\\) and display math:\n\n\\[E = mc^2\\]\n\n![Local diagram](./diagram.svg)\n\n| Wide table | Value |\n| --- | --- |\n| WideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumnWideColumn | readable |\n\n<img src="https://example.com/x.png" alt="remote">\n',
+      "results/figs/diagram.svg",
+      "results/figs/tiny.png",
+      "results/data.csv",
+      "results/report.html",
+      "results/analysis.ipynb",
+      "results/notes.md",
+    ];
+    const files = Object.fromEntries(
+      await Promise.all(
+        names.map(async (name) => [
+          name,
+          await readFile(
+            join(
+              CHECKOUT_ROOT,
+              "tests/mobile_browser/fixtures/published_markdown",
+              name,
+            ),
+          ),
+        ]),
+      ),
     );
-    publishedFixture = { demo: cid, id };
+    const workdir = await publishDraftsTurn(cid, files, ["report.md"]);
+    await Promise.all(names.map((name) => unlink(join(workdir, name))));
+    const collection = await agentTemp.ensureUploadsDir(
+      String(load(cid)!.tmp_key),
+    );
+    const report = (await publishedFiles(collection, cid)).find(
+      (file) => file.name === "report.md",
+    )!;
+    publishedFixture = { demo: cid, id: String(report.id) };
     return publishedFixture;
   },
   "seed-published-media": async () => {

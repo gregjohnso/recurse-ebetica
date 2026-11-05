@@ -29,6 +29,7 @@ export interface FilePreviewState {
   status: "idle" | "loading" | "ready" | "missing" | "evicted";
   text?: string;
   truncated?: boolean;
+  relatedFiles?: Record<string, string>;
   controller?: AbortController;
 }
 
@@ -124,6 +125,7 @@ export function retainFilePreview(
     preview.status = "evicted";
     preview.text = undefined;
     preview.truncated = undefined;
+    preview.relatedFiles = undefined;
   }
   return next;
 }

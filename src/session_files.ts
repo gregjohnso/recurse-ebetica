@@ -42,6 +42,7 @@ export interface TextSnippet {
   text: string;
   truncated: boolean;
   bytes: number;
+  related_files?: Record<string, string>;
 }
 export interface CollectionSnapshot {
   readonly collection: string;
@@ -629,6 +630,8 @@ function validManifest(
     typeof value.media_type !== "string" ||
     !MEDIA_RE.test(value.media_type) ||
     !validInline ||
+    (value.related_files !== undefined &&
+      base.readRelatedFiles(value.related_files) === null) ||
     !isFinitePythonNumber(created) ||
     typeof value.published !== "boolean" ||
     typeof source !== "string" ||
@@ -1199,6 +1202,8 @@ export async function previewSnippet(
       safeName(downloaded.manifest.name),
     );
     if (result === null || !(await collectionIsCurrent(opened))) return null;
+    const related = base.readRelatedFiles(downloaded.manifest.related_files);
+    if (related !== null) result.related_files = related;
     return result;
   } finally {
     await closeCollection(opened);

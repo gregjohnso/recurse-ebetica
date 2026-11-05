@@ -825,6 +825,7 @@ function reloadPreview(id: string, key: string): void {
   preview.status = "idle";
   preview.text = undefined;
   preview.truncated = undefined;
+  preview.relatedFiles = undefined;
   value.previewLru = value.previewLru.filter((candidate) => candidate !== key);
   repaint();
 }
@@ -845,6 +846,7 @@ function loadTextPreview(id: string, file: SessionFile): void {
         kind?: unknown;
         text?: unknown;
         truncated?: unknown;
+        related_files?: Record<string, unknown>;
       };
       if (shownId !== id || value.previews.get(file.key) !== preview) return;
       if (payload.kind !== "text" || typeof payload.text !== "string")
@@ -852,6 +854,16 @@ function loadTextPreview(id: string, file: SessionFile): void {
       preview.status = "ready";
       preview.text = payload.text;
       preview.truncated = payload.truncated === true;
+      preview.relatedFiles =
+        payload.related_files === undefined
+          ? undefined
+          : Object.fromEntries(
+              Object.entries(payload.related_files).filter(
+                (entry): entry is [string, string] =>
+                  typeof entry[1] === "string" &&
+                  /^[a-f0-9]{32}(?:\.[a-z0-9]{1,16})?$/.test(entry[1]),
+              ),
+            );
       retainPreview(id, file.key);
     })
     .catch(() => {
@@ -972,7 +984,12 @@ function previewTemplate(
         ${isDiff(file, preview.text ?? "")
           ? diffPreview(preview)
           : rendersAsMarkdown(file)
-            ? markdownPreview(cid, file, preview.text ?? "")
+            ? markdownPreview(
+                cid,
+                file,
+                preview.text ?? "",
+                preview.relatedFiles,
+              )
             : html`<pre class="report-doc">${preview.text}</pre>`}
         ${preview.truncated
           ? html`<span class="files-preview-note">Preview truncated.</span>`
@@ -1045,6 +1062,7 @@ function markdownPreview(
   cid: string,
   file: SessionFile,
   text: string,
+  relatedFiles?: Record<string, string>,
 ): HTMLElement {
   const body = document.createElement("div");
   body.className = "files-markdown artifact-doc report-doc";
@@ -1054,6 +1072,16 @@ function markdownPreview(
     title: file.name,
     signal: controller.signal,
     resolveRelative: (path, image) => {
+      if (relatedFiles !== undefined) {
+        const id = Object.hasOwn(relatedFiles, path)
+          ? relatedFiles[path]
+          : null;
+        if (!id) return null;
+        const url = backendFor(cid).url(
+          `/api/conversations/${encodeURIComponent(cid)}/attachments/${encodeURIComponent(id)}`,
+        );
+        return image ? `${url}/preview` : url;
+      }
       let name: string;
       try {
         name = decodeURIComponent(

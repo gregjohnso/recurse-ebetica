@@ -75,6 +75,12 @@ for the conversation on screen.
   version on the install's channel and offers "Update now", which the
   launcher applies with a restart; the page then reloads into the new version.
 - Side panels: `panes.ts`, `artifacts/`, `diff.ts`, `files.ts`, `comments.ts`.
+  Published Markdown resolves local images and file links through the document's
+  captured reference map, returned with its text preview. The map points to
+  immutable, conversation-owned file IDs, so previews do not depend on source
+  files remaining on disk or on the Files list having loaded every page.
+  Older documents without a map retain same-name published-file resolution;
+  a missing entry in a new document never falls back to another version's file.
   Action menus close before running a choice, including opening a confirmation;
   cancelling the confirmation does not reopen the menu. The conversation menu
   keeps Delete's first tap open for its inline second-tap confirmation. Pane
