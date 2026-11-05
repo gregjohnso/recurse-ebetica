@@ -17,7 +17,7 @@ export const SESSION_REPAIR_KEY =
   "recurse.conversationUiState.sessionRepair.v1";
 export const MAX_COMPOSER_DRAFT_CHARS = 100_000;
 // Plugin payloads plus metadata must fit the smaller local tier.
-export const MAX_PLUGIN_STATE_CHARS = 3000;
+export const MAX_PLUGIN_STATE_CHARS = 32_000;
 export const MAX_LOCAL_RECORD_CHARS = 64_000;
 export const MAX_SESSION_RECORD_CHARS = 256_000;
 export const MAX_PANE_STATES = 16;
