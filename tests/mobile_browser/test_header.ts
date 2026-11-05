@@ -485,13 +485,7 @@ export const tests: BrowserTest[] = [
       const boxes = await Promise.all(
         (width === 412
           ? ["#up-top", "#conv-status", "#conv-title"]
-          : [
-              "#menu-btn",
-              "#up-top",
-              "#conv-status",
-              "#conv-title",
-              "#chip-kids",
-            ]
+          : ["#up-top", "#conv-status", "#conv-title", "#chip-kids"]
         ).map((id) => page.locator(id).boundingBox()),
       );
       const header = (await page.locator("#topbar").boundingBox())!;
@@ -514,7 +508,6 @@ export const tests: BrowserTest[] = [
         ).toBe(true);
       }
       for (const id of [
-        "#menu-btn",
         "#up-top",
         "#conv-title",
         ...(width === 412 ? ["#pane-fab"] : ["#new-side"]),
@@ -526,7 +519,7 @@ export const tests: BrowserTest[] = [
       await shot("closed");
       if (width === 1280) {
         expect(
-          await page.locator("#menu-btn").getAttribute("aria-expanded"),
+          await page.locator("#agents-btn").getAttribute("aria-pressed"),
         ).toBe("true");
         const sidebarHeader = await page.locator("#sidebar-head").boundingBox();
         const newSide = (await page.locator("#new-side").boundingBox())!;
@@ -536,20 +529,21 @@ export const tests: BrowserTest[] = [
         expect(newSide.y).toBeLessThan(chatTab.y + chatTab.height + 2);
         expect(header.y).toBeGreaterThanOrEqual(chatTab.y + chatTab.height - 1);
         expect(await page.locator("#new-top").isVisible()).toBe(false);
-        await page.locator("#menu-btn").click();
+        expect(await page.locator("#menu-btn").isVisible()).toBe(false);
+        await page.locator("#agents-btn").click();
         expect(await page.locator("#sidebar").isVisible()).toBe(false);
         expect(await page.locator("#new-top").isVisible()).toBe(true);
         expect(
-          await page.locator("#menu-btn").getAttribute("aria-expanded"),
+          await page.locator("#agents-btn").getAttribute("aria-pressed"),
         ).toBe("false");
         expect((await page.locator("#topbar").boundingBox())!.height).toBe(48);
         await shot("sidebar-collapsed");
-        await page.locator("#menu-btn").click();
+        await page.locator("#agents-btn").click();
         expect(await page.locator("#sidebar-head").boundingBox()).toEqual(
           sidebarHeader,
         );
         expect(
-          await page.locator("#menu-btn").getAttribute("aria-expanded"),
+          await page.locator("#agents-btn").getAttribute("aria-pressed"),
         ).toBe("true");
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);
         expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(

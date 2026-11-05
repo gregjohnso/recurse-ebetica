@@ -262,7 +262,8 @@ export const tests: BrowserTest[] = [
     });
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator(".dv-tab", { hasText: "Chat" }).waitFor();
-    expect(await dockLayout(page)).toEqual([["Chat"]]);
+    await page.locator(".dv-tab", { hasText: "Explorer" }).waitFor();
+    expect(await dockLayout(page)).toEqual([["Chat"], ["Explorer"]]);
     expect(errors).toEqual([]);
     await desktop.close();
 

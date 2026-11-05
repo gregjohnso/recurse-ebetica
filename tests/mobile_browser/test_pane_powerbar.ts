@@ -110,6 +110,19 @@ export const tests: BrowserTest[] = [
             : id === "files"
               ? ".files-back, .files-actions .artifact-icon-btn, .pane-powerbar-overflow > summary"
               : ".diff-base-btn, .pane-powerbar-overflow > summary";
+        await page.waitForFunction(
+          ([selector, pane]) => {
+            const bar = (globalThis as any).document.querySelector(
+              `.pane-col[data-pane="${pane}"] .pane-powerbar`,
+            );
+            const outer = bar.getBoundingClientRect();
+            return [...bar.querySelectorAll(selector)].every((node: any) => {
+              const rect = node.getBoundingClientRect();
+              return rect.left >= outer.left && rect.right <= outer.right;
+            });
+          },
+          [controls, id] as const,
+        );
         const boxes = await bar
           .locator(controls + (width === 412 ? ", .x" : ""))
           .evaluateAll((nodes) =>

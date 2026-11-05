@@ -14,6 +14,7 @@ import {
   NEW_ICON,
   MORE_ICON,
   PANE_ICON,
+  ATTACHMENT_FILE_ICON,
   PANE_COMPRESS_ICON,
   PANE_EXPAND_ICON,
 } from "./icons.js";
@@ -1346,6 +1347,13 @@ function dockPlacement(id: string): DockPlacement {
   };
 }
 
+/** A tab's icon: the pane's rail icon, the chat's, or a file's. */
+function dockIcon(id: string): string {
+  if (id === CHAT) return MESSAGE_ICON;
+  const pane = registry.find((p) => p.id === id);
+  return pane ? pane.icon || PANE_ICON : ATTACHMENT_FILE_ICON;
+}
+
 /** Which windows share a group: chat, tools, Artifacts/Files, or a tab kind. */
 function dockKindOf(id: string): string {
   if (id === CHAT) return CHAT;
@@ -1434,6 +1442,7 @@ function loadDock(): void {
         dock = createDockHost(root, {
           element: dockElement,
           closed: dockClosed,
+          icon: dockIcon,
           // Invariant: dockview reports changes while panes.ts is still
           // adding a panel; resync afterwards, never re-entrantly.
           changed: () =>

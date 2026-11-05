@@ -36,6 +36,8 @@ export interface DockCallbacks {
   closed(id: string): void;
   /** Which panels are visible changed. */
   changed(): void;
+  /** SVG markup shown before panel `id`'s tab title. */
+  icon(id: string): string;
 }
 
 export interface DockHost {
@@ -171,6 +173,17 @@ export function createDockHost(
   const label = (panel: IDockviewPanel): void => {
     const tooltip = tooltips.get(panel.id);
     if (tooltip) panel.view.tab.element.title = tooltip;
+    const strip = panel.view.tab.element;
+    const tab = strip.matches(".dv-default-tab")
+      ? strip
+      : strip.querySelector(".dv-default-tab");
+    if (tab && !tab.querySelector(".dock-tab-icon")) {
+      const icon = document.createElement("span");
+      icon.className = "dock-tab-icon";
+      icon.dataset.ext = /\.([a-z0-9]+)$/i.exec(panel.id)?.[1]?.toLowerCase();
+      icon.innerHTML = callbacks.icon(panel.id);
+      tab.prepend(icon);
+    }
     place();
   };
   api.onDidAddPanel(label);
