@@ -1220,9 +1220,11 @@ sidebarWatch.observe($("#sidebar")!, {
   attributes: true,
   attributeFilter: ["class"],
 });
-// Invariant: The dock starts loading at boot, beside the first conversation
-// fetch, so the chat moves into it before or as the thread first renders.
-queueMicrotask(loadDock);
+queueMicrotask(() => {
+ // Invariant: The dock loads at boot, beside the first conversation fetch,
+ // so the chat moves into it before or as the thread first renders.
+ loadDock();
+});
 
 // ---- the per-poll sync (called from the conversation refresh) -------------
 let syncFailureAnnounced = false;
