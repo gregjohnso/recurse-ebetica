@@ -766,7 +766,7 @@ async function describe(
   return manifest;
 }
 
-/** Accepted files, omitting copies a published document's reference map owns. */
+/** Accepted files, minus copies a document's reference map owns. */
 async function acceptedPage(
   opened: OpenCollection,
   limit: number,
