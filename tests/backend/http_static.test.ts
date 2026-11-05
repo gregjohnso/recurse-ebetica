@@ -215,14 +215,18 @@ test("shell import map aliases lazy chunks to the versioned entry", async () => 
     const faviconUrl = shell.match(
       /<link rel="icon" href="([^"]+)" type="image\/svg\+xml"/,
     )?.[1];
-    expect(faviconUrl).toBe("/static/brand/favicon.svg?v=9dd91d65f2f8");
+    expect(faviconUrl).toBe("/static/brand/favicon.svg?v=d2adce428715");
     const favicon = await fetch(
       `http://127.0.0.1:${running.port}${faviconUrl}`,
     );
     expect(favicon.status).toBe(200);
     expect(favicon.headers.get("content-type")).toBe("image/svg+xml");
     expect(await favicon.text()).toContain('viewBox="0 0 64 64"');
-    for (const name of ["favicon-32.png", "apple-touch-icon.png"]) {
+    for (const name of [
+      "favicon-32.png",
+      "favicon-dark-32.png",
+      "apple-touch-icon.png",
+    ]) {
       const image = await fetch(
         `http://127.0.0.1:${running.port}/static/brand/${name}`,
       );

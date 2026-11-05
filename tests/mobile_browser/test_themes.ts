@@ -44,6 +44,39 @@ export const tests: BrowserTest[] = [
       );
       await gotoRoot(page, base);
       await page.locator(".agent").first().waitFor();
+      for (const scheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: scheme });
+        const pixels = await page.evaluate(async () => {
+          const icon = document.querySelector<HTMLLinkElement>(
+            'link[rel="icon"][type="image/svg+xml"]',
+          )!;
+          const image = new Image();
+          image.src = icon.href;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = canvas.height = 256;
+          const context = canvas.getContext("2d")!;
+          context.drawImage(image, 0, 0, 256, 256);
+          const data = context.getImageData(0, 0, 256, 256).data;
+          let black = 0,
+            white = 0,
+            border = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3]! < 128) continue;
+            if (data[i] === 0) black++;
+            if (data[i] === 255) white++;
+            const x = (i / 4) % 256;
+            const y = Math.floor(i / 4 / 256);
+            if (x < 8 || x >= 248 || y < 8 || y >= 248) border++;
+          }
+          return { black, white, border };
+        });
+        expect(pixels.border).toBe(0);
+        expect(pixels[scheme === "light" ? "black" : "white"]).toBeGreaterThan(
+          1000,
+        );
+        expect(pixels[scheme === "light" ? "white" : "black"]).toBe(0);
+      }
       const appearanceButtons = page.locator(".theme-appearance button");
       const open = async () => {
         await page.locator("#menu-btn").click();

@@ -188,24 +188,25 @@ templates; do not add another lint stack just for that gap.
 
 ## Brand assets
 
-[brand/](brand/) contains the white brush-circle logo. [logo.png](brand/logo.png)
-is the original transparent artwork. The mark, favicon and app tiles place it on
-black so it stays visible in light and dark mode. [mark.svg](brand/mark.svg)
+[brand/](brand/) contains the brush-circle logo. [logo.png](brand/logo.png)
+is the cleaned transparent artwork, with isolated border specks removed. The
+mark, favicon and wordmark use black in light mode and white in dark mode via
+`prefers-color-scheme`, with no background tile. [mark.svg](brand/mark.svg)
 is the small UI mark. The sidebar header holds the New button instead of a
 logo; phones keep New in the topbar. [wordmark.svg](brand/wordmark.svg)
-pairs it with the name in a fixed mid-grey `#6E7781` that stays readable on light
-and dark pages. The `-mono.svg` variants mask `currentColor` with the artwork's
-alpha channel when embedded inline.
+pairs it with the name in the same adaptive colour. The `-mono.svg` variants
+mask `currentColor` with the artwork's alpha channel when embedded inline.
 
 The frontend asset build copies this directory to `/static/brand/`.
-[index.html](index.html) links the SVG favicon, its 32 px PNG fallback and the
-180 px Apple touch icon. These links carry the original artwork's SHA-256 prefix
-as a query version; update it when replacing the artwork so browsers discard
-cached icons. The web manifest advertises 192 and 512 px app icons
+[index.html](index.html) links the adaptive SVG favicon, black and white 32 px
+PNG fallbacks selected by media query, and the 180 px Apple touch icon. These
+links carry the cleaned artwork's SHA-256 prefix as a query version; update it
+when replacing the artwork so browsers discard cached icons. The web manifest advertises 192 and 512 px app icons
 and full-bleed maskable variants; push notifications use the 192 px app icon.
 The SVGs embed a reduced PNG copy of the artwork. PNG exports are resized from
-the original at their named dimensions; maskable icons inset the circle to keep
-it within the safe area. The Apple touch icon uses the standard app tile.
+the cleaned artwork at their named dimensions. Launcher PNGs and maskable icons
+use white on a black tile; maskable icons inset the circle to keep it within the
+safe area. The Apple touch icon uses the standard app tile.
 
 Settings → Appearance → Name and icon saves instance overrides in
 `config/branding.json` beside the other instance settings. Reload applies the
