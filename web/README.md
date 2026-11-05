@@ -56,6 +56,10 @@ for the conversation on screen.
   or archive discovery outside the shared trees.
 - Keys and commands: `keymap.ts`, `skills.ts`, `composer/commands.ts`.
 - Models and Settings: `models.ts`, `models/`, `settings.ts`, `settings/`.
+  The composer's model menu keeps the effort slider as presets and lists every
+  model the backend offers (`models/picker.ts`), with the picked model's thinking
+  levels. A pick waits for the next message like a slider change; a draft starts
+  on it.
   Deleted agents' history retention is an instance setting (90 days by default),
   applied by background cleanup on its next pass.
   Agent-finished notifications are per browser (`settings/notifications.ts`):

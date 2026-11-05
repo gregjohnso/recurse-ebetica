@@ -1559,6 +1559,36 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #effort-model:empty { display: none; }
   #effort-current { margin: var(--space-3) 0 0; color: var(--muted); font-size: 0.71875rem; }
+  /* Every offered model and the chosen model's thinking levels (models/picker.ts). */
+  .model-picker { display: flex; flex-direction: column; gap: var(--space-3);
+    margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+  .model-picker-filter { width: 100%; box-sizing: border-box; }
+  .model-picker-list { display: flex; flex-direction: column; max-height: 240px; overflow-y: auto;
+    color: var(--muted); }
+  .model-picker-route, .model-picker-heading { margin: var(--space-3) var(--space-3) var(--space-1);
+    color: var(--muted); font-size: 0.65625rem; font-weight: 600; text-transform: uppercase; }
+  .model-picker-heading { margin: 0; }
+  .model-picker-option { display: flex; align-items: center; gap: var(--space-3); width: 100%;
+    min-height: 32px; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-md);
+    background: none; color: var(--text); font: inherit; font-size: 0.78125rem; text-align: left;
+    cursor: pointer; }
+  .model-picker-option:hover:not(:disabled) { background: var(--panel-2); }
+  .model-picker-option[aria-selected="true"] { background: var(--row-selected); }
+  .model-picker-option:disabled, .model-picker-level:disabled { cursor: default; opacity: .55; }
+  .model-picker-check { flex: none; width: 14px; height: 14px; color: var(--accent); }
+  .model-picker-check svg { display: block; width: 14px; height: 14px; }
+  .model-picker-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .model-picker-context { flex: none; color: var(--muted); font-size: 0.71875rem; }
+  .model-picker-thinking { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .model-picker-level { min-height: 28px; padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--muted);
+    font: inherit; font-size: 0.71875rem; cursor: pointer; }
+  .model-picker-level:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+  .model-picker-level[aria-checked="true"] { border-color: var(--accent); background: var(--accent);
+    color: var(--text-on-accent); }
+  :is(.model-picker-option, .model-picker-level):focus-visible {
+    outline: var(--focus-width) solid var(--accent-dim); outline-offset: -1px; }
   /* The new-agent page keeps a visible, centred trigger and reveals the
      slider inline instead of putting it in the top layer. */
   .draft-model-host #model-row { width: 100%; flex-direction: column;

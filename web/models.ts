@@ -1,7 +1,7 @@
 // Draft effort applies at creation; existing choices persist until next
 // message. Running turns keep launched models. Instance ladder maps levels to
 // model/ reasoning; unreachable choices explain why, without duplicate
-// controls. A remote agent or draft uses that remote's ladder.
+// controls. A remote agent or draft uses that remote's ladder and model list.
 import {
   backendFor,
   conversationId,
@@ -9,7 +9,6 @@ import {
 } from "./backends/backend.js";
 import { embeddedFrameHidden, state } from "./state.js";
 import { $ } from "./dom.js";
-import { api } from "./api.js";
 import {
   conversationContextLabel,
   conversationContextSelector,
@@ -21,6 +20,8 @@ import {
 import { effortStepForKey } from "./keymap.js";
 import { ContextFallbackGate } from "./context/fallback.js";
 import { rowThreads, rowThreadContextKey } from "./row-thread-state.js";
+import { THINKING_ORDER, type FinderModel } from "./models/finder.js";
+import { createModelPicker } from "./models/picker.js";
 import type { Conversation, PendingModel } from "./types.js";
 
 export const EFFORT_LEVELS = [1, 2, 3, 4, 5] as const;
@@ -51,6 +52,7 @@ interface Ladder {
   levels: Record<string, LadderEntry>;
   reachability: Record<string, LadderReachability>;
   models: LadderModel[];
+  reasoning?: string[];
 }
 
 // Fixed stop labels low through max, independent of configured reasoning.
@@ -68,6 +70,8 @@ const range = $<HTMLInputElement>("#effort-range")!;
 const value = $("#effort-value")!;
 const modelLine = $("#effort-model")!;
 const currentLine = $("#effort-current");
+const picker = createModelPicker((model, effort) => void choose(model, effort));
+menu.append(picker.element);
 
 let mode: "draft" | "conv" = "draft";
 let conv: Conversation | null = null;
@@ -180,23 +184,72 @@ function reachabilityFor(level: EffortLevel): LadderReachability | null {
   return ladder?.reachability[String(level)] ?? null;
 }
 
-// Unknown legacy model names load once from Settings; labels wait for metadata.
+let catalog: FinderModel[] | null = null;
+let catalogLevels: string[] | null = null;
 let listed: Map<string, LadderModel> | null = null;
-let listRequested = false;
+let catalogRequested = false;
+/** Load every offered model once per backend, on first menu open or name. */
+function loadCatalog(): void {
+  if (catalogRequested) return;
+  catalogRequested = true;
+  const label = ladderLabel;
+  void backendFor(conversationId(label, "ladder"))
+    .api("/api/settings/model-list")
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then((body: { models?: FinderModel[]; reasoning?: string[] } | null) => {
+      if (label !== ladderLabel) return;
+      catalog = body?.models ?? [];
+      catalogLevels = body?.reasoning ?? null;
+      listed = new Map(catalog.map((m) => [m.id, m as LadderModel]));
+      render();
+    });
+}
 function knownModel(id: string): LadderModel | null {
-  const model = ladder?.models.find((m) => m.id === id) ?? listed?.get(id);
-  if (!model && id && ladder && !listRequested) {
-    listRequested = true;
-    void api("/api/settings/model-list")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body: { models: LadderModel[] } | null) => body?.models ?? [])
-      .catch(() => [])
-      .then((models) => {
-        listed = new Map(models.map((m) => [m.id, m]));
-        render();
-      });
-  }
+  const model = listed?.get(id) ?? ladder?.models.find((m) => m.id === id);
+  if (!model && id && ladder) loadCatalog();
   return model ?? null;
+}
+
+/** The ladder level that runs exactly this model and reasoning, if any. */
+function ladderLevelFor(model: string, effort: string | null) {
+  return (
+    EFFORT_LEVELS.find((level) => {
+      const entry = entryFor(level);
+      return entry?.model === model && entry.reasoning === effort;
+    }) ?? null
+  );
+}
+
+/** A model picked from the list rather than a ladder stop: a draft's chosen
+ * model, or a waiting switch whose model and reasoning match no level. */
+function explicitChoice(): { model: string; effort: string | null } | null {
+  if (mode === "draft") {
+    const draft = state.draft;
+    return draft?.model
+      ? { model: draft.model, effort: draft.effort ?? null }
+      : null;
+  }
+  const pending = conv?.pending_model;
+  if (!conv || !pending?.model || pendingLevel(conv) !== null) return null;
+  return {
+    model: pending.model,
+    effort:
+      pending.effort && pending.effort !== "default" ? pending.effort : null,
+  };
+}
+
+/** The model and reasoning the visible owner's next message runs. */
+function currentChoice(): { model: string | null; effort: string | null } {
+  const explicit = explicitChoice();
+  if (explicit) return explicit;
+  const level = committedLevel() ?? (mode === "draft" ? defaultLevel() : null);
+  const entry = level === null ? null : entryFor(level);
+  if (entry) return { model: entry.model, effort: entry.reasoning };
+  return {
+    model: typeof conv?.model === "string" ? conv.model : null,
+    effort: typeof conv?.effort === "string" ? conv.effort : null,
+  };
 }
 
 /** A model's display name: null while the ladder (or, for a model outside
@@ -256,22 +309,25 @@ function pendingForLevel(level: EffortLevel): PendingModel {
 // The committed level for the visible owner, preferring a durable pending
 // choice for existing conversations until the next composer message.
 function committedLevel(): EffortLevel | null {
+  const explicit = explicitChoice();
   if (mode === "draft") {
+    if (explicit) return ladderLevelFor(explicit.model, explicit.effort);
     const stored = state.draft?.level;
     if (stored == null && !ladder) return defaultLevel();
     return levelOf(stored, defaultLevel());
   }
   if (!conv) return null;
-  return (
-    pendingLevel(conv) ??
-    (isLegacyLevel(conv.level) ? null : (Number(conv.level) as EffortLevel))
-  );
+  if (conv.pending_model) return pendingLevel(conv);
+  return isLegacyLevel(conv.level) ? null : (Number(conv.level) as EffortLevel);
 }
 
 // The trigger names the pending model when a switch is waiting for a message.
 function paintTrigger(): void {
   let name: string;
-  if (mode === "draft" || !conv) {
+  const explicit = mode === "draft" ? explicitChoice() : null;
+  if (explicit) {
+    name = `${modelLabel(explicit.model) || "Model"}${explicit.effort ? ` · ${explicit.effort}` : ""}`;
+  } else if (mode === "draft" || !conv) {
     const level = committedLevel() ?? defaultLevel();
     const entry = entryFor(level);
     name = `${(entry && modelLabel(entry.model)) || "Effort"} · ${EFFORT_STOP_WORDS[level - EFFORT_LEVELS[0]]}`;
@@ -339,6 +395,19 @@ function syncPreview(): void {
       : "Loading effort ladder…";
     return;
   }
+  const explicit = sliderBox.classList.contains("legacy")
+    ? explicitChoice()
+    : null;
+  if (explicit) {
+    const name = modelLabel(explicit.model);
+    value.textContent = "";
+    modelLine.textContent = !name
+      ? "Loading model name…"
+      : explicit.effort
+        ? `${name} ${explicit.effort}`
+        : name;
+    return;
+  }
   // Invariant: Legacy choices stay on their stored model until the first drag.
   // That drag previews ladder stops, never silently remaps an untouched choice.
   if (legacyUnpicked) {
@@ -380,6 +449,12 @@ function paintSlider(disabled: boolean): void {
     }
   }
   syncPreview();
+  picker.paint({
+    models: catalog,
+    levels: catalogLevels ?? ladder?.reasoning ?? THINKING_ORDER,
+    ...currentChoice(),
+    disabled: disabled || (mode === "draft" && !!state.draft?.creator),
+  });
 }
 
 function showContextTokens(c: Conversation | null): void {
@@ -476,6 +551,10 @@ function useLadderOf(label: string): void {
   if (label === ladderLabel) return;
   ladderLabel = label;
   ladder = null;
+  catalog = null;
+  catalogLevels = null;
+  listed = null;
+  catalogRequested = false;
   loadFailed = false;
 }
 
@@ -572,6 +651,7 @@ export function openEffortMenu(): void {
   // dispatches no event): revalidate on every open and repaint when the load
   // lands, so the box and the trigger text track the file.
   void fetchLadder();
+  loadCatalog();
   if (draftInline()) {
     menu.classList.add("draft-open");
     trigger.setAttribute("aria-expanded", "true");
@@ -603,6 +683,7 @@ menu.addEventListener("toggle", () => {
     if (mode === "draft" || conv) render();
     return;
   }
+  loadCatalog();
   const rect = trigger.getBoundingClientRect();
   const above = mode === "conv" || rect.top > innerHeight / 2;
   menu.style.maxHeight = `${Math.max(100, (above ? rect.top : innerHeight - rect.bottom) - 20)}px`;
@@ -663,8 +744,11 @@ range.addEventListener("change", async () => {
     return;
   }
   if (mode === "draft") {
-    if (state.draft && !state.draft.creator)
+    if (state.draft && !state.draft.creator) {
       state.draft.level = level as EffortLevel;
+      state.draft.model = null;
+      state.draft.effort = undefined;
+    }
     render();
     return;
   }
@@ -673,19 +757,46 @@ range.addEventListener("change", async () => {
     return;
   }
   const target = conv;
-  const previousPending = target.pending_model
-    ? { ...target.pending_model }
-    : null;
-  const previousRaw = target.level;
   const previous = selectedLevel(target);
-  if (level === previous && !isLegacyLevel(previousRaw)) {
+  if (level === previous && !isLegacyLevel(target.level) && !explicitChoice()) {
     render();
     return;
   }
+  await saveChoice(target, { level }, pendingForLevel(level as EffortLevel));
+});
+
+/** Pick a listed model and reasoning for the draft or the shown agent. */
+async function choose(model: string, effort: string): Promise<void> {
+  if (mode === "draft") {
+    const draft = state.draft;
+    if (!draft || draft.creator) return;
+    draft.model = model;
+    draft.effort = effort;
+    draft.level = null;
+    render();
+    return;
+  }
+  if (!conv || saving.has(conv.id)) return;
+  const level = ladderLevelFor(model, effort);
+  await saveChoice(
+    conv,
+    { model, effort },
+    { model, effort, ...(level === null ? {} : { level }) },
+  );
+}
+
+/** Record the next model choice for an agent, reverting if it is refused. */
+async function saveChoice(
+  target: Conversation,
+  body: Record<string, unknown>,
+  optimistic: PendingModel,
+): Promise<void> {
+  const previousPending = target.pending_model
+    ? { ...target.pending_model }
+    : null;
   // Invariant: Paint the choice immediately. The stored level remains untouched
   // until a composer message is admitted; the pending value also survives a
   // refresh.
-  const optimistic = pendingForLevel(level as EffortLevel);
   target.pending_model = optimistic;
   if (state.currentConv?.id === target.id) {
     state.currentConv.pending_model = optimistic;
@@ -695,9 +806,7 @@ range.addEventListener("change", async () => {
   try {
     const r = await backendFor(target.id).jpost(
       "/api/conversations/" + target.id + "/model",
-      {
-        level,
-      },
+      body,
     );
     if (!r.ok) throw new Error(await r.text().catch(() => "switch failed"));
     const data = (await r.json()) as {
@@ -709,7 +818,7 @@ range.addEventListener("change", async () => {
     const accepted = data.pending_model || {
       model: data.model || optimistic.model,
       effort: data.effort,
-      level: data.level ?? level,
+      level: data.level ?? optimistic.level,
     };
     target.pending_model = accepted;
     if (state.currentConv?.id === target.id) {
@@ -726,12 +835,14 @@ range.addEventListener("change", async () => {
     // only when it still shows the switch target.
     if (mode === "conv" && conv === target) render();
   }
-});
+}
 
 window.addEventListener("online", () => fetchLadder());
 window.addEventListener("recurse-auth-changed", () => {
   ladder = null;
   loadFailed = false;
+  catalogRequested = false;
+  if (catalog) loadCatalog();
   render();
   void fetchLadder();
 });

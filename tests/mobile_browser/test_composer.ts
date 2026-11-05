@@ -588,6 +588,122 @@ export const tests: BrowserTest[] = [
     expect(errors).toEqual([]);
     await context.close();
   },
+  async function test_model_list_and_thinking_picker(browser, base) {
+    const context = await browser.newContext({
+      viewport: { width: 1100, height: 800 },
+    });
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await routeArtifacts(page, base);
+    const models = [
+      {
+        id: "test/model-a",
+        label: "Test A",
+        route: "Test",
+        context_window: 200_000,
+        reasoning_levels: ["low", "medium", "high", "xhigh", "max"],
+      },
+      {
+        id: "test/model-b",
+        label: "Test B",
+        route: "Test",
+        context_window: 1_000_000,
+        reasoning_levels: null,
+      },
+      {
+        id: "other/model-c",
+        label: "Other C",
+        route: "Other",
+        context_window: null,
+        reasoning_levels: ["off", "low"],
+      },
+    ];
+    await page.route(`${base}api/settings/effort-levels`, (route) =>
+      route.fulfill({ json: ladder }),
+    );
+    await page.route(`${base}api/settings/model-list`, (route) =>
+      route.fulfill({ json: { models, reasoning: ladder.reasoning } }),
+    );
+    const switches: any[] = [];
+    await page.route(`${base}api/conversations/*/model`, (route) => {
+      const body = route.request().postDataJSON();
+      switches.push(body);
+      return route.fulfill({
+        json: { pending_model: { model: body.model, effort: body.effort } },
+      });
+    });
+    await page.route(`${base}api/conversations`, (route) =>
+      route.fulfill({ status: 422, body: "test" }),
+    );
+    await gotoRoot(page, base);
+    await page.locator(".agent").first().waitFor();
+    await page.locator("#model-trigger").click();
+    const options = page.locator("#model-menu .model-picker-option");
+    await options.first().waitFor();
+    const ids = () =>
+      options.evaluateAll((all) => all.map((el: any) => el.dataset.model));
+    expect(await ids()).toEqual(models.map((model) => model.id));
+    expect(
+      await page.locator("#model-menu .model-picker-route").allTextContents(),
+    ).toEqual(["Test", "Other"]);
+    expect(
+      await page
+        .locator('#model-menu .model-picker-option[aria-selected="true"]')
+        .getAttribute("data-model"),
+    ).toBe("test/model-b");
+    const levels = page.locator("#model-menu .model-picker-level");
+    const checked = page.locator(
+      '#model-menu .model-picker-level[aria-checked="true"]',
+    );
+    expect(await levels.allTextContents()).toEqual(ladder.reasoning);
+    expect(await checked.textContent()).toBe("high");
+    await page
+      .locator('#model-menu .model-picker-option[data-model="other/model-c"]')
+      .click();
+    await page.waitForFunction(
+      "document.querySelector('#model-trigger .model-name').textContent === 'Other C'",
+    );
+    expect(switches).toEqual([{ model: "other/model-c", effort: "low" }]);
+    expect(await levels.allTextContents()).toEqual(["off", "low"]);
+    expect(await checked.textContent()).toBe("low");
+    await page
+      .locator('#model-menu .model-picker-level[data-level="off"]')
+      .click();
+    await page.waitForFunction(
+      "document.querySelector('#model-menu .model-picker-level[aria-checked=\"true\"]')?.textContent === 'off'",
+    );
+    expect(switches[1]).toEqual({ model: "other/model-c", effort: "off" });
+    const slider = await page.locator("#effort-range").inputValue();
+    const filter = page.locator("#model-menu .model-picker-filter");
+    await filter.press("j");
+    expect(await page.locator("#effort-range").inputValue()).toBe(slider);
+    await filter.fill("other");
+    expect(await ids()).toEqual(["other/model-c"]);
+    await filter.fill("");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("t");
+    await page.keyboard.press("t");
+    await page.locator("#draft-model-host").waitFor();
+    await page.locator("#model-trigger").click();
+    await page
+      .locator('#model-menu .model-picker-option[data-model="test/model-a"]')
+      .click();
+    await page.waitForFunction(
+      "document.querySelector('#model-trigger .model-name').textContent === 'Test A \u00b7 high'",
+    );
+    await page.locator("#input").fill("Start on the listed model");
+    const req = page.waitForRequest(`${base}api/conversations`);
+    await page.locator("#send").click();
+    const created = (await req).postDataJSON();
+    expect([created.model, created.effort, created.level]).toEqual([
+      "test/model-a",
+      "high",
+      undefined,
+    ]);
+    expect(errors).toEqual([]);
+    await context.close();
+  },
   // Regression: #2009 confirmed Stop stays pending until its response
   async function test_stop_request_id_fallback_dispatches_once(browser, base) {
     const context = await browser.newContext({
