@@ -15,6 +15,10 @@ migration. Recurse updates may require editing a custom script.
 - `arrangement.ts` checks sections and actions.
 - `sections.ts` draws sections; `script.ts` manages the worker and saved script.
 - `actions.ts` and `hold.ts` handle tag actions and hold menus.
+- `agent-folds.ts` remembers, on this device, which agents list their
+  subagents (opened with l/Right, folded with h/Left), so the agent list keeps
+  its shape across reloads and server restarts. `sections.ts` remembers
+  section folds the same way.
 
 Side conversations are excluded from both script inputs and stay in the Side
 pane. Rows require no extra record, transcript or GitHub reads. Usage is not in the

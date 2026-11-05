@@ -505,6 +505,63 @@ export const tests: BrowserTest[] = [
     expect(await row(child).count()).toBe(0);
     await page.close();
   },
+  // Feature: #0 the agent list keeps agents opened with l and the open agent folded with h after a reload, and forgets deleted agents.
+  async function test_agent_folds_survive_reload(browser, base) {
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 800 },
+    });
+    const create = async (title: string, parent: string | null) => {
+      const response = await page.request.post(`${base}api/conversations`, {
+        data: { parent },
+      });
+      const id = (await response.json()).id as string;
+      await page.request.post(`${base}api/conversations/${id}/rename`, {
+        data: { title },
+      });
+      return id;
+    };
+    const opened = await create("Saved open parent", null);
+    const openedChild = await create("Saved open child", opened);
+    const folded = await create("Saved folded parent", null);
+    const foldedChild = await create("Saved folded child", folded);
+    const row = (id: string) => page.locator(`.agent[data-id="${id}"]`);
+    const current = (id: string) =>
+      page.locator(`.agent[data-id="${id}"][aria-current="page"]`);
+    const press = async (id: string, key: string) => {
+      await row(id).click();
+      await current(id).waitFor();
+      await row(id).focus();
+      await page.keyboard.press(key);
+    };
+    const saved = () =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem("recurse.sidebarAgentFolds") || "{}"),
+      );
+    await page.goto(`${base}#agent=${opened}`);
+    await current(opened).waitFor();
+    await press(opened, "l");
+    await press(folded, "l");
+    await press(folded, "h");
+    await row(foldedChild).waitFor({ state: "detached" });
+    expect(await row(openedChild).isVisible()).toBe(true);
+    await page.reload();
+    await current(folded).waitFor();
+    await row(openedChild).waitFor();
+    expect(await row(opened).getAttribute("aria-expanded")).toBe("true");
+    expect(await row(folded).getAttribute("aria-expanded")).toBe("false");
+    expect(await row(foldedChild).count()).toBe(0);
+    expect(await saved()).toEqual({ open: [opened], collapsed: folded });
+    expect(
+      (await page.request.delete(`${base}api/conversations/${opened}`)).ok(),
+    ).toBe(true);
+    await row(opened).waitFor({ state: "detached" });
+    await page.waitForFunction(
+      (id) => !localStorage.getItem("recurse.sidebarAgentFolds")!.includes(id),
+      opened,
+    );
+    expect(await saved()).toEqual({ open: [], collapsed: folded });
+    await page.close();
+  },
 ];
 if (import.meta.main) {
   if (process.argv.includes("--list"))

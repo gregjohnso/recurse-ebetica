@@ -8,6 +8,7 @@ import { rowThreads } from "./row-thread-state.js";
 import { startBackendDiscovery } from "./backends/discovery.js";
 import { backends } from "./backends/backend.js";
 import { treeOf } from "./backends/tree.js";
+import { keepSubagentsOpen } from "./sidebar/agent-folds.js";
 import {
   state,
   chordLabel,
@@ -68,7 +69,6 @@ import {
   selectAgent,
   treeAscendOrCollapse,
   treeExpandIfCollapsed,
-  keepSubagentsOpen,
   armDelete,
   disarmDelete,
   killSelected,

@@ -97,6 +97,7 @@ import { canDrop, isValidDropTarget, reparentValidity } from "./reparent.js";
 import type { TreeNode } from "./types.js";
 import type { Action, Section } from "./sidebar/arrangement.js";
 import { SIDEBAR_CHANGE, shownTags } from "./sidebar/actions.js";
+import * as folds from "./sidebar/agent-folds.js";
 import { holdOpen, moveHold, openHold, releaseHold } from "./sidebar/hold.js";
 import {
   arrange,
@@ -196,8 +197,8 @@ function visibleTree(): TreeEntry[] {
           stableOrder(Object.values(state.nodes)),
           state.selectedId,
           {
-            collapsed: collapsedAnchor ? new Set([collapsedAnchor]) : undefined,
-            expanded: keptOpen,
+            collapsed: folds.foldedAgents(),
+            expanded: folds.keptOpen,
             autoCollapseDepth: DEFAULT_FOLD_DEPTH,
           },
         ).map((e) => ({
@@ -235,8 +236,8 @@ function sectioned(): TreeEntry[] {
     ),
     state.selectedId,
     {
-      collapsed: collapsedAnchor ? new Set([collapsedAnchor]) : undefined,
-      expanded: keptOpen,
+      collapsed: folds.foldedAgents(),
+      expanded: folds.keptOpen,
       autoCollapseDepth: DEFAULT_FOLD_DEPTH,
     },
   )) {
@@ -298,12 +299,6 @@ function anchorId(): string {
     : "";
 }
 
-let collapsedAnchor: string | null = null;
-// Agents opened with l/Right stay unfolded until h/Left collapses them.
-const keptOpen = new Set<string>();
-export function keepSubagentsOpen(id: string): void {
-  if (anchorHasChildren(id)) keptOpen.add(id);
-}
 function anchorHasChildren(anchor: string): boolean {
   return (
     !!anchor &&
@@ -639,7 +634,7 @@ export function selectAgent(
   // below, while draft promotion transfers both views to the newly created
   // conversation.
   state.draft = null;
-  collapsedAnchor = null;
+  folds.noteSelection(id);
   state.selectedId = id;
   state.cursorId = id;
   if (outgoing === DRAFT && preserveAttachments) promoteComposerOwner(id);
@@ -856,11 +851,10 @@ export function treeAscendOrCollapse(): void {
     state.cursorId,
     anchor,
     anchorHasChildren(anchor),
-    collapsedAnchor === anchor,
+    folds.collapsedAgent() === anchor,
   );
   if (action === "collapse") {
-    collapsedAnchor = anchor;
-    keptOpen.delete(anchor);
+    folds.foldAgent(anchor);
     renderSidebar();
     if (state.nodes[anchor])
       announceNode(state.nodes[anchor], "Collapsed subagents");
@@ -873,12 +867,15 @@ export function treeAscendOrCollapse(): void {
 export function treeExpandIfCollapsed(): boolean {
   const anchor = anchorId();
   if (
-    resolveLAction(state.cursorId, anchor, collapsedAnchor === anchor) !==
-    "expand"
+    resolveLAction(
+      state.cursorId,
+      anchor,
+      folds.collapsedAgent() === anchor,
+    ) !== "expand"
   )
     return false;
-  collapsedAnchor = null;
-  keepSubagentsOpen(anchor);
+  folds.unfoldAgent();
+  folds.keepSubagentsOpen(anchor);
   renderSidebar();
   if (state.nodes[anchor])
     announceNode(state.nodes[anchor], "Expanded subagents");
