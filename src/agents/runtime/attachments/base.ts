@@ -14,6 +14,8 @@ export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 export const MAX_NAME_CHARS = 180;
 export const MAX_MANIFEST_BYTES = 8192;
+export const MAX_RELATED_FILES = 100;
+export const MAX_RELATED_FILES_BYTES = MAX_MANIFEST_BYTES - 1536;
 export const SOURCE_UPLOAD = "upload";
 export const SOURCE_PUBLICATION = "publication";
 export const SOURCES: ReadonlySet<string> = new Set([
@@ -220,6 +222,57 @@ export function inlineRasterMediaType(data: Uint8Array): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** A decoded descendant path, excluding hidden files and traversal. */
+export function relatedFilePath(href: string): string | null {
+  if (!href || href.length > 4096 || /^[a-z][a-z0-9+.-]*:|^[/#]/i.test(href))
+    return null;
+  let path: string;
+  try {
+    path = decodeURIComponent(href.split(/[?#]/, 1)[0]!);
+  } catch {
+    return null;
+  }
+  if (
+    !path ||
+    /^[a-z][a-z0-9+.-]*:|^\//i.test(path) ||
+    /[\\\\\p{C}]/u.test(path)
+  )
+    return null;
+  const parts = path.split("/").filter((part) => part && part !== ".");
+  if (!parts.length || parts.some((part) => part.startsWith("."))) return null;
+  return parts.join("/");
+}
+
+/** Decode bounded immutable document references; absent/invalid is null. */
+export function readRelatedFiles(
+  value: unknown,
+): Record<string, string> | null {
+  if (
+    typeof value !== "string" ||
+    Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_RELATED_FILES_BYTES
+  )
+    return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!isRecord(parsed)) return null;
+    const entries = Object.entries(parsed);
+    if (entries.length > MAX_RELATED_FILES) return null;
+    const result: Record<string, string> = Object.create(null);
+    for (const [href, id] of entries) {
+      if (
+        relatedFilePath(href) === null ||
+        typeof id !== "string" ||
+        !FILE_ID_REGEX.test(id)
+      )
+        return null;
+      result[href] = id;
+    }
+    return result;
+  } catch {
+    return null;
+  }
 }
 
 /** Hash the exact model/helper path and optional filename parameters. */

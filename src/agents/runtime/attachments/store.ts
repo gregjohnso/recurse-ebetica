@@ -22,6 +22,7 @@ import {
   INLINE_RASTER_TYPES,
   MAX_FILE_BYTES,
   MAX_MANIFEST_BYTES,
+  readRelatedFiles,
   MEDIA_TYPE_REGEX,
   RUN_ID_REGEX,
   SOURCE_PUBLICATION,
@@ -177,6 +178,8 @@ export function manifestFieldsValid(
     (typeof v.created_at === "number" || typeof v.created_at === "boolean") &&
     Number.isFinite(Number(v.created_at)) &&
     typeof v.published === "boolean" &&
+    (!Object.hasOwn(v, "related_files") ||
+      readRelatedFiles(v.related_files) !== null) &&
     SOURCES.has(
       (Object.hasOwn(v, "source") ? v.source : SOURCE_PUBLICATION) as string,
     )

@@ -20,6 +20,7 @@ import {
   SOURCES,
   UPLOAD_LIMITS,
   PUBLICATION_LIMITS,
+  readRelatedFiles,
   VERSION,
   displayName,
   inlineRasterMediaType,
@@ -435,6 +436,7 @@ function admitPublishRate(
   manifests: Manifest[],
   limits: OwnerLimits,
   now: number,
+  reserved = 0,
 ): void {
   const limit = limits.publishesPerMinute;
   if (limit === undefined) return;
@@ -445,11 +447,47 @@ function admitPublishRate(
       Number(manifest.created_at) > now - 60
     )
       recent += 1;
-  if (recent >= limit)
+  if (recent + reserved >= limit)
     throw new AttachmentError(
       `publish limit reached: at most ${limit} files per minute per conversation; try again in a minute`,
     );
 }
+export interface RegisterOptions extends PublishOptions {
+  name?: string | null;
+  manyPerCall?: boolean;
+  sourceHandle?: FileHandle;
+  relatedFiles?: string;
+  expectedSha256?: string;
+  reserveParentSlot?: boolean;
+}
+
+/** Find the committed original before reading any current source bytes. */
+export async function registeredFile(
+  collection: string,
+  owner: string,
+  runId: string,
+  toolCallId: string,
+  source: string,
+  options: RegisterOptions = {},
+): Promise<Manifest | null> {
+  if (!RUN_ID_REGEX.test(runId || "") || !CALL_ID_REGEX.test(toolCallId || ""))
+    throw new AttachmentError(
+      "attachments require a valid active Pi tool call",
+    );
+  const [, intent] = stageRequest(source, options.name);
+  return withLockedCollection(collection, async (fd) => {
+    const manifests = await cleanupDebris(fd, owner);
+    return (
+      manifests.find(
+        (manifest) =>
+          manifest.run_id === runId &&
+          manifest.tool_call_id === toolCallId &&
+          (!options.manyPerCall || manifest.intent_sha256 === intent),
+      ) ?? null
+    );
+  });
+}
+
 // Replayed publications return the committed file. Multi-file calls match
 // source intent too, so each path/name pair is admitted once per call.
 export async function registerFile(
@@ -459,10 +497,7 @@ export async function registerFile(
   toolCallId: string,
   source: string,
   workdir: string,
-  options: PublishOptions & {
-    name?: string | null;
-    manyPerCall?: boolean;
-  } = {},
+  options: RegisterOptions = {},
 ): Promise<Manifest> {
   if (typeof runId !== "string" || !RUN_ID_REGEX.test(runId))
     throw new AttachmentError("attachments require an active agent turn");
@@ -470,8 +505,32 @@ export async function registerFile(
     throw new AttachmentError("attachments require a valid Pi tool call");
   const { limits = PUBLICATION_LIMITS, now, ids = defaultId } = options;
   const [display, sourceIntent] = stageRequest(source, options.name);
-  const { fd: sourceFd, size } = await openedSource(source, workdir);
+  const replay = await registeredFile(
+    collection,
+    owner,
+    runId,
+    toolCallId,
+    source,
+    options,
+  );
+  if (replay) return publicMetadata(replay);
+  if (
+    options.relatedFiles !== undefined &&
+    readRelatedFiles(options.relatedFiles) === null
+  )
+    throw new AttachmentError("document references are invalid");
+  if (
+    options.expectedSha256 !== undefined &&
+    !/^[0-9a-f]{64}$/.test(options.expectedSha256)
+  )
+    throw new AttachmentError("attachment checksum is invalid");
+  const sourceFd =
+    options.sourceHandle ?? (await openedSource(source, workdir)).fd;
   try {
+    const info = await sourceFd.stat();
+    if (!info.isFile())
+      throw new AttachmentError("source must be a regular file");
+    const size = info.size;
     if (size <= 0) throw new AttachmentError("attachment source is empty");
     if (size > limits.maxFileBytes)
       throw new AttachmentError(
@@ -487,8 +546,14 @@ export async function registerFile(
       );
       if (old) return publicMetadata(old);
       const created = now ?? Date.now() / 1000;
-      admitPublishRate(manifests, limits, created);
+      admitPublishRate(
+        manifests,
+        limits,
+        created,
+        options.reserveParentSlot ? 1 : 0,
+      );
       const id = ids();
+      let position = 0;
       const staged = await writeTmpBlob(
         fd,
         id,
@@ -498,8 +563,9 @@ export async function registerFile(
             chunk,
             0,
             chunk.length,
-            null,
+            position,
           );
+          position += bytesRead;
           return chunk.subarray(0, bytesRead);
         },
         size,
@@ -508,7 +574,11 @@ export async function registerFile(
       );
       let tmp = staged.tmp;
       try {
-        if (staged.size !== size)
+        if (
+          staged.size !== size ||
+          (options.expectedSha256 !== undefined &&
+            staged.sha256 !== options.expectedSha256)
+        )
           throw new AttachmentError(
             "source changed while it was being attached",
           );
@@ -529,6 +599,9 @@ export async function registerFile(
           run_id: runId,
           tool_call_id: toolCallId,
           published: true,
+          ...(options.relatedFiles === undefined
+            ? {}
+            : { related_files: options.relatedFiles }),
         };
         await writeManifestJson(fd, manifestName(id), manifest, ids);
         return publicMetadata(manifest);
@@ -537,6 +610,6 @@ export async function registerFile(
       }
     });
   } finally {
-    await sourceFd.close();
+    if (options.sourceHandle === undefined) await sourceFd.close();
   }
 }
