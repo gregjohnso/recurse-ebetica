@@ -38,9 +38,10 @@ for the conversation on screen.
   The context mini-meter uses delivered ResizeObserver border-box widths (the
   controls have padding but no border), never layout reads after bar updates.
 - Sending and uploads: `composer.ts`, `composer/`, `attachments.ts`.
-  The line under the composer names the shown agent's working directory
-  (`composer/cwd.ts`, read from `/api/conversations/{cid}/cwd` after the
-  conversation paints); drafts show none.
+  The topbar names the shown agent's working directory beside its title
+  (`conversation/cwd.ts`, read from `/api/conversations/{cid}/cwd` after the
+  conversation paints); drafts show none. Long titles and paths truncate in
+  the same row; the path's tooltip and accessible label keep its full value.
   Drawing on an image preview attaches the export on **Done** and closes the
   preview through its existing close path. Cancel leaves the preview open.
   Successful image-comment sends also close the preview and return to the

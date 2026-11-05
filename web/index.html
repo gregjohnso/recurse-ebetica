@@ -248,9 +248,13 @@
   #up-top:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: -2px; }
   #topbar .spacer { flex: 1; }
   #top-actions { flex: none; }
-  /* The title takes the remaining width without moving actions onto a new row. */
+  /* The title and directory truncate without moving actions onto a new row. */
   #conv-titlebar { position: relative; display: flex; flex: 1; align-items: center; gap: var(--space-3); min-width: 0; }
-  #conv-title { flex: 1; min-height: 44px; line-height: 44px; }
+  #conv-title { flex: 0 1 auto; min-height: 44px; line-height: 44px; }
+  #conv-cwd { flex: 0 1 auto; min-width: 0; max-width: 50%; overflow: hidden;
+    color: var(--text-faint); font: 0.71875rem/1.6 var(--font-mono);
+    text-overflow: ellipsis; white-space: nowrap; -webkit-user-select: text; user-select: text; }
+  #conv-cwd[hidden] { display: none; }
   #sidebar.desktop-hidden { display: none; }
   @media (min-width: 701px) {
     #sidebar:not(.desktop-hidden) ~ #main #new-top { display: none; }
@@ -1401,11 +1405,6 @@
     display: flex; align-items: flex-end; gap: var(--space-3); position: relative;
     transition: border-color var(--motion-fast); }
   #composer:focus-within, .composer-box:focus-within { border-color: var(--accent-dim); }
-  /* The shown agent's working directory, under the composer (composer/cwd.ts). */
-  #composer-cwd { max-width: 780px; margin: var(--space-2) auto 0; padding: 0 var(--space-3);
-    overflow: hidden; color: var(--text-faint); font: 0.71875rem/1.6 var(--font-mono);
-    text-overflow: ellipsis; white-space: nowrap; -webkit-user-select: text; user-select: text; }
-  #composer-cwd[hidden] { display: none; }
   #composer.dragover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
   #input, .composer-input { flex: 1; border: 0; background: none; resize: none; outline: none;
     color: var(--text); font: inherit; max-height: 180px; padding: var(--space-3) 0; }
@@ -1929,6 +1928,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
         <span class="sr-only"></span>
       </span>
       <span id="conv-title">Agents</span>
+      <span id="conv-cwd" role="note" hidden></span>
       <span id="title-copied" aria-live="polite">Copied ID</span>
       <span class="chip badge accent" id="chip-kids"></span>
       <span class="chip badge warn" id="chip-queued" role="img">
@@ -2016,7 +2016,6 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
         </button>
       </div>
     </div>
-    <div id="composer-cwd" hidden></div>
     <button id="send-status" type="button" aria-live="polite" disabled></button>
     <div id="update-status" aria-live="polite"></div>
   </div>

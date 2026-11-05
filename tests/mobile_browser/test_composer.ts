@@ -588,35 +588,61 @@ export const tests: BrowserTest[] = [
     expect(errors).toEqual([]);
     await context.close();
   },
-  async function test_composer_shows_agent_cwd(browser, base) {
-    const page = await browser.newPage({
-      viewport: { width: 1100, height: 800 },
-    });
-    const errors = captureErrors(page);
-    await gotoRoot(page, base);
-    await page.locator(".agent").first().waitFor();
-    const id = await page
-      .locator(".agent.selected")
-      .first()
-      .getAttribute("data-id");
-    const cwd = (await (
-      await page.request.get(`${base}api/conversations/${id}/cwd`)
-    ).json()) as { cwd: string };
-    expect(cwd.cwd).toBeTruthy();
-    const line = page.locator("#composer-cwd");
-    await line.waitFor();
-    expect(await line.getAttribute("title")).toBe(cwd.cwd);
-    expect(await line.textContent()).toBe(cwd.cwd);
-    const composer = (await page.locator("#composer").boundingBox())!;
-    const box = (await line.boundingBox())!;
-    expect(box.y).toBeGreaterThanOrEqual(composer.y + composer.height);
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("t");
-    await page.keyboard.press("t");
-    await page.locator("#draft-model-host").waitFor();
-    expect(await line.isVisible()).toBe(false);
-    expect(errors).toEqual([]);
-    await page.close();
+  async function test_header_shows_agent_cwd(browser, base) {
+    for (const width of [1100, 320]) {
+      const page = await browser.newPage({
+        viewport: { width, height: 800 },
+      });
+      const errors = captureErrors(page);
+      let release!: () => void;
+      const ready = new Promise<void>((resolve) => (release = resolve));
+      await page.route(`${base}api/conversations/*/cwd`, async (route) => {
+        await ready;
+        await route.continue();
+      });
+      await gotoRoot(page, base);
+      await page.locator("#messages .msg").first().waitFor();
+      expect(await page.locator("#input").isEnabled()).toBe(true);
+      const line = page.locator("#conv-cwd");
+      expect(await line.isVisible()).toBe(false);
+      release();
+      const id = await page
+        .locator(".agent.selected")
+        .first()
+        .getAttribute("data-id");
+      const cwd = (await (
+        await page.request.get(`${base}api/conversations/${id}/cwd`)
+      ).json()) as { cwd: string };
+      expect(cwd.cwd).toBeTruthy();
+      await line.waitFor();
+      expect(await line.getAttribute("title")).toBe(cwd.cwd);
+      expect(await line.getAttribute("aria-label")).toBe(
+        `Working directory: ${cwd.cwd}`,
+      );
+      expect(await line.textContent()).toBe(cwd.cwd);
+      expect(await page.locator("#composer-wrap #conv-cwd").count()).toBe(0);
+      expect(await page.locator("#composer-cwd").count()).toBe(0);
+      const title = (await page.locator("#conv-title").boundingBox())!;
+      const header = (await page.locator("#topbar").boundingBox())!;
+      const box = (await line.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(title.x + title.width);
+      expect(box.y).toBeGreaterThanOrEqual(header.y);
+      expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height);
+      expect(title.width).toBeGreaterThan(0);
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+      if (width === 320)
+        expect(
+          await line.evaluate((el) => el.scrollWidth > el.clientWidth),
+        ).toBe(true);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("t");
+      await page.keyboard.press("t");
+      await page.locator("#draft-model-host").waitFor();
+      expect(await line.isVisible()).toBe(false);
+      expect(errors).toEqual([]);
+      await page.close();
+    }
   },
   async function test_model_list_and_thinking_picker(browser, base) {
     const context = await browser.newContext({

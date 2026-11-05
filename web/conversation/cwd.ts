@@ -1,11 +1,11 @@
-// The line under the composer names the shown agent's working directory. It
-// reads best-effort after the conversation paints and never delays it.
+// The directory beside the conversation title reads best-effort after the
+// conversation paints and never delays it.
 import { backendFor } from "../backends/backend.js";
 import { shortCwd } from "../diff/model.js";
 import { $ } from "../dom.js";
 import type { Conversation } from "../types.js";
 
-const line = $("#composer-cwd");
+const line = $("#conv-cwd");
 let shownId: string | null = null;
 let shownKey: string | null = null;
 let request = 0;
@@ -41,6 +41,7 @@ export function showConversationCwd(conv: Conversation | null): void {
       if (!cwd && !line.hidden) return;
       line.textContent = shortCwd(cwd);
       line.title = cwd;
+      line.setAttribute("aria-label", `Working directory: ${cwd}`);
       line.hidden = !cwd;
     });
 }

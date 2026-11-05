@@ -17,7 +17,7 @@ import {
   phaseFor,
 } from "./freshness.js";
 import { conversationStatusCopy } from "./chrome/status.js";
-import { showConversationCwd } from "../composer/cwd.js";
+import { showConversationCwd } from "./cwd.js";
 import { $, inputEl, msgsEl, titleEl } from "../dom.js";
 import { hideModel, showConversationModel, showDraftModel } from "../models.js";
 import { beginPaneVisit, syncPanes } from "../panes.js";
