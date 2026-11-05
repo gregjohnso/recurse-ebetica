@@ -1535,6 +1535,22 @@ export function registerConversationRoutes(
     return conv!;
   };
 
+  router.get("/api/conversations/{cid}/cwd", async (ex) => {
+    // Invariant: A display read for the composer: a Durable agent's chdir wins
+    // over its stored workdir. No git work, and never on the load path.
+    const conv = loadOr404(ex.params.cid!);
+    let workdir: string;
+    try {
+      workdir = store.effectiveWorkdir(conv);
+    } catch {
+      throw new HttpError(404, "unknown workdir");
+    }
+    const live = deps.durable?.owns(conv)
+      ? await deps.durable.effectiveCwd(String(conv.id)).catch(() => null)
+      : null;
+    return jsonResponse({ cwd: live || workdir }, 200, noStore);
+  });
+
   router.get("/api/conversations/{cid}/prs", async (ex) => {
     const conv = loadOr404(ex.params.cid!);
     let cwd: string | null = null;

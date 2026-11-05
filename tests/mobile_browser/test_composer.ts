@@ -588,6 +588,36 @@ export const tests: BrowserTest[] = [
     expect(errors).toEqual([]);
     await context.close();
   },
+  async function test_composer_shows_agent_cwd(browser, base) {
+    const page = await browser.newPage({
+      viewport: { width: 1100, height: 800 },
+    });
+    const errors = captureErrors(page);
+    await gotoRoot(page, base);
+    await page.locator(".agent").first().waitFor();
+    const id = await page
+      .locator(".agent.selected")
+      .first()
+      .getAttribute("data-id");
+    const cwd = (await (
+      await page.request.get(`${base}api/conversations/${id}/cwd`)
+    ).json()) as { cwd: string };
+    expect(cwd.cwd).toBeTruthy();
+    const line = page.locator("#composer-cwd");
+    await line.waitFor();
+    expect(await line.getAttribute("title")).toBe(cwd.cwd);
+    expect(await line.textContent()).toBe(cwd.cwd);
+    const composer = (await page.locator("#composer").boundingBox())!;
+    const box = (await line.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(composer.y + composer.height);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("t");
+    await page.keyboard.press("t");
+    await page.locator("#draft-model-host").waitFor();
+    expect(await line.isVisible()).toBe(false);
+    expect(errors).toEqual([]);
+    await page.close();
+  },
   async function test_model_list_and_thinking_picker(browser, base) {
     const context = await browser.newContext({
       viewport: { width: 1100, height: 800 },

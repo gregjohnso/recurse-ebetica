@@ -17,6 +17,7 @@ import {
   phaseFor,
 } from "./freshness.js";
 import { conversationStatusCopy } from "./chrome/status.js";
+import { showConversationCwd } from "../composer/cwd.js";
 import { $, inputEl, msgsEl, titleEl } from "../dom.js";
 import { hideModel, showConversationModel, showDraftModel } from "../models.js";
 import { beginPaneVisit, syncPanes } from "../panes.js";
@@ -71,6 +72,7 @@ function clearConversationChrome(id: string): void {
   setTitleCopyable(true, id);
   hideModel();
   hideSafety();
+  showConversationCwd(null);
   paintTakeoverControl(null);
 
   $("#conv-status")!.classList.remove("running");
@@ -114,6 +116,7 @@ export function updateChrome(conv: Conversation): void {
   setTitleCopyable(true, conv.id);
   showConversationModel(conv);
   showConversationSafety(conv);
+  showConversationCwd(conv);
   paintTakeoverControl(conv);
 
   const st = $("#chip-state")!;
@@ -179,6 +182,7 @@ export function renderEmptyAgentList(): void {
   setTitleCopyable(false);
   hideModel();
   hideSafety();
+  showConversationCwd(null);
   paintTakeoverControl(null);
 
   $("#conv-status")!.classList.remove("running");
@@ -218,6 +222,7 @@ export function renderDraft(): void {
   // pane below.
   hideModel();
   hideSafety();
+  showConversationCwd(null);
   $("#conv-status")!.classList.remove("running");
   $("#chip-kids")!.classList.remove("on");
   $("#chip-queued")!.classList.remove("on");
