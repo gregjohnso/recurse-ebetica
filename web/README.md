@@ -179,8 +179,8 @@ templates; do not add another lint stack just for that gap.
 
 ## Brand assets
 
-[brand/](brand/) contains the brush-circle logo. [logo.png](brand/logo.png)
-is the cleaned transparent artwork, with isolated border specks removed. The
+[brand/](brand/) contains the ring logo. [logo.png](brand/logo.png) is the
+transparent artwork, recoloured white with its own anti-aliased alpha. The
 mark, favicon and wordmark use black in light mode and white in dark mode via
 `prefers-color-scheme`, with no background tile. [mark.svg](brand/mark.svg)
 is the small UI mark. The sidebar header holds the New button instead of a
@@ -191,11 +191,11 @@ mask `currentColor` with the artwork's alpha channel when embedded inline.
 The frontend asset build copies this directory to `/static/brand/`.
 [index.html](index.html) links the adaptive SVG favicon, black and white 32 px
 PNG fallbacks selected by media query, and the 180 px Apple touch icon. These
-links carry the cleaned artwork's SHA-256 prefix as a query version; update it
+links carry the artwork's SHA-256 prefix as a query version; update it
 when replacing the artwork so browsers discard cached icons. The web manifest advertises 192 and 512 px app icons
 and full-bleed maskable variants; push notifications use the 192 px app icon.
 The SVGs embed a reduced PNG copy of the artwork. PNG exports are resized from
-the cleaned artwork at their named dimensions. Launcher PNGs and maskable icons
+the artwork at their named dimensions. Launcher PNGs and maskable icons
 use white on a black tile; maskable icons inset the circle to keep it within the
 safe area. The Apple touch icon uses the standard app tile.
 
