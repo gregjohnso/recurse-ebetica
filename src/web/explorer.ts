@@ -3,7 +3,8 @@
 // only regular non-credential files open. One directory and one bounded Git
 // ignore check per request; agent-marked requests are refused (README.md).
 import { constants, type Stats } from "node:fs";
-import { open, type FileHandle } from "node:fs/promises";
+import { open, realpath, type FileHandle } from "node:fs/promises";
+import { resolve } from "node:path";
 import { contentDisposition } from "../agents/runtime/attachments/published";
 import { inlineRasterMediaType } from "../agents/runtime/attachments/base";
 import { lstatAt, openAt, typedEntriesAt } from "../utils/dir_fd";
@@ -16,6 +17,8 @@ type Rec = Record<string, unknown>;
 
 /** Entries returned per directory; the rest are counted as `more`. */
 export const EXPLORER_MAX_ENTRIES = 1000;
+/** Names read per directory; past this `more` is a lower bound. */
+export const EXPLORER_SCAN_MAX_ENTRIES = 10_000;
 /** Text preview bytes; longer files are truncated. */
 export const EXPLORER_TEXT_MAX_BYTES = 1024 * 1024;
 /** Raw downloads and image previews larger than this are refused. */
@@ -35,7 +38,20 @@ const RASTER_EXTENSIONS: Readonly<Record<string, string>> = {
   webp: "image/webp",
 };
 const CREDENTIAL_RE =
-  /^(?:\.env.*|id_(?:rsa|dsa|ecdsa|ed25519).*|\.netrc|_netrc|\.git-credentials|\.pgpass|\.npmrc|\.pypirc|credentials(?:\..*)?|auth\.json|.*\.(?:pem|key|p12|pfx))$/i;
+  /^(?:\.env.*|id_(?:rsa|dsa|ecdsa|ed25519).*|\.netrc|_netrc|\.git-credentials|\.pgpass|\.npmrc|\.pypirc|\.vault-token|\.htpasswd|credentials(?:\..*)?|auth\.json|.*\.tfstate.*|.*\.(?:pem|key|p12|pfx))$/i;
+const CREDENTIAL_SUFFIXES = [
+  [".git", "config"],
+  [".kube", "config"],
+  [".docker", "config.json"],
+  [".config", "gh", "hosts.yml"],
+];
+const GIT = [
+  "git",
+  "-c",
+  "core.fsmonitor=false",
+  "--no-optional-locks",
+  "--no-replace-objects",
+];
 const SAFE_HEADERS = {
   "cache-control": "private, no-store",
   "x-content-type-options": "nosniff",
@@ -63,11 +79,25 @@ export interface ExplorerRoutesDeps {
   };
   /** The server's process environment, scrubbed before running Git. */
   readonly env: Readonly<Record<string, string | undefined>>;
+  /** Recurse's data directory; files under it are listed but never read. */
+  readonly dataDir: string;
 }
 
-/** True for names whose contents look like secrets; they are listed only. */
-export function credentialName(name: string): boolean {
-  return CREDENTIAL_RE.test(name);
+/**
+ * True when the file at real absolute `path` may hold secrets: credential
+ * names, anything under .ssh, known config files, or Recurse's data dir.
+ */
+export function credentialPath(path: string, dataDir: string): boolean {
+  const parts = path.split("/").filter(Boolean);
+  return (
+    CREDENTIAL_RE.test(parts.at(-1) ?? "") ||
+    parts.includes(".ssh") ||
+    CREDENTIAL_SUFFIXES.some((suffix) =>
+      suffix.every((part, index) => parts.at(index - suffix.length) === part),
+    ) ||
+    path === dataDir ||
+    path.startsWith(`${dataDir.replace(/\/$/, "")}/`)
+  );
 }
 
 /** Validated components of a root-relative path; 422 for anything else. */
@@ -123,8 +153,6 @@ function entryType(stats: Stats): ExplorerEntry["type"] {
   return stats.isFile() ? "file" : "other";
 }
 
-const sortKey = (name: string) => name.toLowerCase();
-
 /** Root-relative paths that Git ignores; empty when Git cannot say in time. */
 async function ignoredPaths(
   root: string,
@@ -134,18 +162,24 @@ async function ignoredPaths(
 ): Promise<Set<string>> {
   if (!paths.length) return new Set();
   const result = await runBounded(
-    ["git", "--no-replace-objects", "check-ignore", "--stdin", "-z"],
+    [...GIT, "check-ignore", "--stdin", "-z"],
     root,
     safeGitEnv(env),
     GIT_OUTPUT_MAX_BYTES,
     GIT_TIMEOUT_SECONDS,
     signal,
-    new TextEncoder().encode(paths.map((path) => `${path}\0`).join("")),
+    // Invariant: check-ignore rejects --literal-pathspecs; a "./" prefix keeps
+    // names such as ":(exclude)b" from being read as pathspec magic.
+    new TextEncoder().encode(paths.map((path) => `./${path}\0`).join("")),
   );
   if (!result || result.truncated || (result.code !== 0 && result.code !== 1))
     return new Set();
   return new Set(
-    new TextDecoder().decode(result.out).split("\0").filter(Boolean),
+    new TextDecoder()
+      .decode(result.out)
+      .split("\0")
+      .filter((path) => path.startsWith("./"))
+      .map((path) => path.slice(2)),
   );
 }
 
@@ -156,7 +190,7 @@ async function gitPrefix(
   signal: AbortSignal,
 ): Promise<string | null> {
   const result = await runBounded(
-    ["git", "--no-optional-locks", "rev-parse", "--show-prefix"],
+    [...GIT, "rev-parse", "--show-prefix"],
     root,
     safeGitEnv(env),
     4096,
@@ -167,28 +201,34 @@ async function gitPrefix(
   return new TextDecoder().decode(result.out).trim();
 }
 
-/** List one directory: folders first, then case-insensitive names. */
+/**
+ * List one directory: folders first, then case-insensitive names. Reads at
+ * most EXPLORER_SCAN_MAX_ENTRIES names, so a huge folder sorts only those.
+ */
 export async function listDirectory(
   root: string,
   parts: string[],
+  realRoot: string,
+  dataDir: string,
   env: ExplorerRoutesDeps["env"],
   signal: AbortSignal,
-): Promise<{ entries: ExplorerEntry[]; more: number }> {
+): Promise<{ entries: ExplorerEntry[]; more: number; more_exact: boolean }> {
   const dir = await openDirectory(root, parts);
   try {
-    const all = await typedEntriesAt(dir.fd);
-    all.sort(
+    const { entries: scanned, complete } = await typedEntriesAt(
+      dir.fd,
+      EXPLORER_SCAN_MAX_ENTRIES,
+    );
+    const keyed = scanned.map((entry) => ({
+      ...entry,
+      key: entry.name.toLowerCase(),
+    }));
+    keyed.sort(
       (a, b) =>
         Number(b.directory) - Number(a.directory) ||
-        (sortKey(a.name) < sortKey(b.name)
-          ? -1
-          : sortKey(a.name) > sortKey(b.name)
-            ? 1
-            : a.name < b.name
-              ? -1
-              : 1),
+        (a.key < b.key ? -1 : a.key > b.key ? 1 : a.name < b.name ? -1 : 1),
     );
-    const shown = all.slice(0, EXPLORER_MAX_ENTRIES);
+    const shown = keyed.slice(0, EXPLORER_MAX_ENTRIES);
     const prefix = parts.length ? `${parts.join("/")}/` : "";
     const [stats, ignored] = await Promise.all([
       Promise.all(
@@ -213,10 +253,16 @@ export async function listDirectory(
         mtime: Math.floor(stat.mtimeMs),
         ignored: ignored.has(prefix + name),
         symlink: type === "symlink",
-        credential: type === "file" && credentialName(name),
+        credential:
+          type === "file" &&
+          credentialPath(`${realRoot}/${prefix}${name}`, dataDir),
       });
     });
-    return { entries, more: all.length - shown.length };
+    return {
+      entries,
+      more: keyed.length - shown.length,
+      more_exact: complete,
+    };
   } finally {
     await dir.close().catch(() => {});
   }
@@ -226,6 +272,8 @@ export async function listDirectory(
 export async function openRegularFile(
   root: string,
   parts: string[],
+  realRoot: string,
+  dataDir: string,
 ): Promise<{ handle: FileHandle; stats: Stats; name: string }> {
   if (!parts.length) throw new HttpError(422, "not a file");
   const name = parts.at(-1)!;
@@ -237,7 +285,7 @@ export async function openRegularFile(
     if (before.isSymbolicLink())
       throw new HttpError(422, "symbolic links are not followed");
     if (!before.isFile()) throw new HttpError(422, "not a regular file");
-    if (credentialName(name))
+    if (credentialPath(`${realRoot}/${parts.join("/")}`, dataDir))
       throw new HttpError(403, "credential file contents are not shown");
     const handle = await openAt(dir.fd, name, FILE_FLAGS);
     const stats = await handle.stat().catch(() => null);
@@ -282,6 +330,7 @@ export function registerExplorerRoutes(
   router: Router,
   deps: ExplorerRoutesDeps,
 ): void {
+  let dataDir: Promise<string> | null = null;
   const scope = async (ex: Exchange) => {
     if (agentMarked(ex))
       throw new HttpError(403, "only the operator can browse files");
@@ -297,9 +346,17 @@ export function registerExplorerRoutes(
       ? await deps.durable.effectiveCwd(String(conv.id)).catch(() => null)
       : null;
     const raw = ex.query.path;
+    const parts = explorerPath(typeof raw === "string" ? raw : null);
+    const root = live || workdir;
+    dataDir ??= realpath(deps.dataDir).catch(() => resolve(deps.dataDir));
     return {
-      root: live || workdir,
-      parts: explorerPath(typeof raw === "string" ? raw : null),
+      root,
+      parts,
+      realRoot: (await realpath(root).catch(() => resolve(root))).replace(
+        /\/$/,
+        "",
+      ),
+      dataDir: await dataDir,
     };
   };
   const query = { query: { path: { type: "str" as const } } };
@@ -307,11 +364,11 @@ export function registerExplorerRoutes(
   router.get(
     "/api/conversations/{cid}/tree",
     async (ex) => {
-      const { root, parts } = await scope(ex);
+      const { root, parts, realRoot, dataDir } = await scope(ex);
       const signal = ex.request.signal;
       try {
         const [listing, prefix] = await Promise.all([
-          listDirectory(root, parts, deps.env, signal),
+          listDirectory(root, parts, realRoot, dataDir, deps.env, signal),
           parts.length ? null : gitPrefix(root, deps.env, signal),
         ]);
         return jsonResponse(
@@ -329,10 +386,10 @@ export function registerExplorerRoutes(
   router.get(
     "/api/conversations/{cid}/tree/file",
     async (ex) => {
-      const { root, parts } = await scope(ex);
+      const { root, parts, realRoot, dataDir } = await scope(ex);
       let opened;
       try {
-        opened = await openRegularFile(root, parts);
+        opened = await openRegularFile(root, parts, realRoot, dataDir);
       } catch (error) {
         throw failure(error);
       }
@@ -345,7 +402,9 @@ export function registerExplorerRoutes(
           mtime: Math.floor(stats.mtimeMs),
         };
         const extension = extensionOf(name);
-        if (extension === "pdf") return jsonResponse({ ...meta, kind: "pdf" });
+        const noStore = { "cache-control": "no-store" };
+        if (extension === "pdf")
+          return jsonResponse({ ...meta, kind: "pdf" }, 200, noStore);
         const head = await readPrefix(
           handle,
           Math.min(stats.size, EXPLORER_TEXT_MAX_BYTES),
@@ -356,7 +415,7 @@ export function registerExplorerRoutes(
           inlineRasterMediaType(head.subarray(0, 16)) ===
             RASTER_EXTENSIONS[extension]
         )
-          return jsonResponse({ ...meta, kind: "image" });
+          return jsonResponse({ ...meta, kind: "image" }, 200, noStore);
         const truncated = stats.size > head.length;
         const text = decodeText(head, truncated);
         return jsonResponse(
@@ -364,7 +423,7 @@ export function registerExplorerRoutes(
             ? { ...meta, kind: "binary" }
             : { ...meta, kind: "text", text, truncated },
           200,
-          { "cache-control": "no-store" },
+          noStore,
         );
       } finally {
         await handle.close().catch(() => {});
@@ -377,10 +436,10 @@ export function registerExplorerRoutes(
     ["GET", "HEAD"],
     "/api/conversations/{cid}/tree/raw",
     async (ex) => {
-      const { root, parts } = await scope(ex);
+      const { root, parts, realRoot, dataDir } = await scope(ex);
       let opened;
       try {
-        opened = await openRegularFile(root, parts);
+        opened = await openRegularFile(root, parts, realRoot, dataDir);
       } catch (error) {
         throw failure(error);
       }
@@ -405,6 +464,8 @@ export function registerExplorerRoutes(
         { handle, size: stats.size },
         {
           ...SAFE_HEADERS,
+          "accept-ranges": "bytes",
+          "content-length": String(stats.size),
           "content-type": media ?? "application/octet-stream",
           "content-disposition": media
             ? contentDisposition(name).replace(/^attachment/, "inline")

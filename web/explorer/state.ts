@@ -23,6 +23,7 @@ export interface Listing {
   status: "loading" | "ready" | "error";
   entries: ExplorerEntry[];
   more: number;
+  moreExact?: boolean;
   detail?: string;
 }
 
@@ -138,10 +139,16 @@ export async function loadListing(
         git_prefix?: string | null;
         entries: ExplorerEntry[];
         more: number;
+        more_exact?: boolean;
       };
       root = body.root;
       if (!path) tree.prefix = body.git_prefix ?? null;
-      next = { status: "ready", entries: body.entries, more: body.more };
+      next = {
+        status: "ready",
+        entries: body.entries,
+        more: body.more,
+        moreExact: body.more_exact !== false,
+      };
     }
   } catch {
     next = {

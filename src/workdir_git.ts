@@ -5,20 +5,13 @@
 import { lstat, open, readFile, readlink, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { pyStrip } from "./auth/provider_store";
 import { isolatedSubprocessEnvironment } from "./local_roots";
 import * as startupMetrics from "./observability/startup_metrics";
 import { timed } from "./observability/request_timing";
 import { slowSpan } from "./observability/slow_span";
 import { prIdentity } from "./pull_request";
 import { pullRequestFiles } from "./pull_request/patch";
-
-// Python str.isspace() code points (str.strip() and unicode \s).
-const PY_SPACE =
-  "\\t\\n\\v\\f\\r\\x1c-\\x20\\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
-const PY_STRIP_RE = new RegExp(`^[${PY_SPACE}]+|[${PY_SPACE}]+$`, "gu");
-function pyStrip(text: string): string {
-  return text.replace(PY_STRIP_RE, "");
-}
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -52,6 +45,9 @@ export function safeGitEnv(environ: Env): Record<string, string> {
     GIT_CONFIG_SYSTEM: "/dev/null",
     GIT_NO_REPLACE_OBJECTS: "1",
     GIT_TERMINAL_PROMPT: "0",
+    GIT_CONFIG_COUNT: "1",
+    GIT_CONFIG_KEY_0: "core.fsmonitor",
+    GIT_CONFIG_VALUE_0: "false",
   });
   return env;
 }
@@ -72,6 +68,8 @@ const BRANCH_PR_INTERVAL = 60.0;
 const DIFF_TRUNCATION_MARK = "\n... [diff truncated at the 1 MiB server cap]\n";
 const SHA_RE = /^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$/u;
 // Python's unicode `\s` is str.isspace(), not JavaScript's `\s`.
+const PY_SPACE =
+  "\\t\\n\\v\\f\\r\\x1c-\\x20\\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
 const BASE_REF_RE = new RegExp(
   `^(?!-)[^${PY_SPACE}\\x00-\\x1f\\x7f]{1,256}$`,
   "u",

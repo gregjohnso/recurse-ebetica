@@ -146,7 +146,9 @@ function flatten(tree: ExplorerTree): Row[] {
       out.push({
         path: `${dir}\0more`,
         depth,
-        note: `+${listing.more} more not shown`,
+        note: listing.moreExact
+          ? `+${listing.more} more not shown`
+          : `+${listing.more} or more not shown`,
       });
   };
   walk("", 0);

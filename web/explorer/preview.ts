@@ -152,6 +152,21 @@ function markdown(shown: Preview, element: PreviewEl): HTMLElement {
       return path ? treeUrl(shown.cid, "/raw", path) : null;
     },
   });
+  // Spec: Relative links to tree files open in this preview, not a download.
+  body.addEventListener("click", (event) => {
+    const link = (event.target as Element).closest<HTMLAnchorElement>(
+      "a[href]",
+    );
+    if (!link) return;
+    const url = new URL(link.href, location.href);
+    const path = url.searchParams.get("path");
+    if (url.origin !== location.origin || !url.pathname.endsWith("/tree/raw"))
+      return;
+    if (!path) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void openPreview(shown.cid, path);
+  });
   return body;
 }
 

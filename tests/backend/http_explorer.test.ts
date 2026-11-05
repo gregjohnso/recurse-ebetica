@@ -6,6 +6,10 @@ import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import { fauxHost, until } from "./fixtures/durable_host/host";
 import { captureFixture } from "./fixture_subprocess";
 import { buildConversationsApp } from "./http_conversations_app";
+import { exchange, normalise, requestBytes } from "./http_corpus";
+import { buildAuthApp } from "./http_auth_app";
+import { BackendKeys } from "../../src/auth/backend_keys";
+import { registerExplorerRoutes } from "../../src/web/explorer";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -46,6 +50,25 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
   for (let index = 0; index < 1005; index++)
     await writeFile(join(repo, "many", `f${index}.txt`), "");
   await mkdir(join(repo, "Zdir"));
+  await mkdir(join(repo, "huge"));
+  for (let index = 0; index < 10_050; index++)
+    await writeFile(join(repo, "huge", `h${index}`), "");
+  await writeFile(join(repo, ":(exclude)b"), "pathspec-shaped name\n");
+  await writeFile(join(repo, "doc.pdf"), "%PDF-1.4\n");
+  const secrets = [
+    ".git/config",
+    ".ssh/known_hosts",
+    ".kube/config",
+    ".docker/config.json",
+    ".config/gh/hosts.yml",
+    ".vault-token",
+    "terraform.tfstate.backup",
+    ".htpasswd",
+  ];
+  for (const path of secrets.slice(1)) {
+    await mkdir(join(repo, path, ".."), { recursive: true });
+    await writeFile(join(repo, path), "secret\n");
+  }
   await symlink(join(outside, "secret.txt"), join(repo, "link-file"));
   await symlink(outside, join(repo, "link-dir"));
   expect(
@@ -65,13 +88,18 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
     expect(root.body.root).toBe(repo);
     expect(root.body.git_prefix).toBe("");
     const names = root.body.entries.map((entry: any) => entry.name);
-    expect(names.slice(0, 5)).toEqual([
+    expect(names.slice(0, 9)).toEqual([
+      ".config",
+      ".docker",
       ".git",
+      ".kube",
+      ".ssh",
+      "huge",
       "many",
       "src",
       "Zdir",
-      ".env.local",
     ]);
+    expect(names[9]).toBe(".env.local");
     expect(names.indexOf("app.log")).toBeLessThan(names.indexOf("big.txt"));
     const byName = Object.fromEntries(
       root.body.entries.map((entry: any) => [entry.name, entry]),
@@ -89,11 +117,25 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
     expect(byName.pipe.type).toBe("other");
     expect(byName[".env.local"].credential).toBe(true);
     expect(byName["server.pem"].credential).toBe(true);
+    expect(byName[":(exclude)b"].ignored).toBe(false);
+    expect(byName[".vault-token"].credential).toBe(true);
     expect(byName["big.txt"].size).toBe(1024 * 1024 + 10);
 
     const many = await json("/tree?path=many");
     expect(many.body.entries.length).toBe(1000);
     expect(many.body.more).toBe(5);
+    expect(many.body.more_exact).toBe(true);
+    const huge = await json("/tree?path=huge");
+    expect(huge.body.entries.length).toBe(1000);
+    expect(huge.body.more).toBe(9000);
+    expect(huge.body.more_exact).toBe(false);
+    expect((await json("/tree?path=.ssh")).body.entries[0].credential).toBe(
+      true,
+    );
+    for (const path of secrets) {
+      expect((await get(`/tree/file?path=${path}`)).status).toBe(403);
+      expect((await get(`/tree/raw?path=${path}`)).status).toBe(403);
+    }
 
     for (const path of [
       "..",
@@ -111,6 +153,7 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
     expect((await get("/tree/file?path=link-dir/secret.txt")).status).toBe(422);
     expect((await get("/tree/raw?path=link-file")).status).toBe(422);
     expect((await get("/tree/file?path=pipe")).status).toBe(422);
+    expect((await get("/tree/raw?path=pipe")).status).toBe(422);
     for (const path of [".env.local", "server.pem"]) {
       expect((await get(`/tree/file?path=${path}`)).status).toBe(403);
       expect((await get(`/tree/raw?path=${path}`)).status).toBe(403);
@@ -130,7 +173,30 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
     expect(big.body.truncated).toBe(true);
     expect(big.body.text.length).toBe(1024 * 1024);
     expect((await json("/tree/file?path=blob.bin")).body.kind).toBe("binary");
-    expect((await json("/tree/file?path=pic.png")).body.kind).toBe("image");
+    for (const [path, kind] of [
+      ["pic.png", "image"],
+      ["doc.pdf", "pdf"],
+    ]) {
+      const response = await get(`/tree/file?path=${path}`);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(((await response.json()) as any).kind).toBe(kind);
+    }
+    const head = normalise(
+      await exchange(
+        built.running.port,
+        requestBytes({
+          method: "HEAD",
+          path: "/api/conversations/conv-a/tree/raw?path=notes.md",
+        }),
+      ),
+      "HEAD",
+    );
+    expect(head.status).toBe(200);
+    expect(head.headers["content-length"]).toBe("15");
+    const range = await get("/tree/raw?path=notes.md", { range: "bytes=2-6" });
+    expect(range.status).toBe(206);
+    expect(range.headers.get("content-range")).toBe("bytes 2-6/15");
+    expect(await range.text()).toBe("Notes");
     expect((await json("/tree/file?path=fake.png")).body.kind).toBe("text");
     const image = await get("/tree/raw?path=pic.png");
     expect(image.headers.get("content-type")).toBe("image/png");
@@ -166,5 +232,59 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
   } finally {
     await built.running.close();
     await host.close();
+  }
+});
+
+test("explorer refuses relayed agents and Recurse's data directory under the root", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "explorer-auth-"));
+  dirs.push(dir);
+  const root = join(dir, "project");
+  const data = join(root, "recurse-data");
+  await mkdir(data, { recursive: true });
+  await writeFile(join(data, "server.json"), '{"token":"secret"}');
+  await writeFile(join(root, "readme.txt"), "hello\n");
+  const app = await buildAuthApp(join(dir, "auth"), {
+    backendKeys: true,
+    extraRoutes: (router) =>
+      registerExplorerRoutes(router, {
+        store: {
+          load: (cid) => (cid === "c1" ? { id: cid } : null),
+          effectiveWorkdir: () => root,
+        },
+        env: process.env,
+        dataDir: data,
+      }),
+  });
+  const { key } = await new BackendKeys(join(dir, "auth")).mint("home");
+  const call = (path: string, agent?: string) =>
+    fetch(`http://127.0.0.1:${app.running.port}/api/conversations/c1${path}`, {
+      headers: {
+        authorization: `Bearer ${key}`,
+        ...(agent ? { "x-recurse-agent-caller": agent } : {}),
+      },
+    });
+  try {
+    expect((await call("/tree/file?path=readme.txt")).status).toBe(200);
+    const relayed = await call("/tree/file?path=readme.txt", "worker-1");
+    expect(relayed.status).toBe(403);
+    expect(((await relayed.json()) as any).detail).toBe(
+      "only the operator can browse files",
+    );
+    expect((await call("/tree", "worker-1")).status).toBe(403);
+    const listing = (await (
+      await call("/tree?path=recurse-data")
+    ).json()) as any;
+    expect(listing.entries[0]).toMatchObject({
+      name: "server.json",
+      credential: true,
+    });
+    expect(
+      (await call("/tree/file?path=recurse-data/server.json")).status,
+    ).toBe(403);
+    expect((await call("/tree/raw?path=recurse-data/server.json")).status).toBe(
+      403,
+    );
+  } finally {
+    await app.running.close();
   }
 });

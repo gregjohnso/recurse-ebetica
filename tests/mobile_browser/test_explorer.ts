@@ -82,6 +82,8 @@ export const tests: BrowserTest[] = [
     await readme.click();
     const phonePane = mobile.locator('.pane-col[data-pane="explorer-file"]');
     await phonePane.locator("h1", { hasText: "Demo project" }).waitFor();
+    await phonePane.locator("a", { hasText: "guide" }).click();
+    await phonePane.locator("h1", { hasText: "Explorer guide" }).waitFor();
     expect(
       await mobile.evaluate<boolean>(
         "document.documentElement.classList.contains('phone-list')",

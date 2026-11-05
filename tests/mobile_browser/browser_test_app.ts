@@ -904,7 +904,7 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
     await writeFile(join(cwd, "build.log"), "ignored output\n");
     await writeFile(
       join(cwd, "README.md"),
-      "# Demo project\n\nRead the guide.\n",
+      "# Demo project\n\nRead the [guide](docs/guide.md).\n",
     );
     await writeFile(
       join(cwd, "docs", "guide.md"),

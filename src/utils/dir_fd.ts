@@ -50,6 +50,8 @@ const AT_REMOVEDIR = 0x80;
 const STAT_SIZE = 144;
 const DIRENT_NAMLEN = 18;
 const DIRENT_NAME = 21;
+const DIRENT_TYPE = 20;
+const DT_DIR = 4;
 const ACCESS = constants.O_WRONLY | constants.O_RDWR;
 const ERRNO_NAMES = new Map<number, string>();
 for (const [name, value] of Object.entries(os.errno))
@@ -153,7 +155,9 @@ function macOpenDirectory(fd: number): Pointer {
 
 // Invariant: names are read one at a time and the stream closes on return,
 // so a caller's entry budget bounds the work.
-function* macDirectoryNames(directory: Pointer): Generator<string> {
+function* macDirents(
+  directory: Pointer,
+): Generator<{ name: string; directory: boolean }> {
   try {
     const errnoAt = mac!.__error() as Pointer;
     for (;;) {
@@ -167,11 +171,16 @@ function* macDirectoryNames(directory: Pointer): Generator<string> {
       const name = Buffer.from(
         new Uint8Array(toArrayBuffer(entry, DIRENT_NAME, length)),
       ).toString("utf8");
-      if (name !== "." && name !== "..") yield name;
+      if (name !== "." && name !== "..")
+        yield { name, directory: read.u8(entry, DIRENT_TYPE) === DT_DIR };
     }
   } finally {
     mac!.closedir(directory);
   }
+}
+
+function* macDirectoryNames(directory: Pointer): Generator<string> {
+  for (const entry of macDirents(directory)) yield entry.name;
 }
 
 function macCall(result: number, syscall: string, name: string): void {
@@ -310,25 +319,30 @@ export function readdirAtSync(fd: number): string[] {
   return fs.readdirSync(descriptorPath(fd));
 }
 
-/** Entries of `fd`, marking real directories (no lstat on Linux). */
+/**
+ * Up to `limit` entries of `fd`, marking real directories from the listing
+ * itself (no lstat); `complete` is false when more entries remain unread.
+ */
 export async function typedEntriesAt(
   fd: number,
-): Promise<{ name: string; directory: boolean }[]> {
-  if (!mac)
-    return (await readdir(descriptorPath(fd), { withFileTypes: true })).map(
-      (entry) => ({ name: entry.name, directory: entry.isDirectory() }),
-    );
-  const names = await readdirAt(fd);
+  limit: number,
+): Promise<{
+  entries: { name: string; directory: boolean }[];
+  complete: boolean;
+}> {
   const entries: { name: string; directory: boolean }[] = [];
-  for (const name of names)
-    entries.push({
-      name,
-      directory: await lstatAt(fd, name).then(
-        (stats) => stats.isDirectory(),
-        () => false,
-      ),
-    });
-  return entries;
+  if (mac) {
+    for (const entry of macDirents(macOpenDirectory(fd))) {
+      if (entries.length >= limit) return { entries, complete: false };
+      entries.push(entry);
+    }
+    return { entries, complete: true };
+  }
+  for await (const entry of await opendir(descriptorPath(fd))) {
+    if (entries.length >= limit) return { entries, complete: false };
+    entries.push({ name: entry.name, directory: entry.isDirectory() });
+  }
+  return { entries, complete: true };
 }
 
 /** Open directory `fd` for iteration; names are read lazily. */

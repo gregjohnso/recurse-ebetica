@@ -542,6 +542,7 @@ export async function buildConversationsApp(
     store: deps.store,
     durable: deps.durable,
     env: process.env,
+    dataDir: data,
   });
   const handler = composeApp({
     router,

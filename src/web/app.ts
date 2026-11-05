@@ -595,6 +595,7 @@ export async function buildApp(options: AppOptions): Promise<App> {
     store: conversations,
     durable: instance.durable,
     env: options.env,
+    dataDir: paths.DATA_DIR,
   });
   registerApiV1(router, {
     compact: (cid) =>

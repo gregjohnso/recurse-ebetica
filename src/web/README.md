@@ -102,11 +102,18 @@ attachment). Invariants:
 - Paths open one component at a time from the root descriptor with
   `O_NOFOLLOW`; symlinks are listed and marked but never followed or opened.
 - Only regular files open, after lstat and with `O_NONBLOCK`; FIFOs, devices
-  and sockets are refused. Credential-shaped names (`.env*`, `id_rsa*`,
-  `*.pem`, `*.key`, `.netrc`, credentials files) are listed but never read.
-- Each listing returns at most 1,000 entries, folders first, and runs one
-  bounded `git check-ignore --stdin` with the scrubbed Git environment. Root
-  listings add the Git prefix the browser uses to match Changes paths.
+  and sockets are refused. Credential-shaped files are listed but never read:
+  `.env*`, `id_rsa*`, `*.pem`, `*.key`, `*.tfstate*`, `.netrc`,
+  `.vault-token`, `.htpasswd`, credentials files, `.git/config`,
+  `.kube/config`, `.docker/config.json`, `.config/gh/hosts.yml`, anything
+  under `.ssh/`, and anything in Recurse's data directory.
+- Each listing reads at most 10,000 names lazily (past that, `more` is a lower
+  bound), returns 1,000 entries, folders first, and runs one bounded
+  `git check-ignore --stdin` with the scrubbed Git environment and
+  `core.fsmonitor=false`. Paths go to Git as `./name`, because check-ignore
+  rejects `--literal-pathspecs` and a name like `:(exclude)b` would otherwise
+  be pathspec magic. Root listings add the Git prefix the browser uses to
+  match Changes paths.
 - Requests are operator-only: the routes have the web loopback audience and
   refuse agent markers, including relayed backend agents. Remote conversations
   use the existing backend proxy and need the same routes on the remote.
