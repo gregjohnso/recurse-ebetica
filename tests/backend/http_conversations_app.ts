@@ -18,6 +18,7 @@ import {
   registerConversationRoutes,
   type ConversationsRoutesDeps,
 } from "../../src/web/conversations";
+import { registerExplorerRoutes } from "../../src/web/explorer";
 import { publishLoopbackToken, requestAuth } from "../../src/web/request_auth";
 import { HttpError, jsonResponse, Router } from "../../src/web/router";
 import { WorkdirGit } from "../../src/workdir_git";
@@ -537,6 +538,11 @@ export async function buildConversationsApp(
   options.patch?.(deps, world);
   const router = new Router();
   registerConversationRoutes(router, deps);
+  registerExplorerRoutes(router, {
+    store: deps.store,
+    durable: deps.durable,
+    env: process.env,
+  });
   const handler = composeApp({
     router,
     logger: logger("http", sink),

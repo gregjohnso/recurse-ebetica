@@ -53,6 +53,7 @@ import { agentContext } from "./api_v1/context";
 import { registerApiV1 } from "./api_v1/routes";
 import { compactConversation } from "./compact";
 import { CreateSlots, registerConversationRoutes } from "./conversations";
+import { registerExplorerRoutes } from "./explorer";
 import {
   finishArtifactDeletion,
   registerFileRoutes,
@@ -589,6 +590,11 @@ export async function buildApp(options: AppOptions): Promise<App> {
       githubRepoUrl: (stored, file) =>
         instance.workdirGit.githubRepoUrl(stored, file),
     },
+  });
+  registerExplorerRoutes(router, {
+    store: conversations,
+    durable: instance.durable,
+    env: options.env,
   });
   registerApiV1(router, {
     compact: (cid) =>

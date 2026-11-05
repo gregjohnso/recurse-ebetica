@@ -2,8 +2,7 @@
 // Drain stdout fully, retaining limit+1; timeout kills child without blocking.
 // Fresh summaries prevent working-tree edits hiding behind a HEAD cache.
 // Scrub Git env; metadata caches belong to one WorkdirGit instance.
-import { lstat, readFile, readlink, stat } from "node:fs/promises";
-import { open } from "node:fs/promises";
+import { lstat, open, readFile, readlink, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { isolatedSubprocessEnvironment } from "./local_roots";
@@ -43,7 +42,7 @@ export function gitEnv(environ: Env): Record<string, string> {
   return env;
 }
 
-function safeGitEnv(environ: Env): Record<string, string> {
+export function safeGitEnv(environ: Env): Record<string, string> {
   const env = gitEnv(environ);
   for (const key of Object.keys(env))
     if (key.startsWith("GIT_")) delete env[key];
@@ -209,16 +208,17 @@ function diffSections(result: GitText): {
 }
 
 /** Run one command with bounded kept stdout; null text when it cannot run. */
-async function runBounded(
+export async function runBounded(
   argv: string[],
   cwd: string,
   env: Record<string, string>,
   limit: number,
   timeout: number,
   signal?: AbortSignal,
+  stdin?: Uint8Array,
 ): Promise<{ out: Uint8Array; truncated: boolean; code: number } | null> {
   if (signal?.aborted) return null;
-  let proc: import("bun").Subprocess<"ignore", "pipe", "ignore">;
+  let proc: import("bun").Subprocess<"ignore" | Uint8Array, "pipe", "ignore">;
   try {
     const github = argv[0] === "gh";
     const found = slowSpan(
@@ -234,7 +234,7 @@ async function runBounded(
         Bun.spawn([found, ...argv.slice(1)], {
           cwd,
           env,
-          stdin: "ignore",
+          stdin: stdin ?? "ignore",
           stdout: "pipe",
           stderr: "ignore",
         }),

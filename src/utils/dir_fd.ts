@@ -310,6 +310,27 @@ export function readdirAtSync(fd: number): string[] {
   return fs.readdirSync(descriptorPath(fd));
 }
 
+/** Entries of directory `fd` and whether each is a real directory (no lstat on Linux). */
+export async function typedEntriesAt(
+  fd: number,
+): Promise<{ name: string; directory: boolean }[]> {
+  if (!mac)
+    return (await readdir(descriptorPath(fd), { withFileTypes: true })).map(
+      (entry) => ({ name: entry.name, directory: entry.isDirectory() }),
+    );
+  const names = await readdirAt(fd);
+  const entries: { name: string; directory: boolean }[] = [];
+  for (const name of names)
+    entries.push({
+      name,
+      directory: await lstatAt(fd, name).then(
+        (stats) => stats.isDirectory(),
+        () => false,
+      ),
+    });
+  return entries;
+}
+
 /** Open directory `fd` for iteration; names are read lazily. */
 export async function entriesAt(fd: number): Promise<AsyncIterable<string>> {
   if (mac) {
