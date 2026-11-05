@@ -47,6 +47,7 @@ import {
 import { PaneInstanceCache, validPaneCacheDef } from "./panes/cache.js";
 import type { PaneContext, PaneDef } from "./types.js";
 import type { DockHost, DockLayout, DockPlacement } from "./dock/host.js";
+import { validDockLayout } from "./dock/layout.js";
 export { setPaneLoading } from "./panes/loading.js";
 
 for (const [id, icon] of [
@@ -85,8 +86,6 @@ const paneInstances = new PaneInstanceCache();
 const columns = new Map<string, HTMLElement>();
 let dock: DockHost | null = null;
 let dockLoading = false;
-/** Saved dock layouts by conversation owner, for this page's lifetime. */
-const dockLayouts = new Map<string, DockLayout>();
 /** The incoming conversation's layout, restored once it renders. */
 let pendingDockLayout: DockLayout | null | undefined;
 interface DockOnlyPanel {
@@ -145,10 +144,10 @@ export function beginPaneVisit(
     document.activeElement instanceof HTMLElement &&
     !!document.activeElement.closest(".pane-col");
   const outgoingOwnerId = paneVisitOwnerId;
-  if (dock && outgoingOwnerId) dockLayouts.set(outgoingOwnerId, dock.save());
+  if (outgoingOwnerId) saveDockLayout(outgoingOwnerId);
   for (const id of [...open]) closePane(id);
   clearDockOnly();
-  pendingDockLayout = dockLayouts.get(ownerId);
+  pendingDockLayout = storedDockLayout(ownerId) ?? undefined;
   if (outgoingOwnerId) conversationUiState.flush(outgoingOwnerId);
   if (held) restoreAgentFocus();
 
@@ -1294,6 +1293,38 @@ function chatButton(): HTMLButtonElement {
   return b;
 }
 
+const DOCK_STATE_KEY = "dock";
+const DOCK_STATE_VERSION = 1;
+const DOCK_STATE_SLOT = 15;
+const knownDockPanel = (id: string): boolean =>
+  id === CHAT || registry.some((p) => p.id === id);
+
+/** The conversation's saved dock layout, if it is valid. */
+function storedDockLayout(ownerId: string): DockLayout | null {
+  return validDockLayout(
+    conversationUiState.paneState(
+      ownerId,
+      DOCK_STATE_KEY,
+      DOCK_STATE_VERSION,
+      "local",
+    ),
+    knownDockPanel,
+  );
+}
+
+/** Save the dock layout as `ownerId`'s, once any pending restore applied. */
+function saveDockLayout(ownerId: string): void {
+  if (!dock || isMobile() || pendingDockLayout !== undefined) return;
+  conversationUiState.setPaneState(
+    ownerId,
+    DOCK_STATE_KEY,
+    DOCK_STATE_VERSION,
+    "local",
+    dock.save(),
+    DOCK_STATE_SLOT,
+  );
+}
+
 function titleOf(id: string): string {
   return registry.find((p) => p.id === id)?.title || id;
 }
@@ -1409,6 +1440,7 @@ function loadDock(): void {
             queueMicrotask(() => {
               railHash = "";
               syncPanes();
+              if (paneVisitOwnerId) saveDockLayout(paneVisitOwnerId);
             }),
         });
         showChat();
@@ -1517,9 +1549,7 @@ function syncPanesNow(): void {
     showChat();
     layout();
   }
-  // Invariant: A conversation's own dock layout wins over its remembered pane.
-  const ownLayout = !!dock && dockLayouts.has(currentUiOwnerId());
-  if (!ownLayout && restorePanePreference(availIds)) return;
+  if (restorePanePreference(availIds)) return;
 
   const artifacts = registry.find((p) => p.id === ARTIFACTS_PANE_ID);
   let generation: string | null | undefined;

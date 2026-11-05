@@ -12,6 +12,17 @@ const focused = (page: Page, path: string) =>
     `document.activeElement?.getAttribute("data-path") === ${JSON.stringify(path)}`,
   );
 
+const dockLayout = (page: Page) =>
+  page.evaluate(() =>
+    [...(globalThis as any).document.querySelectorAll(".dv-groupview")]
+      .map((group: any) =>
+        [...group.querySelectorAll(".dv-tab")].map((tab: any) =>
+          tab.textContent.trim(),
+        ),
+      )
+      .sort(),
+  );
+
 export const tests: BrowserTest[] = [
   // Feature: #0 the Explorer browses and previews the conversation's working folder
   async function test_explorer_desktop_and_phone(browser, base) {
@@ -125,6 +136,21 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-split.png`,
       });
+    const arranged = await dockLayout(page);
+    await page.waitForFunction(() =>
+      Object.values((globalThis as any).localStorage).some((value) =>
+        String(value).includes("file:.gitignore"),
+      ),
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await ignoreTab.waitFor();
+    expect(await dockLayout(page)).toEqual(arranged);
+    await page.locator(".agent", { hasText: "Agent" }).first().click();
+    await ignoreTab.waitFor({ state: "detached" });
+    expect(await dockLayout(page)).toEqual([["Chat"]]);
+    await page.locator(".agent", { hasText: "Explorer demo" }).click();
+    await ignoreTab.waitFor();
+    expect(await dockLayout(page)).toEqual(arranged);
     await ignoreTab.hover();
     await ignoreTab.locator(".dv-default-tab-action").click();
     await guideTab.hover();
@@ -226,6 +252,17 @@ export const tests: BrowserTest[] = [
     expect((await delivered).postDataJSON().content).toMatch(
       /^Comments on file "\.gitignore" \(path: \/\S+\/\.gitignore\):\n\n- line 1, chars 0-5:\n> \*\.log\nWhy ignore logs\?$/,
     );
+    await page.evaluate(() => {
+      const storage = (globalThis as any).localStorage;
+      for (const key of Object.keys(storage)) {
+        const raw = String(storage.getItem(key));
+        if (raw.includes('"grid"'))
+          storage.setItem(key, raw.replaceAll('"grid"', '"grip"'));
+      }
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(".dv-tab", { hasText: "Chat" }).waitFor();
+    expect(await dockLayout(page)).toEqual([["Chat"]]);
     expect(errors).toEqual([]);
     await desktop.close();
 

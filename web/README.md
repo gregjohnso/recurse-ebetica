@@ -27,8 +27,8 @@ conversation and subscribes to its live updates.
   left edge (Agents, the panels, then Settings and Delete at its foot), and
   [dock/](dock/) hosts the chat, open panels and Explorer file tabs in dockview, loaded
   after the first conversation renders: tabs, drag-and-drop splitting and
-  layout serialization are dockview's; each conversation keeps its own layout
-  in memory. Phones show one full-screen panel at a time. [side-pane.ts](side-pane.ts) displays
+  layout serialization are dockview's; each conversation's layout is saved in this
+  browser and checked by [dock/layout.ts](dock/layout.ts) before restore. Phones show one full-screen panel at a time. [side-pane.ts](side-pane.ts) displays
   read-only side conversations.
 - [models.ts](models.ts), [settings.ts](settings.ts) and [settings/](settings/)
   configure the app; [keymap.ts](keymap.ts) handles keyboard controls.

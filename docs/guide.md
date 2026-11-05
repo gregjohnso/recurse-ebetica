@@ -19,11 +19,12 @@ one you can write yourself. Each subagent usually works in its own Git
 worktree of your project, so parallel agents never edit the same files.
 
 The QoL plugins we provide include:
-* timestamps
-* "auto mode" for destructive commands (you should still use a sandbox)
-* worktrees
-* side conversations
-* remote control
+
+- timestamps
+- "auto mode" for destructive commands (you should still use a sandbox)
+- worktrees
+- side conversations
+- remote control
 
 The web UI provides a desktop-like experience without an app - so you can access
 it from anywhere you can run a browser.
@@ -240,8 +241,8 @@ Drop a file or an image on the composer to give it to the agent. Anything an
 agent publishes comes back the same way: it is attached to the reply and
 listed in **Files**, and publishing the same name again adds a version.
 
-An Artifact is a document or a small interactive app, shown in its own pane, 
-with a version history. Ask for one ("put the report in an Artifact") and 
+An Artifact is a document or a small interactive app, shown in its own pane,
+with a version history. Ask for one ("put the report in an Artifact") and
 the agent creates it. Comments you leave on an Artifact go to the agent as a message.
 
 ### Changes
@@ -258,7 +259,7 @@ the agent list), **Chat**, a button for each panel, and **Settings** and
 onto another window to share it, or onto a window's edge to split it. A
 panel's button shows its tab, or closes it when it is already showing. If you
 close the chat, **Chat** or `i` reopens it with your draft intact. Each agent
-keeps its own arrangement while the page is open.
+keeps its own arrangement, remembered in this browser across reloads.
 
 The **Explorer** panel (the first panel button in the left bar, or `E`) shows the
 open agent's working folder. Folders open as you expand them; files Git ignores
