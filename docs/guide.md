@@ -250,6 +250,16 @@ the agent creates it. Comments you leave on an Artifact go to the agent as a mes
 on lines, then send the comments to the agent as one message. It is the review
 step of the plan-implement-merge loop in [Worktrees](#worktrees).
 
+### Explorer
+
+The **Explorer** button at the far left (or `E`) swaps the agent list for the
+open agent's working folder. Folders open as you expand them; files Git ignores
+are dimmed, and `M`/`U` mark changed and untracked files. Click a file to
+preview it, or right-click to copy its path or insert it into your message.
+The Explorer never follows symbolic links and never shows the contents of
+credential files such as `.env` or `*.pem`. On a phone, the files button in the
+agent list header switches views.
+
 ### Compact, clear, revive
 
 `/compact` summarizes older history so the agent can keep working with less of

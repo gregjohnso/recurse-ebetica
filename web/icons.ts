@@ -42,6 +42,12 @@ export const PANE_ICON = outline(
 export const FILES_ICON = outline(
   '<path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
 );
+export const EXPLORER_ICON = outline(
+  '<path d="M15 2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7zM15 2v5h5M3 7v13a2 2 0 0 0 2 2h10"/>',
+);
+export const AGENTS_ICON = outline(
+  '<rect x="3" y="3" width="7" height="6" rx="1"/><rect x="14" y="9" width="7" height="5" rx="1"/><rect x="14" y="17" width="7" height="5" rx="1"/><path d="M6.5 9v10.5H14M6.5 11.5H14"/>',
+);
 export const CHANGES_ICON = outline(
   '<path d="M6 3v12M18 9a9 9 0 0 1-9 9"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>',
 );

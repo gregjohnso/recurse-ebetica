@@ -90,6 +90,27 @@ including cookie rotation and removal.
 CSRF matching, password validation, throttling and authorization are unchanged.
 Plain HTTP does not encrypt passwords or sessions; use HTTPS on untrusted networks.
 
+## File explorer
+
+[explorer.ts](explorer.ts) serves `/api/conversations/{cid}/tree` (one
+directory), `/tree/file` (a preview of up to 1 MiB) and `/tree/raw` (the bytes,
+inline only for magic-byte-checked raster images, otherwise a sandboxed
+attachment). Invariants:
+
+- The root is the conversation's cwd: a Durable chdir wins over the stored
+  workdir. Absolute paths, `.`, `..`, empty components and NUL are refused.
+- Paths open one component at a time from the root descriptor with
+  `O_NOFOLLOW`; symlinks are listed and marked but never followed or opened.
+- Only regular files open, after lstat and with `O_NONBLOCK`; FIFOs, devices
+  and sockets are refused. Credential-shaped names (`.env*`, `id_rsa*`,
+  `*.pem`, `*.key`, `.netrc`, credentials files) are listed but never read.
+- Each listing returns at most 1,000 entries, folders first, and runs one
+  bounded `git check-ignore --stdin` with the scrubbed Git environment. Root
+  listings add the Git prefix the browser uses to match Changes paths.
+- Requests are operator-only: the routes have the web loopback audience and
+  refuse agent markers, including relayed backend agents. Remote conversations
+  use the existing backend proxy and need the same routes on the remote.
+
 ## Message search
 
 [message_search.ts](message_search.ts) registers bundled-tool search and bounded

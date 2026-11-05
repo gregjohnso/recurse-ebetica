@@ -1,0 +1,62 @@
+/* Activity bar and Explorer sidebar view (web/explorer.ts). */
+#activity-bar { flex: none; display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-2); width: 44px; padding-top: var(--space-3);
+  background: var(--frame-bg); border-right: 1px solid var(--frame-border); }
+.activity-btn { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--icon-radius, var(--radius-md));
+  background: none; color: var(--muted); cursor: pointer; }
+.activity-btn svg { width: 20px; height: 20px; }
+.activity-btn:hover { color: var(--text); background: var(--panel-2); }
+.activity-btn[aria-pressed="true"] { color: var(--text); background: var(--row-selected); }
+#sidebar[data-view="explorer"] :is(#agent-list, #sidebar-script-notice) { display: none; }
+#explorer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#explorer[hidden] { display: none; }
+#explorer-toggle { display: inline-flex; align-items: center; justify-content: center; }
+.explorer-head { display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5); }
+.explorer-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font-size: 0.71875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.explorer-refresh { width: 28px; height: 28px; }
+.explorer-empty { padding: 0 var(--space-5); color: var(--muted); font-size: 0.84375rem; }
+.explorer-tree { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--space-2) var(--space-4);
+  font-size: 0.8125rem; scrollbar-width: thin; scrollbar-color: var(--muted) transparent; }
+.explorer-row { --explorer-depth: 0; display: flex; align-items: center; gap: var(--space-1);
+  min-height: 24px; padding-right: var(--space-2);
+  padding-left: calc(var(--space-2) + var(--explorer-depth) * 14px); /* space-check: allow */
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  -webkit-user-select: none; user-select: none; }
+.explorer-row:hover { background: var(--panel-2); }
+.explorer-row.selected { background: var(--row-selected); }
+.explorer-row:focus-visible, .explorer-row[aria-selected="true"]:focus { outline: var(--focus-width) solid var(--row-cursor);
+  outline-offset: calc(-1 * var(--focus-width)); }
+.explorer-row.ignored .explorer-name { opacity: .5; }
+.explorer-row.symlink .explorer-name { font-style: italic; }
+.explorer-note { color: var(--muted); cursor: default; font-style: italic;
+  padding-left: calc(var(--space-2) + var(--explorer-depth) * 14px + 18px); } /* space-check: allow */
+.explorer-note:hover { background: none; }
+.explorer-twisty { flex: none; display: inline-flex; width: 16px; height: 16px; color: var(--muted);
+  transition: transform var(--motion-fast); }
+.explorer-twisty svg { width: 14px; height: 14px; margin: auto; }
+.explorer-twisty.open { transform: rotate(90deg); }
+.explorer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.explorer-badge { flex: none; font: 600 0.6875rem/1 var(--font-mono); color: var(--warn); }
+.explorer-badge.mark-U { color: var(--accent); }
+.explorer-badge.folder-dot { color: var(--warn); font-size: 0.875rem; }
+#explorer-menu { position: fixed; z-index: var(--z-menu); min-width: 200px; }
+#explorer-menu[hidden] { display: none; }
+.explorer-preview { padding: var(--space-3) var(--space-5) var(--space-5); }
+.explorer-preview-meta { margin-bottom: var(--space-3); color: var(--muted);
+  font: 0.71875rem/1.6 var(--font-mono); overflow-wrap: anywhere; }
+.explorer-preview-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.8125rem; }
+.explorer-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  color: var(--muted); }
+.explorer-image { max-width: 100%; height: auto; }
+@media (max-width: 700px) {
+  #activity-bar { display: none; }
+  .explorer-row { min-height: 40px; font-size: 0.9375rem; }
+  .explorer-head { padding-left: var(--space-3); }
+}
+@media (min-width: 701px) {
+  #explorer-toggle { display: none; }
+}

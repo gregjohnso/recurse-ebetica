@@ -1,16 +1,7 @@
-// Read-only file explorer over one conversation's working directory.
-// Invariant: Root is the open conversation's cwd (a Durable chdir wins over the
-// stored workdir); the client never names an absolute path or leaves the root.
-// Invariant: Paths are walked one component at a time from a pinned root
-// descriptor with O_NOFOLLOW; symlinks are listed but never followed, so a
-// symlink cannot widen the root. Absolute paths, '.', '..', empty components
-// and NUL are refused before any filesystem call.
-// Invariant: Only regular files are opened (FIFOs, devices and sockets are
-// refused from lstat, then O_NONBLOCK guards the open race); credential-shaped
-// names are listed but their contents are never read or served.
-// Invariant: Async fs only, one directory per request, no recursive walks;
-// ignore status comes from one bounded `git check-ignore --stdin` per listing
-// with a scrubbed Git environment. Agent-marked requests are refused.
+// Read-only file explorer routes over one conversation's working directory.
+// Paths walk component by component from the cwd without following symlinks;
+// only regular non-credential files open. One directory and one bounded Git
+// ignore check per request; agent-marked requests are refused (README.md).
 import { constants, type Stats } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
 import { contentDisposition } from "../agents/runtime/attachments/published";
@@ -107,6 +98,8 @@ function failure(error: unknown): HttpError {
 const sameFile = (a: Stats, b: Stats) => a.dev === b.dev && a.ino === b.ino;
 
 async function openDirectory(root: string, parts: string[]) {
+  // Invariant: Each component opens relative to its pinned parent with
+  // O_NOFOLLOW, so a symlink or swapped parent never widens the root.
   let dir: FileHandle = await open(
     root,
     constants.O_RDONLY | (constants.O_DIRECTORY ?? 0),
@@ -238,6 +231,8 @@ export async function openRegularFile(
   const name = parts.at(-1)!;
   const dir = await openDirectory(root, parts.slice(0, -1));
   try {
+    // Invariant: FIFOs, devices and sockets are refused from lstat before any
+    // open; O_NONBLOCK and the inode match cover a swap in between.
     const before = await lstatAt(dir.fd, name);
     if (before.isSymbolicLink())
       throw new HttpError(422, "symbolic links are not followed");

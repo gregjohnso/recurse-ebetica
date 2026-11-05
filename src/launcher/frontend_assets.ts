@@ -32,7 +32,8 @@ export async function copyFrontendAssets(
     join(outputDir, "app.css"),
     (await readFile(join(webDir, "theme.css"), "utf8")) +
       (await readFile(join(webDir, "panes/powerbar.css"), "utf8")) +
-      (await readFile(join(webDir, "app.css"), "utf8")),
+      (await readFile(join(webDir, "app.css"), "utf8")) +
+      (await readFile(join(webDir, "explorer/style.css"), "utf8")),
   );
   const katex = join(codeDir, "node_modules", "katex", "dist");
   await copyFile(join(katex, "katex.min.css"), join(outputDir, "katex.css"));

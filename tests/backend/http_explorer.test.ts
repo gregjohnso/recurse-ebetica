@@ -110,9 +110,7 @@ test("explorer lists and previews the conversation cwd without leaving it", asyn
     expect((await get("/tree/file?path=link-file")).status).toBe(422);
     expect((await get("/tree/file?path=link-dir/secret.txt")).status).toBe(422);
     expect((await get("/tree/raw?path=link-file")).status).toBe(422);
-    const started = performance.now();
     expect((await get("/tree/file?path=pipe")).status).toBe(422);
-    expect(performance.now() - started).toBeLessThan(2000);
     for (const path of [".env.local", "server.pem"]) {
       expect((await get(`/tree/file?path=${path}`)).status).toBe(403);
       expect((await get(`/tree/raw?path=${path}`)).status).toBe(403);

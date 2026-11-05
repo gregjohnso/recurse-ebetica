@@ -152,6 +152,7 @@ import {
 } from "./artifacts/pane.js";
 import { openPullRequestFinder } from "./diff.js";
 import { closeImageFromKeyboard } from "./files.js";
+import { handleExplorerKey, toggleExplorer } from "./explorer.js";
 import {
   closeSelectionCommentFromKeyboard,
   hasStagedCommentsIn,
@@ -454,6 +455,9 @@ function execute(command: KeyCommand | null): void {
     case "find-pull-request":
       openPullRequestFinder();
       break;
+    case "toggle-explorer":
+      toggleExplorer();
+      break;
     case "toggle-pane":
       togglePaneFromKeyboard();
       break;
@@ -650,6 +654,10 @@ document.addEventListener(
     // Invariant: Only the open effort picker owns its list keys and Escape. A
     // hidden picker never changes tree navigation.
     if (eventElement?.closest?.("#model-menu")) return;
+    // Invariant: The focused Explorer tree owns its movement keys; others fall
+    // through to Normal mode.
+    if (eventElement?.closest?.("#explorer") && handleExplorerKey(event))
+      return;
     // Invariant: An open Settings model box owns its list keys, Escape
     // included; a closed one leaves Escape to close Settings.
     if (

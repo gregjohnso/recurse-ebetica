@@ -310,7 +310,7 @@ export function readdirAtSync(fd: number): string[] {
   return fs.readdirSync(descriptorPath(fd));
 }
 
-/** Entries of directory `fd` and whether each is a real directory (no lstat on Linux). */
+/** Entries of `fd`, marking real directories (no lstat on Linux). */
 export async function typedEntriesAt(
   fd: number,
 ): Promise<{ name: string; directory: boolean }[]> {

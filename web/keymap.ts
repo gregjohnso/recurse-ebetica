@@ -24,6 +24,7 @@ export interface KeymapState {
 export type KeyCommand =
   | "parent"
   | "toggle-agents"
+  | "toggle-explorer"
   | "close-pane"
   | "next"
   | "previous"
@@ -122,6 +123,11 @@ export const NORMAL_BINDINGS: readonly Binding[] = [
     description: "collapse subagents / parent",
   },
   { keys: ["H"], command: "toggle-agents", description: "show / hide agents" },
+  {
+    keys: ["E"],
+    command: "toggle-explorer",
+    description: "switch agents / files",
+  },
   { keys: ["j", "ArrowDown"], command: "next", description: "next agent" },
   {
     keys: ["k", "ArrowUp"],

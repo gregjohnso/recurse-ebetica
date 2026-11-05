@@ -896,6 +896,31 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
     }
     return { checkout: "pr-checkout", plain: "pr-plain" };
   },
+  "seed-explorer": async () => {
+    if (load("explorer-demo") !== null) return { cid: "explorer-demo" };
+    const cwd = await mkdtemp(join(tmpdir(), "explorer-demo-"));
+    await mkdir(join(cwd, "docs"));
+    await writeFile(join(cwd, ".gitignore"), "*.log\n");
+    await writeFile(join(cwd, "build.log"), "ignored output\n");
+    await writeFile(
+      join(cwd, "README.md"),
+      "# Demo project\n\nRead the guide.\n",
+    );
+    await writeFile(
+      join(cwd, "docs", "guide.md"),
+      "# Explorer guide\n\n- Lists folders lazily\n- Previews Markdown\n",
+    );
+    await Bun.spawn(["git", "init", "-q", "-b", "main"], { cwd }).exited;
+    durableModel.set("explorer-demo", "fauxfast/faux-1");
+    await instance.create.create({
+      cid: "explorer-demo",
+      title: "Explorer demo",
+      parent: rootAgentId(),
+      workdir: cwd,
+    });
+    await sayDurable("explorer-demo", "Show the files.", "Done.");
+    return { cid: "explorer-demo" };
+  },
   "seed-pr-links": async () => {
     const bin = await mkdtemp(join(tmpdir(), "pr-links-bin-"));
     const calls = join(bin, "calls");

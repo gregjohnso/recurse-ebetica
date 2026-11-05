@@ -52,6 +52,7 @@ import { tests as threadEdges } from "./test_thread_edges";
 import { tests as durable } from "./test_durable";
 import { tests as liveTools } from "./test_live_tools";
 import { tests as artifactCheck } from "./test_artifact_check";
+import { tests as explorer } from "./test_explorer";
 
 export const groups: Array<[string, BrowserTest[]]> = [
   ["sidebar", sidebar],
@@ -104,6 +105,7 @@ export const groups: Array<[string, BrowserTest[]]> = [
   ["provider-replay", providerReplay],
   ["live-tools", liveTools],
   ["artifact-check", artifactCheck],
+  ["explorer", explorer],
 ];
 if (import.meta.main) {
   const { workers, names } = browserArguments(process.argv.slice(2));

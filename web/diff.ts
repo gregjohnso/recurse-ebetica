@@ -480,6 +480,12 @@ function scheduleFetch(id: string, invalidate: boolean): void {
   fetchPaneData(PANE_ID, id, (signal) => maybeFetch(id, false, signal));
 }
 
+/** The loaded uncommitted-or-branch changes for `id`, without fetching. */
+export function loadedChanges(id: string): DiffSummary | null {
+  const e = cache.get(id);
+  return (e?.selectedPr ? e.local : e?.summary) ?? null;
+}
+
 let lastAvailableId: string | null = null;
 function available(ctx: PaneContext): boolean {
   const id = ctx.agentId;
