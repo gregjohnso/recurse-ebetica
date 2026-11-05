@@ -16,10 +16,9 @@ for the conversation on screen.
   row limit retain their classified counts without their arguments.
   Inter-agent message cards identify remote senders by their delivered backend
   label; only absent local senders are shown as removed agents.
-  Reply HTML is cached by conversation/session, block identity and content revision,
-  with backend and repository link context included. DOMPurify's unchanged policy
-  returns an inert fragment; image restrictions, math and footer reservation use
-  that same tree before serialization. The cache is bounded across visits.
+  A bounded reply-HTML cache keys conversation/session, block identity, revision,
+  backend and repository links. Images, math and footer reservation share
+  DOMPurify's inert tree before serialization; its policy is unchanged.
   Scroll following and edge controls share a frame's layout reads before writes.
   The pane layout marks the topbar when a phone pane overlays the thread; its
   edge fade never uses a body-wide `:has()` selector, which makes unrelated
@@ -27,14 +26,11 @@ for the conversation on screen.
   Compaction jumps page back to the retained boundary and reveal its first
   visible message, skipping tool-only rows that have no message element.
   Older-page compensation captures the reader's scroll offset before painting.
-  Leaving a thread saves where the reader was: at the bottom, or the topmost
-  visible message and its offset. Returning follows the latest bottom, or pages
-  older history until that message is loaded, reopens a fold hiding it, and
-  holds it at the same offset while late content settles, until the reader
-  scrolls or jumps. A message folded into a compacted range holds the nearest
-  shown message instead; one that no longer exists returns to the bottom.
-  Scroll events and bottom follows queued by the outgoing thread never move
-  the incoming one.
+  Thread visits retain bottom-following or the top visible message and offset.
+  Returning pages history and reopens folds to restore that position, holding it
+  through late layout changes until the reader scrolls or jumps. Compacted
+  messages use the nearest shown message; deleted ones use the bottom. Queued
+  scrolls from the outgoing thread cannot move the incoming thread.
   The context mini-meter uses delivered ResizeObserver border-box widths (the
   controls have padding but no border), never layout reads after bar updates.
 - Sending and uploads: `composer.ts`, `composer/`, `attachments.ts`.
@@ -91,13 +87,11 @@ for the conversation on screen.
   time in a frame of `/?embed=1#agent=<id>`. The server marks that page
   `html[data-embed]`; `state.embedded` then hides the tree, panes and controls,
   runs only composer keys, and never writes history entries or the last agent.
-  Promote to subagent asks the server to turn the shown idle side conversation
-  into a child (`promoting` and `promotion_error` on its row drive the pane's
-  notice); once its row loses `side_of` it leaves the pane for the sidebar.
-  A parked frame keeps its initially loaded conversation but does not page
-  older history, poll versions or refresh the conversation. Parking closes its
-  live subscription; opening shows the cached document and reconnects from
-  its held cursor. Zero-size threads never auto-page; resizing resumes filling.
+  Promote to subagent converts the shown idle fork into a child; `promoting` and
+  `promotion_error` supply notices, and removing `side_of` moves it to the sidebar.
+  Parked frames retain the cached conversation and cursor but close subscriptions
+  and stop paging, version polls and refreshes. Opening reconnects at that cursor.
+  Zero-size threads pause auto-paging until resized.
 - Stall diagnostics: `main-thread-timing.ts` observes tasks over 200 ms, preferring
   long-animation-frame script attribution where supported. Visible pages send at
   most one report per ten seconds through the bounded `/api/ui-timing` queue;
@@ -151,16 +145,13 @@ for the conversation on screen.
   `current-password` and request password-manager exclusion; the password is
   used once, not stored.
   Incoming access and the direction and scope of settings copies are explained inline.
-  Signed-in remotes offer an explicit **Sync settings from home** preview and
-  confirmation, outside the proxy. It copies only effort levels,
-  default efforts, maximum context window and theme.
-  Ladder levels with unavailable models are not written. Default efforts include
-  stored overrides for logged-out providers, so replacement and stale checks cover
-  the complete map. Older backends without that projection must be updated before
-  syncing. Signed, ten-minute previews bind the
-  confirmed values; items changed remotely since preview are refused. Results
-  are per item. Provider credentials, passwords, names and backend keys are
-  never copied, and MCP servers are not synced: each remote keeps its own.
+  Signed-in remotes offer **Sync settings from home**, with a signed ten-minute
+  preview and confirmation outside the proxy. Only effort levels, default
+  efforts, maximum context window and theme copy; unavailable ladder models and
+  remotely changed items are refused, with per-item results. Default-effort
+  replacement and stale checks include logged-out providers' stored overrides;
+  older backends lacking that complete projection require an update. Credentials,
+  passwords, names, backend keys and MCP servers stay on their own backend.
   With a remote connected, the Settings header picks which Recurse the page
   configures (`settings/target.ts`). A remote shows only Authentication,
   Models and MCPs, read and saved through the proxy as the operator; Account
