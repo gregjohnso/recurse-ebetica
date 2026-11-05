@@ -1,168 +1,35 @@
 # Browser app
 
-The web UI is strict TypeScript. `bun run build` bundles [app.ts](app.ts) into
-`web/dist/app.js` and its chunks; [index.html](./index.html) is the page shell
-that loads it from `/static/app.js`. The server owns durable conversation state;
-the browser keeps only local view state and unsent drafts. [conversation/poll.ts](conversation/poll.ts) reads the agent
-tree (`/api/tree`) and the open conversation, and subscribes to live updates
-for the conversation on screen.
+The browser app is strict TypeScript. The build bundles [app.ts](app.ts) and,
+separately, [sidebar-worker.ts](sidebar-worker.ts), the worker that runs
+sidebar scripts;
+[index.html](index.html) loads the page shell and built assets. The server owns
+durable conversation state; the browser holds view state and unsent drafts.
+[conversation/poll.ts](conversation/poll.ts) reads the tree and the open
+conversation and subscribes to its live updates.
 
-**Where things are:**
+**Source files:**
 
-- Threads and rows: `conversation/`, `thread-render.ts`, `thread-render/`,
-  `row-thread-state/`, `pending-queue/`; message Markdown: `util/message-markdown.ts`.
-  Folded activity summaries count server-classified calls inside scripts instead
-  of their wrapper. Empty scripts still count once; calls past the expanded
-  row limit retain their classified counts without their arguments.
-  Inter-agent message cards identify remote senders by their delivered backend
-  label; only absent local senders are shown as removed agents.
-  A bounded reply-HTML cache keys conversation/session, block identity, revision,
-  backend and repository links. Images, math and footer reservation share
-  DOMPurify's inert tree before serialization; its policy is unchanged.
-  Scroll following and edge controls share a frame's layout reads before writes.
-  The pane layout marks the topbar when a phone pane overlays the thread; its
-  edge fade never uses a body-wide `:has()` selector, which makes unrelated
-  composer and sidebar changes restyle historical message footers.
-  Compaction jumps page back to the retained boundary and reveal its first
-  visible message, skipping tool-only rows that have no message element.
-  Older-page compensation captures the reader's scroll offset before painting.
-  Thread visits retain bottom-following or the top visible message and offset.
-  Returning pages history and reopens folds to restore that position, holding it
-  through late layout changes until the reader scrolls or jumps. Compacted
-  messages use the nearest shown message; deleted ones use the bottom. Queued
-  scrolls from the outgoing thread cannot move the incoming thread.
-  The context mini-meter uses delivered ResizeObserver border-box widths (the
-  controls have padding but no border), never layout reads after bar updates.
-- Sending and uploads: `composer.ts`, `composer/`, `attachments.ts`.
-  The topbar names the shown agent's working directory beside its title
-  (`conversation/cwd.ts`, read from `/api/conversations/{cid}/cwd` after the
-  conversation paints); drafts show none. Long titles and paths truncate in
-  the same row; the path's tooltip and accessible label keep its full value.
-  Drawing on an image preview attaches the export on **Done** and closes the
-  preview through its existing close path. Cancel leaves the preview open.
-  Successful image-comment sends also close the preview and return to the
-  conversation. Box comments include rounded original-image pixel coordinates
-  and natural dimensions even when the crop upload fails. Sources without
-  natural image dimensions use labeled width/height fractions; document boxes
-  keep their page number. [Image preview gestures](image-preview/README.md) separate box
-  drawing from two-finger or Shift-drag panning.
-- The agent tree: `sidebar.ts`, `deep-link.ts`, `agent-finder.ts`, `reparent.ts`.
-  Share link copies `#trees=<root>[,<root>...]`, a signed-in view filter kept
-  across navigation and reloads. `shared-trees.ts` limits every committed tree
-  snapshot to the named top-level conversations and their descendants; it grants
-  no access and offers no control to widen the shared view. Unknown roots are
-  ignored, with a notice when none remain. Shared views can create subagents
-  under visible conversations, but do not offer new top-level conversations
-  or archive discovery outside the shared trees.
-- Keys and commands: `keymap.ts`, `skills.ts`, `composer/commands.ts`.
-- Models and Settings: `models.ts`, `models/`, `settings.ts`, `settings/`.
-  The composer's model menu keeps the effort slider as presets and lists every
-  model the backend offers (`models/picker.ts`), with the picked model's thinking
-  levels. A pick waits for the next message like a slider change; a draft starts
-  on it.
-  Deleted agents' history retention is an instance setting (90 days by default),
-  applied by background cleanup on its next pass.
-  Agent-finished notifications are per browser (`settings/notifications.ts`):
-  turning them on asks for permission, registers [push-worker.ts](push-worker.ts)
-  (served as `/push-worker.js`, root scope, no fetch handler) and saves this
-  device's push subscription. A tapped notification focuses an open tab, which
-  opens the agent through its `#agent=` link.
-  Account > Updates (`settings/updates.ts`) shows the installed and newest
-  version on the install's channel and offers "Update now", which the
-  launcher applies with a restart; the page then reloads into the new version.
-- Side panels: `panes.ts`, `artifacts/`, `diff.ts`, `files.ts`, `comments.ts`.
-  Markdown previews resolve local images and links from immutable owned file IDs
-  captured at publication, independent of source files or Files pagination.
-  Legacy documents without a map resolve by name; new maps never fall back to
-  another version's file.
-  Action menus close before running a choice, including opening a confirmation;
-  cancelling the confirmation does not reopen the menu. The conversation menu
-  keeps Delete's first tap open for its inline second-tap confirmation. Pane
-  overflow buttons, links and version selections share dismissal in
-  `panes/powerbar.ts`; live slider forms remain open while adjusting.
-- Side conversations: `side-pane.ts` lists the open conversation's read-only
-  forks (tree rows with `side_of`, kept out of the sidebar) and shows one at a
-  time in a frame of `/?embed=1#agent=<id>`. The server marks that page
-  `html[data-embed]`; `state.embedded` then hides the tree, panes and controls,
-  runs only composer keys, and never writes history entries or the last agent.
-  Promote to subagent converts the shown idle fork into a child; `promoting` and
-  `promotion_error` supply notices, and removing `side_of` moves it to the sidebar.
-  Parked frames retain the cached conversation and cursor but close subscriptions
-  and stop paging, version polls and refreshes. Opening reconnects at that cursor.
-  Zero-size threads pause auto-paging until resized.
-- Stall diagnostics: `main-thread-timing.ts` observes tasks over 200 ms, preferring
-  long-animation-frame script attribution where supported. Visible pages send at
-  most one report per ten seconds through the bounded `/api/ui-timing` queue;
-  the existing server one-second telemetry bucket also applies.
-  Reports contain row counts, remote statuses, composer focus and eight fixed
-  event markers, never DOM text or input values. Up to three scripts include
-  only same-origin paths and bounded function names, without credentials, query
-  or hash.
-- Request inspection: `prompt.ts` (exact model requests), `context-viewer.ts`.
-- API requests: `api.ts` shares fetch/auth handling; `backends/backend.ts`
-  binds it to a backend's API base and health. Existing `api.ts` exports stay
-  home-only. Conversation requests select `backendFor(id)`; home ids are bare,
-  remote ids are `label/cid`. `backends/discovery.ts` discovers approved connections
-  at boot and every minute without joining the focused/home read, and registers
-  them in one list, `backends()` (home first), from which the sidebar sections,
-  the Settings backend picker and the agent finder are built. The home and
-  each remote read their trees through one loader per backend
-  (`backends/tree.ts`) on the home cadence, with at most one read in flight
-  each, so a slow remote delays only its own rows. Every snapshot then commits
-  through one path (`commitTree` in `conversation/poll.ts`), so pending renames,
-  take-overs, stops and deletes, pane refreshes and agent search treat remote
-  rows exactly like home rows. Unchanged remote snapshots do not redraw. Remote
-  trees render below dividers in the same sidebar.
-  The agent finder uses those cached trees without fetching while typing;
-  remote results show the backend name and neutral offline state, and mentions
-  insert `<id>@<label>` targets. Equal matches prefer home agents, and the shared
-  bounded index retains home entries first.
-  Version mismatches have no tree; remote health never reloads the home page.
-  Offline remotes keep their last tree and show neutral relative last-seen times,
-  with exact timestamps in tooltips. Tree
-  retries back off from five seconds to one minute; recovery needs no new sign-in.
-  **New agent** creates a remote top-level agent on first send; offline sections
-  disable it. Drafts, uploads and queued sends retain that backend across retries.
-  Selection waits for the remote tree to pass creation, so a home refresh cannot
-  misread an older remote snapshot as deletion.
-  Backend-bound controls cover sends (queued or steered), uploads, stop, rename,
-  effort, safety review, delete, take-over, /compact and /clear. Remote drafts
-  and agents read the remote ladder through the proxy. Its key policy alone
-  authorizes actions; refusals display like home refusals, without a browser
-  allowlist. Agents cannot move backends; side conversations and revive stay home.
-  Settings → Remotes also lists homes allowed to connect to this instance, with
-  last-used times and access revocation, instead of a separate Settings card.
-  It lists agent-requested addresses with a password-only sign-in;
-  the manual name/address/password form is collapsed under **Add a remote**.
-  Both sign-in forms ask for an existing remote password, mark it as
-  `current-password` and request password-manager exclusion; the password is
-  used once, not stored.
-  Incoming access and the direction and scope of settings copies are explained inline.
-  Signed-in remotes offer **Sync settings from home**, with a signed ten-minute
-  preview and confirmation outside the proxy. Only effort levels, default
-  efforts, maximum context window and theme copy; unavailable ladder models and
-  remotely changed items are refused, with per-item results. Default-effort
-  replacement and stale checks include logged-out providers' stored overrides;
-  older backends lacking that complete projection require an update. Credentials,
-  passwords, names, backend keys and MCP servers stay on their own backend.
-  With a remote connected, the Settings header picks which Recurse the page
-  configures (`settings/target.ts`). A remote shows only Authentication,
-  Models and MCPs, read and saved through the proxy as the operator; Account
-  and Appearance always describe this Recurse. MCP OAuth sign-in returns to
-  the address that began it, so a remote's MCP sign-in runs on its own page;
-  status, checks, edits and sign-out work from here. Agents never reach these
-  routes (`remoteSettingsRoute` in `src/auth/backend_keys.ts`).
-  Composer input carries no relay provenance: it is operator input. Remote
-  request failures stay in that backend's health and conversation outbox.
-  Server-provided `/api/` URLs pass through `resolveUrl` before rendering or
-  fetching; remote URLs must stay within that API path and use the home proxy.
-  Files, PDF, drawing and download consumers receive these resolved URLs.
-- Reconnecting after outages: `connection.ts`, `connection/`. Only home health
-  drives session-expiry reload and generation recovery. Remote key revocation
-  (424) and unreachability (502) settle only that backend's health.
-- Stop: `stop-control.ts`, `stop-control/`.
+- [conversation/](conversation/) and [thread-render.ts](thread-render.ts)
+  render conversations; [composer.ts](composer.ts), [composer/](composer/)
+  and [attachments.ts](attachments.ts) send input and uploads.
+- [sidebar.ts](sidebar.ts), [deep-link.ts](deep-link.ts) and
+  [agent-finder.ts](agent-finder.ts) navigate the agent tree.
+  [sidebar/](sidebar/) groups local and remote top-level rows into sections with row and
+  section actions, using the instance's sidebar script
+  ([sidebar/script.ts](sidebar/script.ts)) or the built-in
+  [sidebar/default_sidebar.js](sidebar/default_sidebar.js) (Inbox, Active and
+  Archive).
+- [panes.ts](panes.ts), [artifacts/](artifacts/), [files.ts](files.ts) and
+  [diff.ts](diff.ts) provide side panels. [side-pane.ts](side-pane.ts) displays
+  read-only side conversations.
+- [models.ts](models.ts), [settings.ts](settings.ts) and [settings/](settings/)
+  configure the app; [keymap.ts](keymap.ts) handles keyboard controls.
+- [api.ts](api.ts), [backends/](backends/) and [connection.ts](connection.ts)
+  handle requests and connection state. [prompt.ts](prompt.ts) shows captured
+  model requests.
 
-## Styles and icons
+## Views and connections
 
 [theme.css](theme.css) holds the design tokens: colours, spacing, radii,
 shadows, motion and layers, as CSS custom properties. Checks in `tests/check.sh web`
@@ -177,7 +44,49 @@ build publishes Inter ([inter/](inter/), OFL) for stacks that name it;
 `index.html`'s `<svg data-icon="NAME">` slots from it. Oxlint does not cover Lit
 templates; do not add another lint stack just for that gap.
 
-## Brand assets
+Conversation rendering uses server projections and pages older history as
+needed. Live polls retain loaded history; a reset of the same resident view and
+session replaces its served range while retaining settled rows before it. Navigation preserves the reader's position without letting work from
+one conversation move another. Pending reads from a departed conversation never
+replace a new draft or the newly selected conversation. Loading the open conversation is the critical
+path; background work and caching must not delay it. Navigation cancels departed
+background work before registering the new conversation's pane probes, including
+warming its parked Side frame.
+Foreground operator sends enter through
+[conversation/operator-send.ts](conversation/operator-send.ts), which applies
+the open thread's scroll policy before enqueueing or delivering. Composer jobs
+and persisted comment attempts reuse its transport without scrolling on retries
+or restoration. Stops use a separate typed transport without message content.
+`tests/checks/operator_send_check.ts` rejects direct delivery elsewhere and
+restricts transport calls and foreground outbox enqueueing to their owners.
+A send to an idle agent, including image and Artifact comments, follows the
+reply's bottom until the start of the sent message reaches the viewport top,
+then holds there until the reader scrolls or
+jumps. Short replies add no empty space or scrolling. Once the reader scrolls
+away, repaints hold their visible row even when a new live reply temporarily
+shortens the thread; a layout clamp never resumes bottom following. An explicit
+jump to latest resumes following, including when a repaint lands during its
+smooth scroll. The running
+turn's live panel sits above the composer, outside the thread
+([conversation/thread.ts](conversation/thread.ts)). It retains the current turn's
+latest thinking title and expandable text while tools or the next model call
+run, including after reload. A newer thinking block replaces it, even when the
+provider supplies only encrypted or redacted thinking. The header says Thinking
+only while the thought is live, then Waiting with its last readable title.
+Expanded prose omits a repeated title and bold Markdown delimiters.
+Server-compacted history shows a plain marker instead of a summary disclosure;
+its earlier messages and jump-to-first-kept-message link remain available.
+Prompt-cache refresh usage adds to the turn’s cost and token totals without
+counting another assistant reply; it never replaces the turn’s existing usage.
+The context footer reuses committed usage already included in tree snapshots.
+Cold or older backends retain the selected-conversation usage read; the detailed
+breakdown still loads when opened.
+
+Visible main conversation streams report `viewing=true` so the server skips
+agent-finished pushes while the operator is reading that conversation. Hidden
+tabs and the phone agent list close their stream; embedded side conversations
+never report a viewer. Received pushes always show a notification, avoiding
+browsers' generic background-update notices.
 
 [brand/](brand/) contains the ring logo. [logo.png](brand/logo.png) is the
 transparent artwork, recoloured white with its own anti-aliased alpha. The
@@ -199,17 +108,107 @@ the artwork at their named dimensions. Launcher PNGs and maskable icons
 use white on a black tile; maskable icons inset the circle to keep it within the
 safe area. The Apple touch icon uses the standard app tile.
 
-Settings → Appearance → Name and icon saves instance overrides in
-`config/branding.json` beside the other instance settings. Reload applies the
-name to the shell, login page and manifest, and a PNG or SVG (up to 1 MiB)
-to all shell and manifest icon slots without resizing. Reset restores each
-default independently. [src/branding.ts](../src/branding.ts) owns validation
-and atomic writes; custom SVG responses use a scriptless sandbox CSP.
+Backend-bound requests use the same UI for home and remote conversations.
+Remote health is isolated from home health, and the remote's key policy remains
+the authority. Request cancellation remains active after response headers, so
+abandoned streams close and stalled discovery bodies cannot strand boot restore. [backends/events.ts](backends/events.ts) receives tree-change
+tag-change notices for home and connected remotes over one visible-tab SSE connection.
+Notices fence older reads and start fresh tree reads without waiting for the
+fallback poll. The server multiplexes remote notices to preserve browser
+connection slots. Remote subscriptions pause with the backend's existing sleep
+state and do not themselves count as activity or wake a sleeping backend. [shared-trees.ts](shared-trees.ts) filters the displayed tree
+but does not grant access.
+
+Artifact and image comments persist for background sending and retry; crop
+storage preserves the original pixels. Comment send controls stay outside native
+text selections, including when they appear after a paragraph is selected.
+The send bar updates when a selection draft opens or closes, without waiting for
+a pane refresh. Cmd/Ctrl+Enter in a comment popover stages the draft without
+opening the comment list and returns focus to the viewer; the next shortcut
+submits the staged batch. Submitting comments closes the pane; reopening preserves the
+reading position on desktop and phones without reloading unchanged documents. See
+[artifacts/comment-outbox.ts](artifacts/comment-outbox.ts) and
+[artifacts/crop-store.ts](artifacts/crop-store.ts).
+[image-preview/README.md](image-preview/README.md) describes preview gestures.
+Thread images show a compact filename footer with the full label in its tooltip.
+Published image frames reserve space while loading so off-screen images stay lazy,
+then follow the image's proportions within their size caps;
+operator uploads and allowed Markdown images use the same footer style.
+Inline captions read the admitted filename with a cached metadata-only request;
+Markdown descriptions remain image alt text, never the filename source.
+Artifact raster previews live in the Artifacts pane, not inline in the thread.
+Files keeps failed deletions visible through background list refreshes; Retry
+retries the deletion rather than reloading the list.
+
+On phones, the agent list is the full-screen root, with New agent and Settings
+in its header. Opening an agent adds one conversation above the list; switching
+agents replaces that entry. Browser Back and the title-bar arrow return to the
+list, including after a direct link or reload. Back at the list is left to the
+browser. New agent and More stay in the conversation title bar; pane counts
+appear in the More menu, and Artifacts attention appears on More. The composer
+uses the full width. Direct Artifact links open above the conversation. Opening
+Files from an image closes the viewer's history step before opening the pane.
+Desktop, tablet and embedded navigation are unchanged. A vertical touch drag
+on the phone thread closes the keyboard without changing the draft or caret;
+composer gestures, mouse scrolling and automatic thread movement keep focus.
+
+## HTTP and browser capabilities
+
+The app supports plain HTTP origins as well as HTTPS. Copy actions share
+[tool_details.ts](tool_details.ts)'s clipboard helper: when the Clipboard API is
+unavailable, a temporary textarea copies synchronously during the click, without
+losing the browser's user gesture. Failed copies remain visible to the operator.
+[settings/auth.ts](settings/auth.ts) uses the same helper for device sign-in codes.
+[files.ts](files.ts) falls back from unavailable Web Share to ordinary downloads.
+Push notifications require a secure context;
+[settings/notifications.ts](settings/notifications.ts) disables the setting on HTTP
+and explains that HTTPS is required. Loopback origins that browsers consider
+trustworthy retain secure-context capabilities. [index.html](index.html) links
+the authenticated web manifest served by [../src/web/notifications.ts](../src/web/notifications.ts);
+there is no app-owned install button or install-prompt hook. The browser controls
+whether installation is available on the current origin.
+
+Browser UUID callers fall back when `crypto.randomUUID` is unavailable:
+[conversation-ui-state/store.ts](conversation-ui-state/store.ts) uses random bytes
+or a local UI-only identifier, [show-timing.ts](show-timing.ts) uses a timestamp
+and sequence, and [stop-control/id.ts](stop-control/id.ts) uses random bytes before a
+non-secret local fallback. `crypto.getRandomValues` works on HTTP; browser code
+does not require `crypto.subtle`, `navigator.storage` or media-device access. Local/session storage
+and IndexedDB also work on HTTP, independently of HTTPS storage for the same host.
+Unavailable or full storage is still a persistence failure, not permission to
+silently discard pending comments.
+
+When Web Locks are unavailable, [artifacts/comment-lock.ts](artifacts/comment-lock.ts)
+serializes comment upload, send and discard across tabs with an IndexedDB
+readwrite transaction kept alive by pending requests. Its separate database does
+not block crop storage. This is transaction ownership, not an expiring lease;
+[artifacts/comment-outbox.ts](artifacts/comment-outbox.ts) rechecks ownership after
+awaits, and server idempotency handles crash recovery.
+
+## Settings
+
+Settings keeps its category sidebar on desktop and a category list on phones.
+Rows show current values or switches in rounded groups. Editors, provider
+sign-in actions, usage and model pickers stay inline on desktop. On phones,
+rows open the same controls in labelled modal sheets; Escape and Done return
+to the row. Resizing preserves edits without leaving a sheet open on desktop.
+Nested model pickers preserve unsaved effort-level edits until the ladder is
+saved. Safe preferences such as themes save on change; credentials, passwords
+and model policy retain their explicit confirmation actions. The prompt-cache
+warming switch saves directly from the Models overview.
+
+## Styles and assets
+
+[theme.css](theme.css) defines design tokens and [icons.ts](icons.ts) provides
+inline icons. Installed Android apps use fullscreen display; mobile chrome and
+Settings keep controls clear of display cutouts using safe-area insets.
+[brand/](brand/) contains the default brand assets;
+[../src/branding.ts](../src/branding.ts) owns instance branding.
 
 ## Rules for changes
 
 - Never commit `web/dist`; it is build output.
 - Pure helpers get unit tests in `tests/web/`; user-visible behaviour gets a
   browser test in `tests/mobile_browser/` ([tests/README.md](../tests/README.md)).
-- Loading the open conversation is the critical path; background work and
-  caching must never delay it.
+- Keep diagnostics free of DOM text and input values
+  ([main-thread-timing.ts](main-thread-timing.ts)).

@@ -1,6 +1,7 @@
 // Native file publication reuses conversation-owned attachment admission.
+import { Type } from "typebox";
 import { randomUUID } from "node:crypto";
-import { Type } from "@earendil-works/pi-ai";
+import {} from "@earendil-works/pi-ai";
 import { defineExtension, defineTool } from "@earendil-works/pi-durable";
 import { registerDocumentFile } from "../../../agents/runtime/attachments/document";
 import { AttachmentError } from "../../../agents/runtime/attachments/base";
@@ -12,7 +13,7 @@ export function createPublish(collection: string, owner: string) {
       defineTool({
         name: "publish",
         description:
-          "Show files to the operator in the UI: attaches them to your reply and the Files pane; images display inline. Other agents never see published files; to share a file with an agent, send its path. Publishing the same filename adds a version (100 MB/file, 120 files/minute). Markdown automatically includes bounded direct relative images and file links beneath its folder (100 references, 100 MB combined); hidden files, symlinks, directories and outside paths are skipped with warnings. name renames a single file; path text and links do not publish files.",
+          "Publish files in the operator's reply and Files pane; images display inline. Other agents need file paths, not publication. Same filename adds a version. Limits: 100 MB/file, 120 files/minute. Markdown includes direct relative images and file links beneath its folder (100 references, 100 MB combined); hidden files, symlinks, directories and outside paths are skipped with warnings. name renames one file. Text paths/links don't publish files.",
         parameters: Type.Object({
           paths: Type.Array(Type.String(), { minItems: 1 }),
           name: Type.Optional(Type.String()),

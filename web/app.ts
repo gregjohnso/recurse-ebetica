@@ -3,6 +3,7 @@
 // Auth/generation reload defers while browser-only work cannot survive.
 // Capture dispatch precedes local input handlers; unclaimed keys stay native.
 import { startMainThreadTiming } from "./main-thread-timing.js";
+import { installPhonePaneHistory } from "./phone-nav.js";
 import { rowThreads } from "./row-thread-state.js";
 import { startBackendDiscovery } from "./backends/discovery.js";
 import { backends } from "./backends/backend.js";
@@ -77,7 +78,6 @@ import {
   commitRename,
   isRenaming,
   mobileSidebarOpen,
-  closeMobileSidebar,
   focusAgentTree,
   restoreAgentFocus,
 } from "./sidebar.js";
@@ -90,7 +90,11 @@ import {
   workingActivityOpen,
 } from "./conversation/shell-surface.js";
 import { toggleLatestTurnEye } from "./conversation/thread.js";
-import { poll, waitForInitialAuthoritativeRead } from "./conversation/poll.js";
+import {
+  poll,
+  startPolling,
+  waitForInitialAuthoritativeRead,
+} from "./conversation/poll.js";
 import { requestStop, stopPublicationPending } from "./conversation/stop.js";
 import {
   requestTakeoverToggle,
@@ -104,6 +108,9 @@ import {
   preserveUnsentForLogin,
 } from "./composer.js";
 import { startConnectionMonitoring } from "./connection.js";
+installPhonePaneHistory(() =>
+  closeFocusedPaneFromKeyboard(undefined, true, true),
+);
 import { guardLeaveComments, pendingCommentCount } from "./comments.js";
 import { closeSettings, settingsOpen } from "./settings.js";
 import { closePrompt, promptOpen } from "./prompt.js";
@@ -129,6 +136,10 @@ import {
   drawingEditorOwnsKey,
 } from "./image-preview/editor.js";
 import {
+  thumbnailFallback,
+  threadImageLoaded,
+} from "./image-preview/inline.js";
+import {
   agentFinderOpen,
   closeAgentFinder,
   configureAgentFinderNavigation,
@@ -141,12 +152,18 @@ import {
 } from "./artifacts/pane.js";
 import { openPullRequestFinder } from "./diff.js";
 import { closeImageFromKeyboard } from "./files.js";
+import {
+  closeSelectionCommentFromKeyboard,
+  hasStagedCommentsIn,
+} from "./artifacts/selection-comments.js";
 import { handleDownloadClick } from "./download.js";
 import { UI_STATUS_EVENT } from "./ui-events.js";
 import "./selection-comments.js";
 import "./comments/touch-selection-edge.js";
 
 document.addEventListener("click", handleDownloadClick, true);
+document.addEventListener("error", thumbnailFallback, true);
+document.addEventListener("load", threadImageLoaded, true);
 
 // Wrapped-shell bounds keep mobile overlays below safe-area/keyboard changes.
 const topbarEl = $("#topbar");
@@ -239,7 +256,6 @@ function localLayerOpen(): boolean {
     promptOpen() ||
     artifactVersionMenuOpen() ||
     paneKeyboardLayerOpen() ||
-    mobileSidebarOpen() ||
     skillAutocompleteOpen() ||
     agentFinderOpen() ||
     drawingEditorOpen() ||
@@ -260,10 +276,6 @@ function closeLocalLayer(): void {
     closePaneKeyboardLayer() ||
     closeShellSurface() ||
     closeAgentSurface();
-  if (!closed && mobileSidebarOpen()) {
-    closeMobileSidebar();
-    closed = true;
-  }
   if (!closed) closed = closeWorkingActivity();
   if (!closed && agentFinderOpen()) closed = closeAgentFinder();
   if (!closed && skillAutocompleteOpen()) closeSkillAutocomplete();
@@ -299,7 +311,6 @@ function keyTarget(target: EventTarget | null): KeyTarget {
       (paneKeyboardLayerOpen() &&
         !insidePane &&
         !element?.closest?.("#scroll, #sidebar")) ||
-      mobileSidebarOpen() ||
       (!insidePane && isDialogTarget(target)),
   });
 }
@@ -399,6 +410,14 @@ function execute(command: KeyCommand | null): void {
     case "parent":
       treeAscendOrCollapse();
       break;
+    case "toggle-agents": {
+      const sidebar = $("#sidebar");
+      const focusInside = sidebar?.contains(document.activeElement);
+      $<HTMLButtonElement>("#menu-btn")?.click();
+      if (focusInside && sidebar?.classList.contains("desktop-hidden"))
+        execute("focus-thread");
+      break;
+    }
     case "next":
       navigate("next");
       break;
@@ -547,6 +566,17 @@ document.addEventListener(
     if (embedded && keyTarget(event.target) !== "composer") return;
     // Invariant: The drawing editor owns its keys; idle Escape still closes.
     if (drawingEditorOwnsKey(event)) return;
+    if (
+      event.key === "Escape" &&
+      (!isTextEditorTarget(event.target) ||
+        (event.target instanceof Element &&
+          !!event.target.closest(".report-comment-popover"))) &&
+      closeSelectionCommentFromKeyboard()
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === "Escape" && closePowerbarOverflow(event.target)) {
       event.preventDefault();
       event.stopPropagation();
@@ -575,7 +605,20 @@ document.addEventListener(
     if (mobileDrawerEscape && !higherLayerOpen) {
       event.preventDefault();
       event.stopPropagation();
-      closeMobileSidebar(true);
+      return;
+    }
+    const focusedPane = (
+      event.target as HTMLElement | null
+    )?.closest<HTMLElement>(".pane-col");
+    if (
+      event.key === "Escape" &&
+      !higherLayerOpen &&
+      focusedPane &&
+      hasStagedCommentsIn(focusedPane) &&
+      closeFocusedPaneFromKeyboard(focusedPane.dataset.pane, true, true)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
     // Invariant: Touch layouts skip the desktop navigation reducer, but a
@@ -591,7 +634,7 @@ document.addEventListener(
           artifactVersionMenuOpen()
           ? closeArtifactVersionMenuKeyboardLayer()
           : paneColumn
-            ? closeFocusedPaneFromKeyboard(undefined, true)
+            ? closeFocusedPaneFromKeyboard(undefined, true, true)
             : paneMenu
               ? closePaneKeyboardLayer()
               : false;
@@ -865,9 +908,6 @@ window.addEventListener("recurse:login-requested", (event: Event) => {
 const initialAuthoritativeRead = waitForInitialAuthoritativeRead();
 startConnectionMonitoring(poll, initialAuthoritativeRead);
 void poll();
-setInterval(() => {
-  // Spec: Hidden Side frames skip polls and catch up on their next shown tick.
-  if (!embedded || frameElement?.checkVisibility?.() !== false) void poll();
-}, 1500);
+startPolling(() => !embedded || frameElement?.checkVisibility?.() !== false);
 setInterval(renderSidebar, 30000);
 refreshUpBtn();
