@@ -1,4 +1,4 @@
-// The Explorer pane (first in the right-hand rail) shows a read-only tree of
+// The Explorer pane (first panel in the left rail) shows a read-only tree of
 // the open conversation's working directory, with a file preview below it.
 // Folders load lazily on expand and re-read on Refresh, opening the pane, a
 // settled turn or a changed cwd (no watcher).

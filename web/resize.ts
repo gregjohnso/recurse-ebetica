@@ -103,9 +103,9 @@ sidebarGrip.addEventListener("dblclick", () => {
 const panesGrip = makeGrip("pn", panesEl);
 draggable(
   panesGrip,
-  () => ({ right: panesEl.getBoundingClientRect().right }),
+  () => ({ left: panesEl.getBoundingClientRect().left }),
   (e, ctx) => {
-    const w = clampPanes(ctx.right - e.clientX);
+    const w = clampPanes(e.clientX - ctx.left);
     panesEl.style.flex = "none";
     panesEl.style.width = w + "px";
     localStorage.setItem(PANES_KEY, String(w));

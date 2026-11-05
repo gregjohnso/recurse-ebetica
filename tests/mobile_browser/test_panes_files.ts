@@ -2,6 +2,7 @@ import { expect } from "bun:test";
 import { EventEmitter, once } from "node:events";
 import type { Browser, Locator, Page, Route } from "playwright";
 import {
+  followAgentLink,
   captureErrors,
   closeWithRoutes,
   dispatchArtifactSelection,
@@ -376,7 +377,7 @@ export const tests: BrowserTest[] = [
     let pane = page.locator('.pane-col[data-pane="files"]');
     await retryColdFiles(page, pane, base, fixture.empty, coldUrl, coldFailed);
     await pane.locator(".pane-title").focus();
-    await page.locator(`.agent[data-id="${fixture.demo}"]`).click();
+    await followAgentLink(page, fixture.demo);
     await page
       .locator("#conv-title", { hasText: "Files demo agent" })
       .waitFor();
@@ -441,7 +442,7 @@ export const tests: BrowserTest[] = [
     await pane.waitFor();
     await pane.locator(".files-card", { hasText: "empty-agent.txt" }).waitFor();
     expect(await page.locator("#input").inputValue()).toBe(composerBefore);
-    await page.locator(`.agent[data-id="${fixture.demo}"]`).click();
+    await followAgentLink(page, fixture.demo);
     await page
       .locator("#conv-title", { hasText: "Files demo agent" })
       .waitFor();
@@ -741,7 +742,7 @@ export const tests: BrowserTest[] = [
     await staleFilesButton.click();
     await staleHeld;
     expect(heldStale.length).toBeGreaterThan(0);
-    await stalePage.locator(`.agent[data-id="${fixture.empty}"]`).click();
+    await followAgentLink(stalePage, fixture.empty);
     await heldStale[0]
       .fulfill({
         json: {
@@ -1753,10 +1754,13 @@ export const tests: BrowserTest[] = [
         .filter({ hasText: `Version ${third}` })
         .waitFor({ state: "attached", timeout: 15_000 });
       expect(await heading.innerText()).toBe(`Draft ${first}`);
-      await page
-        .locator(`.agent[data-id]:not([data-id="${demo}"])`)
-        .first()
-        .click();
+      await followAgentLink(
+        page,
+        (await page
+          .locator(`.agent[data-id]:not([data-id="${demo}"])`)
+          .first()
+          .getAttribute("data-id"))!,
+      );
       await pane.waitFor({ state: "detached" });
       const fourth = await republish();
       const focusedResponse = page.waitForResponse(

@@ -28,6 +28,8 @@
 .pane-powerbar-overflow > summary::-webkit-details-marker { display: none; }
 .pane-powerbar-menu { position: absolute; top: 100%; right: 0; min-width: 240px;
   max-width: calc(100vw - 24px); }
+/* Panes open at the left on desktop, so menus open toward the chat. */
+@media (min-width: 701px) { .pane-powerbar-menu { right: auto; left: 0; } }
 .pane-powerbar-menu .diff-head, .pane-powerbar-menu .diff-toolbar { margin: 0; gap: var(--space-2); }
 .pane-powerbar-menu .diff-toolbar { margin-top: var(--space-3); }
 @media (max-width: 700px) {

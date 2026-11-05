@@ -1,5 +1,5 @@
 
-/* Side panels: feature views that open to the right of the chat, plus the rail
+/* Side panels: feature views that open beside the chat, plus the rail
    of toggle buttons that opens them. The main app styling lives inline in the
    shell; this file adds the shared button rules and the panel framework,
    served as a static asset. */
@@ -151,7 +151,7 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
 :is(:hover, :focus-visible) > .disclosure-caret { color: var(--text); }
 
 /* ---------- open panels (desktop columns) ----------
-   #panes sits in the body flex row just right of the chat. It takes as many flex
+   #panes sits in the body flex row beside the chat (left of it on desktop). It takes as many flex
    units as there are open panels while the chat keeps 1, so chat + N panels split
    the width equally (one panel ⇒ 50/50, two ⇒ thirds). The fixed sidebar is
    untouched. */
@@ -160,13 +160,13 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
 
 /* ---------- resize grips ----------
    Thin drag handles on the inner edge of the sidebar (left region) and the
-   panes column (right region). resize.js owns the drag + localStorage; these
+   panes column. resize.js owns the drag + localStorage; these
    just place and highlight the handle. Hidden on mobile, where both regions are
    full-bleed overlays sized by the stylesheet. */
 .resize-grip { position: absolute; top: 0; height: 100%; width: 9px; z-index: calc(var(--z-chrome) + 1);
   cursor: col-resize; }
 .resize-grip.sb { right: -4px; }   /* sidebar: sits over its right border */
-.resize-grip.pn { left: -4px; }    /* panes: sits over its left border */
+.resize-grip.pn { left: -4px; }    /* panes: over the border facing the chat */
 .resize-grip::after { content: ""; position: absolute; top: 0; bottom: 0;
   left: 50%; width: 2px; transform: translateX(-50%);
   background: transparent; transition: background var(--motion-fast); }
@@ -219,9 +219,19 @@ body.resizing { cursor: col-resize; user-select: none; }
 /* A panel temporarily expanded to cover the whole viewport. */
 .pane-col.fullscreen { position: fixed; inset: 0; z-index: calc(var(--z-drawer) + 4); border-left: 0; }
 
-/* ---------- the rail (desktop, right edge) ---------- */
+/* ---------- the rail (desktop, left edge) ----------
+   Order: rail, agent list, open panel, chat. An open panel takes the agent
+   list's place; the rail's Agents button brings the list back. */
+@media (min-width: 701px) {
+  #pane-rail { order: -3; }
+  #sidebar { order: -2; }
+  #panes { order: -1; }
+  body:has(#panes.on) #sidebar { display: none; }
+  #panes.on { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset); }
+  .resize-grip.pn { left: auto; right: -4px; }
+}
 #pane-rail { flex: none; display: none; flex-direction: column; gap: 0;
-  padding: var(--space-4) var(--space-2); background: var(--frame-bg); border-left: 1px solid var(--frame-border); }
+  padding: var(--space-4) var(--space-2); background: var(--frame-bg); border-right: 1px solid var(--frame-border); }
 #pane-rail.on { display: flex; }
 #pane-rail-panels { display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
   border-top: 1px solid var(--border); margin-top: var(--space-2); padding-top: var(--space-3); }
@@ -231,7 +241,9 @@ body.resizing { cursor: col-resize; user-select: none; }
 #pane-rail > :is(#trash-btn, #takeover-btn).on, #pane-rail > #share-link-btn:not([hidden]) { display: flex; }
 /* Delete sits alone at the rail's bottom; the panel list keeps the top, with
    its divider only under a visible take-over control. */
-#pane-rail > #trash-btn { order: 1; margin-top: auto; }
+#pane-rail > #trash-btn { order: 2; }
+#pane-rail > #settings-btn { order: 1; margin-top: auto; width: 44px; height: 44px; padding: 0;
+  border: 0; justify-content: center; }
 #pane-rail > #takeover-btn:not(.on) ~ #pane-rail-panels { margin-top: 0; padding-top: 0;
   border-top: 0; }
 #pane-rail > button:not(.armed):hover { background: var(--panel-2); color: var(--text); }

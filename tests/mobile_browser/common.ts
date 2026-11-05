@@ -460,6 +460,12 @@ export async function gotoRoot(page: Page, base: string): Promise<void> {
   });
 }
 
+export async function followAgentLink(page: Page, id: string): Promise<void> {
+  await page.evaluate((agentId) => {
+    (globalThis as any).location.hash = `agent=${agentId}`;
+  }, id);
+}
+
 export async function reloadConversation(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const browser = globalThis as any;

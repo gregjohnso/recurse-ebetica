@@ -20,11 +20,13 @@ conversation and subscribes to its live updates.
   ([sidebar/script.ts](sidebar/script.ts)) or the built-in
   [sidebar/default_sidebar.js](sidebar/default_sidebar.js) (Inbox, Active and
   Archive).
-- [explorer.ts](explorer.ts) adds the activity bar that switches the sidebar
-  between Agents and the Explorer; [explorer/](explorer/) holds its folder
+- [explorer.ts](explorer.ts) registers the Explorer panel; [explorer/](explorer/) holds its folder
   state and the File pane, which reuses the Files pane's preview renderers.
 - [panes.ts](panes.ts), [artifacts/](artifacts/), [files.ts](files.ts) and
-  [diff.ts](diff.ts) provide side panels. [side-pane.ts](side-pane.ts) displays
+  [diff.ts](diff.ts) provide side panels. On desktop the icon rail sits at the
+  left edge (Agents, the panels, then Settings and Delete at its foot); an open
+  panel takes the agent list's place, and Agents or the agent-list toggle
+  closes it so the list returns. [side-pane.ts](side-pane.ts) displays
   read-only side conversations.
 - [models.ts](models.ts), [settings.ts](settings.ts) and [settings/](settings/)
   configure the app; [keymap.ts](keymap.ts) handles keyboard controls.

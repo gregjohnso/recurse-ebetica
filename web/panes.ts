@@ -2,9 +2,10 @@
 // and desktop/mobile layout. Conversation actions retain their module owners.
 // Phone content/header share a scroller. Unregistered/unavailable panes hide
 // their rail; unavailable open panes close on refresh.
-import { currentUiOwnerId, DRAFT, embedded, state } from "./state.js";
+import { currentUiOwnerId, embedded, state } from "./state.js";
 import { phoneListEntry } from "./phone-nav.js";
 import {
+  AGENTS_ICON,
   DELETE_ICON,
   SHARE_ICON,
   TAKE_CONTROL_ICON,
@@ -915,6 +916,43 @@ function paneBadge(pane: PaneDef, ctx: PaneContext): string {
   }
 }
 
+/** Desktop: whether an open pane takes the agent list's place. */
+export function paneCoversAgents(): boolean {
+  return !isMobile() && open.size > 0;
+}
+
+$("#menu-btn")!.addEventListener(
+  "click",
+  (event) => {
+    // Spec: On desktop the agent-list toggle (menu button, H, the rail's
+    // Agents) first closes a pane shown in the list's place.
+    if (!paneCoversAgents()) return;
+    event.stopImmediatePropagation();
+    const current = [...open][0];
+    if (current && closePane(current, true, false)) {
+      const sidebar = $("#sidebar")!;
+      if (sidebar.classList.contains("desktop-hidden"))
+        $<HTMLButtonElement>("#menu-btn")!.click();
+    }
+  },
+  true,
+);
+
+/** The rail's Agents button: shows the agent list, or hides it when shown. */
+function agentsButton(): HTMLButtonElement {
+  const shown =
+    !paneCoversAgents() && !$("#sidebar")!.classList.contains("desktop-hidden");
+  const b = document.createElement("button");
+  b.className = "rail-btn" + (shown ? " active" : "");
+  b.id = "agents-btn";
+  b.title = "Agents";
+  b.setAttribute("aria-label", "Agents");
+  b.setAttribute("aria-pressed", String(shown));
+  b.innerHTML = AGENTS_ICON;
+  b.onclick = () => $<HTMLButtonElement>("#menu-btn")?.click();
+  return b;
+}
+
 function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
   const mobile = isMobile();
   // Invariant: Reparent shared controls, retaining their owners and handlers.
@@ -945,14 +983,13 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     "|" +
     (mobile ? "m" : "d") +
     "|" +
-    state.selectedId;
+    state.selectedId +
+    "|" +
+    $("#sidebar")!.classList.contains("desktop-hidden");
   if (hash === railHash) return;
   railHash = hash;
-  const any = avail.length > 0;
-  railEl.classList.toggle(
-    "on",
-    !mobile && (any || (!!state.selectedId && state.selectedId !== DRAFT)),
-  );
+  // Spec: The desktop rail always shows; it holds Agents and Settings.
+  railEl.classList.toggle("on", !mobile);
   fabEl.classList.toggle("on", mobile);
   const mobileAttention =
     artifactsAttention && avail.some((p) => p.id === ARTIFACTS_PANE_ID);
@@ -965,6 +1002,7 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
 
   const railPanels = $("#pane-rail-panels")!;
   railPanels.innerHTML = "";
+  railPanels.appendChild(agentsButton());
   for (const p of avail) {
     const b = document.createElement("button");
     const attention = artifactsAttention && p.id === ARTIFACTS_PANE_ID;
@@ -1140,6 +1178,14 @@ mq.addEventListener("change", () => {
   syncPanes();
 });
 addEventListener("panes-relayout", () => layout());
+/** Keeps the rail's Agents button in step with the agent list's visibility. */
+const sidebarWatch = new MutationObserver(() =>
+  renderRail(availableFor(buildCtx())),
+);
+sidebarWatch.observe($("#sidebar")!, {
+  attributes: true,
+  attributeFilter: ["class"],
+});
 
 // ---- the per-poll sync (called from the conversation refresh) -------------
 let syncFailureAnnounced = false;

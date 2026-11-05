@@ -264,7 +264,8 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       {
         keys: ["Escape"],
         command: "focus-agents",
-        description: "focus agents list (leave pane open)",
+        description:
+          "focus agents list (desktop: closes the pane in its place)",
       },
       {
         keys: ["h"],
@@ -374,8 +375,8 @@ export function reduceKeymap(
       return result(paneState, null, false);
     // Invariant: o toggles visibility from either focus context. p moves focus
     // between thread and pane without changing an open pane's layout; Escape
-    // returns to agents leaving the pane open. h closes the pane; H toggles
-    // the agent bar.
+    // returns to agents (on desktop the pane in the list's place closes). h
+    // closes the pane; H toggles the agent list.
     if (event.key === "Escape") return action("focus-agents");
     if (event.key === "P")
       return event.repeat
@@ -393,7 +394,7 @@ export function reduceKeymap(
       return event.repeat
         ? result(paneState, null, true)
         : result(paneState, "toggle-agents", true);
-    // Invariant: j/k switch between the available right-side panes. Arrows are
+    // Invariant: j/k switch between the available panes. Arrows are
     // deliberately left native so the mouse/trackpad/arrow keys still scroll
     // pane content.
     if (event.key === "j") return result(paneState, "pane-next", true);

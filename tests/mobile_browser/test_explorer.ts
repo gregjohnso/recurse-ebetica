@@ -29,11 +29,12 @@ export const tests: BrowserTest[] = [
       .evaluateAll((nodes) =>
         nodes.map((node) => node.id || node.getAttribute("data-pane") || ""),
       );
-    expect(rail.indexOf("share-link-btn")).toBe(rail.length - 2);
-    const panels = page.locator("#pane-rail-panels .rail-btn");
+    expect(rail.indexOf("share-link-btn")).toBe(rail.length - 3);
+    expect(rail.slice(-1)).toEqual(["settings-btn"]);
+    const panels = page.locator("#pane-rail-panels .rail-btn[data-pane]");
     expect(await panels.first().getAttribute("data-pane")).toBe("explorer");
     await panels.first().click();
-    expect(await page.locator("#agent-list").isVisible()).toBe(true);
+    expect(await page.locator("#agent-list").isVisible()).toBe(false);
     const tree = page.locator("#explorer .explorer-tree");
     const docs = tree.locator('[role="treeitem"][data-path="docs"]');
     await docs.waitFor();

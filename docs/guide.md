@@ -252,7 +252,12 @@ step of the plan-implement-merge loop in [Worktrees](#worktrees).
 
 ### Explorer
 
-The **Explorer** panel (the first panel button on the right, or `E`) shows the
+On a computer, the icon bar on the left edge holds **Agents**, a button for
+each panel, and **Settings** and **Delete** at the bottom. A panel opens in the
+agent list's place; choose **Agents**, or the panel's button again, to bring
+the list back.
+
+The **Explorer** panel (the first panel button in the left bar, or `E`) shows the
 open agent's working folder. Folders open as you expand them; files Git ignores
 are dimmed, and `M`/`U` mark changed and untracked files. Click a file to
 preview it below the tree, or right-click to copy its path or insert it into

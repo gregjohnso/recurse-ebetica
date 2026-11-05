@@ -51,7 +51,15 @@ export const tests: BrowserTest[] = [
       const actions = page.locator("#pane-rail > button");
       expect(
         await actions.evaluateAll((els) => els.map((el) => el.id)),
-      ).toEqual(["trash-btn", "takeover-btn", "share-link-btn"]);
+      ).toEqual([
+        "trash-btn",
+        "takeover-btn",
+        "share-link-btn",
+        "settings-btn",
+      ]);
+      expect(
+        (await page.locator("#pane-rail").boundingBox())!.x,
+      ).toBeLessThanOrEqual(0);
       const first = page.locator("#pane-rail [data-pane]").first();
       const childTop = (await first.boundingBox())!.y;
       const takeoverTop = (await page.locator("#takeover-btn").boundingBox())!
@@ -130,12 +138,15 @@ export const tests: BrowserTest[] = [
       await page.locator("#takeover-btn.on").waitFor({ state: "hidden" });
       await page.locator('#pane-rail [data-pane="report"]').waitFor();
       const parentBox = await page.waitForFunction(() => {
-        const button = (globalThis as any).document.querySelector(
-          "#pane-rail [data-pane]",
-        );
-        if (!button) return false;
+        const document = (globalThis as any).document;
+        const button = document.querySelector("#pane-rail [data-pane]");
+        const agents = document.querySelector("#agents-btn");
+        if (!button || !agents) return false;
         const box = button.getBoundingClientRect();
-        return box.width > 0 && box.height > 0 ? { y: box.y } : false;
+        const agentsBox = agents.getBoundingClientRect();
+        return box.width > 0 && box.height > 0
+          ? { y: box.y, agentsY: agentsBox.y, agentsBottom: agentsBox.bottom }
+          : false;
       });
       const parentGeometry = await parentBox.jsonValue();
       await parentBox.dispose();
@@ -143,7 +154,8 @@ export const tests: BrowserTest[] = [
       expect(childTop).toBeGreaterThan(takeoverTop);
       const shareBox = await page.locator("#share-link-btn").boundingBox();
       expect(shareBox).not.toBeNull();
-      expect(parentGeometry.y).toBe(shareBox!.y + shareBox!.height);
+      expect(parentGeometry.agentsY).toBe(shareBox!.y + shareBox!.height);
+      expect(parentGeometry.y).toBeGreaterThan(parentGeometry.agentsBottom);
       expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(
         true,
       );
@@ -462,6 +474,13 @@ export const tests: BrowserTest[] = [
       });
       await gotoRoot(page, base);
       await page.locator("#conv-status.running").waitFor();
+      if (width === 1280) {
+        await page.locator('.pane-col[data-pane="report"]').waitFor();
+        expect(await page.locator("#sidebar").isVisible()).toBe(false);
+        await page.locator("#agents-btn").click();
+        await page.locator("#sidebar").waitFor();
+        expect(await page.locator("#panes .pane-col").count()).toBe(0);
+      }
       const shot = async (stage: string) => {
         const dir = process.env.RECURSE_SCREENSHOT_DIR;
         if (!dir) return;
@@ -758,6 +777,65 @@ export const tests: BrowserTest[] = [
       "document.querySelector('#conv-title')?.textContent === 'Parent'",
     );
     expect(await page.locator("#up-top.on").count()).toBe(0);
+    await context.close();
+  },
+  // Feature: #0 the left rail swaps panels into the agent list's place
+  async function test_left_rail_swaps_panels_and_agent_list(browser, base) {
+    const { cid } = await postFixture(base, "seed-explorer");
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}#agent=${cid}`, { waitUntil: "domcontentloaded" });
+    const explorer = page.locator('#pane-rail-panels [data-pane="explorer"]');
+    await explorer.waitFor();
+    const agents = page.locator("#agents-btn");
+    const sidebar = page.locator("#sidebar");
+    const rail = (await page.locator("#pane-rail").boundingBox())!;
+    expect(rail.x).toBe(0);
+    expect((await sidebar.boundingBox())!.x).toBeGreaterThanOrEqual(
+      rail.x + rail.width,
+    );
+    expect(
+      await page.locator("#pane-rail-panels > *").first().getAttribute("id"),
+    ).toBe("agents-btn");
+    expect(await agents.getAttribute("aria-pressed")).toBe("true");
+    const dir = process.env.RECURSE_SCREENSHOT_DIR;
+    if (dir) await page.screenshot({ path: `${dir}/left-rail-agents.png` });
+    const settings = (await page
+      .locator("#pane-rail #settings-btn")
+      .boundingBox())!;
+    const trash = (await page.locator("#pane-rail #trash-btn").boundingBox())!;
+    expect(trash.y).toBeGreaterThan(settings.y);
+    expect(rail.y + rail.height - (trash.y + trash.height)).toBeLessThan(24);
+    await explorer.click();
+    const pane = page.locator('.pane-col[data-pane="explorer"]');
+    await pane.waitFor();
+    expect(await sidebar.isVisible()).toBe(false);
+    expect(await agents.getAttribute("aria-pressed")).toBe("false");
+    if (dir) await page.screenshot({ path: `${dir}/left-rail-explorer.png` });
+    expect((await pane.boundingBox())!.x).toBeLessThan(
+      (await page.locator("#main").boundingBox())!.x,
+    );
+    await agents.click();
+    await pane.waitFor({ state: "detached" });
+    await sidebar.waitFor();
+    await page
+      .locator('#agents-btn[aria-pressed="true"]')
+      .waitFor({ state: "attached" });
+    await explorer.click();
+    await pane.waitFor();
+    await explorer.click();
+    await pane.waitFor({ state: "detached" });
+    await sidebar.waitFor();
+    await agents.click();
+    await sidebar.waitFor({ state: "hidden" });
+    await agents.click();
+    await sidebar.waitFor();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator("#pane-fab").waitFor();
+    expect(await page.locator("#pane-rail").isVisible()).toBe(false);
+    expect(await page.locator("#pane-rail #settings-btn").count()).toBe(0);
     await context.close();
   },
 ];

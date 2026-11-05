@@ -720,7 +720,7 @@ export const tests: BrowserTest[] = [
     expect(delivered.ok()).toBeTrue();
     await page
       .locator(`.agent[data-id="${agent}"] .agent-state.running`)
-      .waitFor();
+      .waitFor({ state: "attached" });
     await writeFile(
       join(repo, "index.html"),
       "<!doctype html><body>Latest version</body>",
@@ -931,6 +931,7 @@ export const tests: BrowserTest[] = [
         .locator("body[data-ready]")
         .waitFor();
       if (width === 1280) {
+        await page.locator("#agents-btn").click();
         await page.locator('.agent[data-id="artifact-link-source"]').click();
         expect(page.url()).not.toContain("artifact=");
         await page.goBack();
