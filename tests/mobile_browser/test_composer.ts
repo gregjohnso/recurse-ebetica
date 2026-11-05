@@ -600,12 +600,15 @@ export const tests: BrowserTest[] = [
         await ready;
         await route.continue();
       });
-      await gotoRoot(page, base);
-      await page.locator("#messages .msg").first().waitFor();
-      expect(await page.locator("#input").isEnabled()).toBe(true);
       const line = page.locator("#conv-cwd");
-      expect(await line.isVisible()).toBe(false);
-      release();
+      try {
+        await gotoRoot(page, base);
+        await page.locator("#model-trigger").waitFor();
+        expect(await page.locator("#input").isEnabled()).toBe(true);
+        expect(await line.isVisible()).toBe(false);
+      } finally {
+        release();
+      }
       const id = await page
         .locator(".agent.selected")
         .first()
@@ -628,7 +631,7 @@ export const tests: BrowserTest[] = [
       expect(box.x).toBeGreaterThanOrEqual(title.x + title.width);
       expect(box.y).toBeGreaterThanOrEqual(header.y);
       expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height);
-      expect(title.width).toBeGreaterThan(0);
+      expect(title.width).toBeGreaterThanOrEqual(44);
       expect(box.width).toBeGreaterThan(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
       if (width === 320)
