@@ -1,8 +1,7 @@
-// Which agents list their subagents, remembered on this device so reloads and
-// server restarts keep the agent list's shape. Agents opened with l/Right stay
-// unfolded until h/Left folds them; h/Left on the open agent folds it until the
-// selection changes. Stored ids are untrusted: loading keeps at most MAX_OPEN
-// well-formed ids, and home tree reads drop ids of home agents that are gone.
+// Which agents list their subagents, remembered on this device. l/Right
+// unfolds until h/Left folds (on the open agent, until the selection changes).
+// Stored ids are untrusted: loading keeps at most MAX_OPEN well-formed ids, and
+// home tree reads drop ids of home agents that are gone.
 import { parseConversationId } from "../backends/backend.js";
 import { sharedTrees } from "../shared-trees.js";
 import { embedded, state } from "../state.js";
@@ -75,16 +74,16 @@ export function unfoldAgent(): void {
   save();
 }
 
-/** Selecting unfolds the folded agent, except the restored open agent at boot. */
+/** Selecting unfolds the folded agent, except the open one restored at boot. */
 export function noteSelection(id: string): void {
   const keep = restoring && collapsed === id;
   restoring = false;
   if (!keep) unfoldAgent();
 }
 
-// Invariant: Only an unfiltered home tree proves a home agent is gone; remote
-// ids stay until the cap drops them.
 addEventListener("recurse:tree-authoritative", () => {
+  // Invariant: Only an unfiltered home tree proves a home agent is gone;
+  // remote ids stay until the cap drops them.
   if (sharedTrees !== null || embedded) return;
   const gone = (id: string) =>
     !parseConversationId(id).label && !state.nodes[id];

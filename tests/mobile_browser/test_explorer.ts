@@ -81,31 +81,99 @@ export const tests: BrowserTest[] = [
     });
     await readmeDoc.waitFor();
     const tabs = page.locator(".dv-tab");
-    expect(await tabs.count()).toBe(3);
-    expect(await page.locator(".dv-groupview").count()).toBe(2);
+    expect(await tabs.count()).toBe(4);
+    expect(await page.locator(".dv-groupview").count()).toBe(3);
     await guideTab.click();
     await guideDoc.waitFor();
     expect(await readmeDoc.isVisible()).toBe(false);
     await readme.click();
     await readmeDoc.waitFor();
-    expect(await tabs.count()).toBe(3);
-    const box = (await pane.boundingBox())!;
-    await guideTab.dragTo(pane, {
-      targetPosition: { x: box.width / 2, y: box.height - 20 },
+    expect(await tabs.count()).toBe(4);
+    const groups = page.locator(".dv-groupview");
+    const readmeBox = (await readmeDoc.boundingBox())!;
+    const filesGroup = (await groups
+      .filter({ has: tabs.filter({ hasText: "README.md" }) })
+      .boundingBox())!;
+    await guideTab.dragTo(page.locator("body"), {
+      targetPosition: {
+        x: filesGroup.x + filesGroup.width / 2,
+        y: filesGroup.y + filesGroup.height - 30,
+      },
     });
     await page.waitForFunction(
       () =>
         (globalThis as any).document.querySelectorAll(".dv-groupview")
-          .length === 3,
+          .length === 4,
     );
     expect(await guideDoc.isVisible()).toBe(true);
+    await readmeDoc.waitFor();
+    await tree.locator('[data-path=".gitignore"]').click();
+    const ignoreTab = tabs.filter({ hasText: ".gitignore" });
+    await ignoreTab.waitFor();
+    expect(await groups.count()).toBe(4);
+    expect(
+      await groups.filter({ has: guideTab }).filter({ has: ignoreTab }).count(),
+    ).toBe(1);
     if (process.env.RECURSE_SCREENSHOT_DIR)
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-split.png`,
       });
+    await ignoreTab.locator(".dv-default-tab-action").click();
     await guideTab.locator(".dv-default-tab-action").click();
     await guideTab.waitFor({ state: "detached" });
-    expect(await tabs.count()).toBe(2);
+    expect(await tabs.count()).toBe(3);
+    const chatTab = tabs.filter({ hasText: "Chat" });
+    const input = page.locator("#input");
+    await input.fill("draft survives the move");
+    await input.press("ArrowLeft");
+    await chatTab.dragTo(page.locator("body"), {
+      targetPosition: {
+        x: readmeBox.x + readmeBox.width / 2,
+        y: readmeBox.y + 120,
+      },
+    });
+    await page.waitForFunction(
+      () =>
+        (globalThis as any).document.querySelectorAll(".dv-groupview")
+          .length === 2,
+    );
+    expect(await input.inputValue()).toBe("draft survives the move");
+    expect(await input.isVisible()).toBe(true);
+    expect(
+      await page.evaluate(() => {
+        const doc = (globalThis as any).document;
+        return [doc.activeElement?.id, doc.activeElement?.selectionStart];
+      }),
+    ).toEqual(["input", 22]);
+    expect(await readmeDoc.isVisible()).toBe(false);
+    await tabs.filter({ hasText: "README.md" }).click();
+    await readmeDoc.waitFor();
+    expect(await input.isVisible()).toBe(false);
+    await chatTab.click();
+    await input.waitFor();
+    if (process.env.RECURSE_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-chat.png`,
+      });
+    await chatTab.locator(".dv-default-tab-action").click();
+    await chatTab.waitFor({ state: "detached" });
+    expect(await input.isVisible()).toBe(false);
+    const chatButton = page.locator("#chat-btn");
+    expect(await chatButton.getAttribute("aria-pressed")).toBe("false");
+    await page.locator("body").press("i");
+    await chatTab.waitFor();
+    await page.waitForFunction(
+      () => (globalThis as any).document.activeElement?.id === "input",
+    );
+    expect(await input.inputValue()).toBe("draft survives the move");
+    await chatTab.locator(".dv-default-tab-action").click();
+    await chatTab.waitFor({ state: "detached" });
+    await chatButton.click();
+    await chatTab.waitFor();
+    await input.waitFor();
+    await page.waitForFunction(
+      () => (globalThis as any).document.activeElement?.id === "input",
+    );
     await panels.first().click();
     await page.locator("#explorer").waitFor({ state: "detached" });
     await page.locator("body").press("E");

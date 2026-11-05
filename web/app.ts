@@ -291,7 +291,8 @@ function keyTarget(target: EventTarget | null): KeyTarget {
   const element = target as HTMLElement | null;
   const textEditor =
     isTextEditorTarget(target) || isTextEditorTarget(document.activeElement);
-  const insidePane = !!element?.closest?.("#panes");
+  const insidePane =
+    !!element?.closest?.("#panes") && !element.closest("#main");
   return classifyKeyTarget({
     composer: element === inputEl,
     rename: !!element?.closest?.(".rename-input"),

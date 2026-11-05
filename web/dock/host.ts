@@ -1,13 +1,13 @@
-// Desktop docking for side panels, built on dockview. Tabs, close buttons,
-// drag and drop with edge snapping, split sizing, group headers and layout
-// serialization are dockview's own; this module only adapts its API: panels
-// show elements panes.ts supplies, and a layout can be saved and restored so
-// each conversation keeps its own. Loaded lazily; phones never load it.
+// Desktop docking for the chat and side panels, built on dockview, which owns
+// tabs, close buttons, drag and drop, split sizing and serialization. This
+// adapts it: panels show elements panes.ts supplies, moved keeping focus and
+// scroll; layouts save and restore per conversation. Phones never load it.
 import {
   createDockview,
   type AddPanelPositionOptions,
   type IDockviewPanel,
   type SerializedDockview,
+  themeAbyssSpaced,
 } from "dockview";
 
 export type DockLayout = SerializedDockview;
@@ -16,6 +16,8 @@ export interface DockPanelSpec {
   id: string;
   title: string;
   tooltip?: string;
+  /** Its content stays in the page while layouts are swapped. */
+  keep?: boolean;
 }
 
 export interface DockPlacement {
@@ -42,9 +44,57 @@ export interface DockHost {
   has(id: string): boolean;
   visible(id: string): boolean;
   ids(): string[];
+  /** The most recently active panel that passes `test`. */
+  lastActive(test: (id: string) => boolean): string | undefined;
   save(): DockLayout;
   restore(layout: DockLayout | null): void;
   dispose(): void;
+}
+
+/** Move `child` into `parent`, keeping its focus, caret and scroll offsets. */
+function adopt(parent: HTMLElement, child: HTMLElement): void {
+  if (child.parentElement === parent) return;
+  const scrollers = [child, ...child.querySelectorAll<HTMLElement>("*")]
+    .filter((element) => element.scrollTop || element.scrollLeft)
+    .map(
+      (element) => [element, element.scrollTop, element.scrollLeft] as const,
+    );
+  const active = document.activeElement;
+  const focused =
+    active instanceof HTMLElement && child.contains(active) ? active : null;
+  const field =
+    focused instanceof HTMLTextAreaElement ||
+    focused instanceof HTMLInputElement
+      ? focused
+      : null;
+  const caret = field ? [field.selectionStart, field.selectionEnd] : null;
+  const move = (parent as { moveBefore?: (node: Node, next: null) => void })
+    .moveBefore;
+  try {
+    if (!move || !child.isConnected || !parent.isConnected) throw Error();
+    move.call(parent, child, null);
+  } catch {
+    parent.append(child);
+  }
+  for (const [element, top, left] of scrollers) {
+    element.scrollTop = top;
+    element.scrollLeft = left;
+  }
+  if (focused && document.activeElement !== focused) {
+    focused.focus({ preventScroll: true });
+    if (field && caret && caret[0] !== null)
+      field.setSelectionRange(caret[0], caret[1]);
+  }
+}
+
+/** The theme's gap between windows (--content-inset), in pixels. */
+function insetPx(container: HTMLElement): number {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;width:var(--content-inset)";
+  container.append(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
 }
 
 const stylesheet = (): void => {
@@ -63,8 +113,24 @@ export function createDockHost(
   stylesheet();
   let quiet = 0;
   const tooltips = new Map<string, string>();
+  const kept = new Set<string>();
+  let recent: string[] = [];
+  // Invariant: Content is placed once dockview has put a panel in the page,
+  // so moves keep focus and scroll; kept content parks in the page meanwhile.
+  const pending = new Map<HTMLElement, string>();
+  const place = (): void => {
+    for (const [element, id] of pending) {
+      if (!element.isConnected) continue;
+      pending.delete(element);
+      const content = callbacks.element(id);
+      if (content) adopt(element, content);
+    }
+  };
+  const parking = document.createElement("div");
+  parking.className = "dock-parking";
+  container.after(parking);
   const api = createDockview(container, {
-    theme: { name: "recurse", className: "dockview-theme-recurse" },
+    theme: { ...themeAbyssSpaced, gap: insetPx(container) },
     disableFloatingGroups: true,
     defaultRenderer: "always",
     createComponent: () => {
@@ -73,22 +139,58 @@ export function createDockHost(
       return {
         element,
         init: (parameters) => {
-          const content = callbacks.element(parameters.api.id);
-          if (content) element.append(content);
+          pending.set(element, parameters.api.id);
+          place();
         },
       };
     },
   });
+  // Invariant: The grid follows its container in the same frame, so tab
+  // strips and panel contents never show different sizes.
+  const sizer = new ResizeObserver(() =>
+    api.layout(container.clientWidth, container.clientHeight, true),
+  );
+  sizer.observe(container);
   const label = (panel: IDockviewPanel): void => {
     const tooltip = tooltips.get(panel.id);
     if (tooltip) panel.view.tab.element.title = tooltip;
+    place();
   };
   api.onDidAddPanel(label);
   api.onDidRemovePanel((panel) => {
     tooltips.delete(panel.id);
+    recent = recent.filter((id) => id !== panel.id);
     if (!quiet) callbacks.closed(panel.id);
   });
-  api.onDidActivePanelChange(() => callbacks.changed());
+  // Invariant: Dragging a tab must not take focus from the panel that had
+  // it (the composer keeps its caret and draft while the chat moves).
+  let held: HTMLElement | null = null;
+  container.addEventListener(
+    "pointerdown",
+    (event) => {
+      const active = document.activeElement;
+      held =
+        (event.target as Element).closest?.(".dv-tab") &&
+        active instanceof HTMLElement &&
+        container.contains(active)
+          ? active
+          : null;
+    },
+    true,
+  );
+  const refocus = (): void => {
+    const element = held;
+    held = null;
+    const active = document.activeElement;
+    if (element?.isConnected && (!active || active === document.body))
+      element.focus({ preventScroll: true });
+  };
+  api.onDidMovePanel(refocus);
+  container.addEventListener("dragend", refocus);
+  api.onDidActivePanelChange(({ panel }) => {
+    if (panel) recent = [...recent.filter((id) => id !== panel.id), panel.id];
+    callbacks.changed();
+  });
   api.onDidLayoutChange(() => callbacks.changed());
   const silently = (run: () => void): void => {
     quiet++;
@@ -106,6 +208,7 @@ export function createDockHost(
         return;
       }
       if (spec.tooltip) tooltips.set(spec.id, spec.tooltip);
+      if (spec.keep) kept.add(spec.id);
       const near = placement.withPanel && api.getPanel(placement.withPanel);
       const beside = placement.beside && api.getPanel(placement.beside.id);
       const position: AddPanelPositionOptions | undefined = near
@@ -120,6 +223,7 @@ export function createDockHost(
         inactive: placement.background && !!position,
         ...(position ? { position } : {}),
       });
+      place();
     },
     remove(id) {
       const panel = api.getPanel(id);
@@ -128,8 +232,14 @@ export function createDockHost(
     has: (id) => !!api.getPanel(id),
     visible: (id) => !!api.getPanel(id)?.api.isVisible,
     ids: () => api.panels.map((panel) => panel.id),
+    lastActive: (test) => recent.filter(test).at(-1),
     save: () => api.toJSON(),
     restore(layout) {
+      for (const id of kept) {
+        const content = callbacks.element(id);
+        if (content?.isConnected) adopt(parking, content);
+      }
+      pending.clear();
       silently(() => {
         api.clear();
         if (!layout) return;
@@ -140,9 +250,12 @@ export function createDockHost(
         }
       });
       for (const panel of api.panels) label(panel);
+      place();
     },
     dispose() {
+      sizer.disconnect();
       silently(() => api.dispose());
+      parking.remove();
     },
   };
 }

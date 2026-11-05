@@ -1,31 +1,29 @@
-
-/* Desktop dock (dockview). dockview's own stylesheet supplies tabs, groups,
-   sashes and drop overlays; this maps its variables to the theme tokens and
-   sizes the dock inside #panes. */
+/* Desktop dock (dockview). dockview's spaced theme and stylesheet supply tabs,
+   groups, sashes and drop overlays; this maps the theme's variables to our
+   tokens so every window wears the chat card's chrome (#main: background,
+   radius, ring, 48px title bar), with --content-inset gaps between them. */
 #panes.docked { flex-direction: column; z-index: var(--z-raised); }
-#dock { flex: 1; min-height: 0; min-width: 0; border-radius: var(--content-radius);
-  box-shadow: var(--content-ring); }
-/* Pane header menus open within their panel, under its whole header row. */
-#dock .pane-powerbar-overflow { position: static; }
-#dock .pane-powerbar-menu { left: auto; right: 0; max-width: 100%; box-sizing: border-box; }
-#dock .dock-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
-#dock .dock-panel > .pane-col { flex: 1; min-height: 0; border-radius: 0; box-shadow: none; }
-#dock .dock-panel > .pane-col > .pane-powerbar { border-radius: 0; }
-/* The dock tab's own close button replaces the pane header's. */
-#dock .pane-powerbar .x { display: none; }
-.dockview-theme-recurse {
-  --dv-group-view-background-color: var(--panel);
-  --dv-tabs-and-actions-container-background-color: var(--frame-bg);
-  --dv-tabs-and-actions-container-font-size: 0.8125rem;
-  --dv-activegroup-visiblepanel-tab-background-color: var(--panel);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--frame-bg);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--frame-bg);
+#panes.docked.on { margin: var(--content-inset); }
+#panes.docked > .resize-grip { display: none; }
+#dock { flex: 1; min-height: 0; min-width: 0; }
+#dock .dv-dockview { background: transparent; }
+#dock .dockview-theme-abyss-spaced {
+  color-scheme: inherit;
+  font-family: var(--font-sans);
+  --dv-border-radius: var(--content-radius);
+  --dv-group-view-background-color: var(--bg);
+  --dv-tabs-and-actions-container-background-color: var(--bg);
+  --dv-tabs-and-actions-container-height: 48px;
+  --dv-tabs-and-actions-container-font-size: 0.84375rem;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg);
   --dv-activegroup-visiblepanel-tab-color: var(--text);
   --dv-activegroup-hiddenpanel-tab-color: var(--muted);
   --dv-inactivegroup-visiblepanel-tab-color: var(--text);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
-  --dv-tab-divider-color: var(--frame-border);
+  --dv-tab-divider-color: transparent;
   --dv-separator-border: var(--pane-border);
   --dv-paneview-header-border-color: var(--pane-border);
   --dv-paneview-active-outline-color: var(--accent);
@@ -33,9 +31,40 @@
   --dv-drag-over-border-color: var(--accent);
   --dv-edge-dock-indicator-color: var(--accent);
   --dv-icon-hover-background-color: var(--panel-2);
-  --dv-sash-color: transparent;
   --dv-active-sash-color: var(--accent);
-  --dv-border-radius: var(--radius-sm);
-  --dv-tab-border-radius: 0;
-  font-family: var(--font-sans);
 }
+#dock .dv-groupview { box-shadow: var(--content-ring); overflow: hidden; }
+/* Tabs: a padded label, an accent line on the active tab of the focused
+   group, and a close button shown only on the active or hovered tab. */
+#dock .dv-tabs-and-actions-container { padding: 0 var(--space-2); }
+#dock .dv-tab { padding: 0 var(--space-2) 0 var(--space-3); gap: var(--space-2);
+  font-weight: 600; box-shadow: inset 0 -2px 0 transparent; }
+#dock .dv-tab:hover { color: var(--text); }
+#dock .dv-active-group .dv-tab.dv-active-tab { box-shadow: inset 0 -2px 0 var(--accent); }
+#dock .dv-tab:not(.dv-active-tab):not(:hover) .dv-default-tab-action { visibility: hidden; }
+#dock .dv-default-tab-action { border-radius: var(--radius-sm); }
+/* The chat fills its panel edge to edge; its frame is the dock's. */
+#dock #main { margin: 0; height: 100%; border-radius: 0; box-shadow: none; }
+.dock-parking { position: absolute; inset: 0; opacity: 0; pointer-events: none; overflow: hidden; }
+#dock .dock-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+#dock .dock-panel > .pane-col { flex: 1; min-height: 0; border-radius: 0; box-shadow: none;
+  border-left: 0; background: var(--bg); }
+/* The tab names each pane, so its header keeps only its controls; a pane with
+   no other controls (Explorer) drops the row. Titles stay focusable. */
+#dock .pane-powerbar { border-radius: 0; height: 40px; }
+#dock .pane-powerbar:not(.pane-powerbar-item) .pane-title,
+#dock .pane-col[data-pane="explorer"] > .pane-powerbar {
+  position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; }
+#dock .pane-powerbar-controls { margin-left: auto; }
+#dock .pane-powerbar .x { display: none; }
+/* Pane header menus open within their panel, under its whole header row. */
+#dock .pane-powerbar-overflow { position: static; }
+#dock .pane-powerbar-menu { left: auto; right: 0; max-width: 100%; box-sizing: border-box; }
+/* File tabs: the path line shares a row with the file's actions. */
+#dock .explorer-preview { position: relative; }
+#dock .explorer-preview-bar { position: absolute; top: var(--space-2); right: var(--space-4); }
+#dock .explorer-preview-name, #dock .explorer-preview-bar .explorer-action[aria-label="Close preview"] {
+  display: none; }
+#dock .explorer-preview-meta { min-height: 32px; display: flex; align-items: center;
+  padding-right: 120px; }

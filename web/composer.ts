@@ -148,6 +148,21 @@ function clearComposer(ownerId = currentUiOwnerId()): void {
 // Focus Insert mode without disturbing a draft. A keyboard entry always places
 // the caret at the end, while an already-focused composer keeps its selection.
 export function focusComposerAtEnd(): boolean {
+  // Invariant: A closed or hidden desktop chat opens before focusing.
+  if (!inputEl.getClientRects().length) {
+    const show = new Event("recurse:show-chat", { cancelable: true });
+    dispatchEvent(show);
+    // Invariant: Focus after the dock settles; adding the panel moves focus.
+    if (show.defaultPrevented) {
+      let frames = 10;
+      const retry = (): void => {
+        if (inputEl.getClientRects().length) focusComposerAtEnd();
+        else if (--frames) requestAnimationFrame(retry);
+      };
+      requestAnimationFrame(retry);
+      return true;
+    }
+  }
   if (inputEl.disabled || inputEl.readOnly || !inputEl.isConnected)
     return false;
   const alreadyFocused = document.activeElement === inputEl;

@@ -251,7 +251,7 @@
   #conv-cwd[hidden] { display: none; }
   #sidebar.desktop-hidden { display: none; }
   @media (min-width: 701px) {
-    #sidebar:not(.desktop-hidden) ~ #main #new-top { display: none; }
+    #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;

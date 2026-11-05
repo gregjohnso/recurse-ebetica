@@ -17,7 +17,7 @@ export const testRecordedActivityLines: BrowserTest = async (browser, base) => {
     const context = await browser.newContext({
       viewport: mobile
         ? { width: 390, height: 844 }
-        : { width: 1280, height: 800 },
+        : { width: 1280, height: 900 },
       isMobile: mobile,
       hasTouch: mobile,
     });
@@ -237,6 +237,7 @@ export const testRecordedActivityLines: BrowserTest = async (browser, base) => {
       await liveToggle.click();
       expect(await liveToggle.getAttribute("aria-expanded")).toBe("false");
       const pillBox = async () => {
+        if (!mobile) await page.locator("#dock #main").waitFor();
         const box = await page.locator(".live-panel-box").boundingBox();
         if (!box) throw new Error("live pill is not laid out");
         return { width: box.width, height: box.height };

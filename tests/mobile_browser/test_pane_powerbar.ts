@@ -96,7 +96,11 @@ export const tests: BrowserTest[] = [
         expect(await bar.count()).toBe(1);
         expect(await pane.locator(".pane-top-controls").count()).toBe(0);
         expect(
-          await (width === 412 ? bar : page.locator(".dv-tab"))
+          await (
+            width === 412
+              ? bar
+              : page.locator(".dv-tab").filter({ hasNotText: "Chat" })
+          )
             .getByRole("button", { name: /^Close / })
             .count(),
         ).toBe(1);
@@ -285,6 +289,7 @@ export const tests: BrowserTest[] = [
         } else
           await page
             .locator(".dv-tab")
+            .filter({ hasNotText: "Chat" })
             .getByRole("button", { name: /^Close / })
             [act]();
         if (width === 412) {

@@ -530,11 +530,11 @@ export const tests: BrowserTest[] = [
         ).toBe("true");
         const sidebarHeader = await page.locator("#sidebar-head").boundingBox();
         const newSide = (await page.locator("#new-side").boundingBox())!;
-        expect(
-          Math.abs(
-            newSide.y + newSide.height / 2 - (header.y + header.height / 2),
-          ),
-        ).toBeLessThan(2);
+        const chatTab = (await page
+          .locator(".dv-tab", { hasText: "Chat" })
+          .boundingBox())!;
+        expect(newSide.y).toBeLessThan(chatTab.y + chatTab.height + 2);
+        expect(header.y).toBeGreaterThanOrEqual(chatTab.y + chatTab.height - 1);
         expect(await page.locator("#new-top").isVisible()).toBe(false);
         await page.locator("#menu-btn").click();
         expect(await page.locator("#sidebar").isVisible()).toBe(false);

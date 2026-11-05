@@ -25,7 +25,7 @@ conversation and subscribes to its live updates.
 - [panes.ts](panes.ts), [artifacts/](artifacts/), [files.ts](files.ts) and
   [diff.ts](diff.ts) provide side panels. On desktop the icon rail sits at the
   left edge (Agents, the panels, then Settings and Delete at its foot), and
-  [dock/](dock/) hosts open panels and Explorer file tabs in dockview, loaded
+  [dock/](dock/) hosts the chat, open panels and Explorer file tabs in dockview, loaded
   after the first conversation renders: tabs, drag-and-drop splitting and
   layout serialization are dockview's; each conversation keeps its own layout
   in memory. Phones show one full-screen panel at a time. [side-pane.ts](side-pane.ts) displays

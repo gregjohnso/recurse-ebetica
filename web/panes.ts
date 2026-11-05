@@ -7,6 +7,7 @@ import { phoneListEntry } from "./phone-nav.js";
 import {
   AGENTS_ICON,
   DELETE_ICON,
+  MESSAGE_ICON,
   SHARE_ICON,
   TAKE_CONTROL_ICON,
   UP_ICON,
@@ -915,7 +916,7 @@ function layout(): void {
     docked ? dock!.ids().length > 0 : open.size > 0,
   );
   panesEl.classList.toggle("docked", docked);
-  const w = mobile ? null : storedPanesWidth();
+  const w = mobile || docked ? null : storedPanesWidth();
   if (w != null) {
     panesEl.style.flex = "none";
     panesEl.style.width = w + "px";
@@ -1013,7 +1014,9 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     "|" +
     state.selectedId +
     "|" +
-    $("#sidebar")!.classList.contains("desktop-hidden");
+    $("#sidebar")!.classList.contains("desktop-hidden") +
+    "|" +
+    !!dock?.visible(CHAT);
   if (hash === railHash) return;
   railHash = hash;
   // Spec: The desktop rail always shows; it holds Agents and Settings.
@@ -1031,6 +1034,7 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
   const railPanels = $("#pane-rail-panels")!;
   railPanels.innerHTML = "";
   railPanels.appendChild(agentsButton());
+  if (dock && !mobile) railPanels.appendChild(chatButton());
   for (const p of avail) {
     const b = document.createElement("button");
     const attention = artifactsAttention && p.id === ARTIFACTS_PANE_ID;
@@ -1230,6 +1234,61 @@ const EDITOR_PANES = new Set([ARTIFACTS_PANE_ID, FILES_PANE_ID]);
 const isEditorPanel = (id: string): boolean =>
   EDITOR_PANES.has(id) || [...dockKinds.keys()].some((k) => id.startsWith(k));
 
+/** The chat's dock panel. Closing it parks the chat, hidden, at its home. */
+const CHAT = "chat";
+const chatEl = $("#main")!;
+const chatHome = chatEl.nextElementSibling;
+function parkChat(): void {
+  chatHome?.before(chatEl);
+  chatEl.style.display = dock && !isMobile() ? "none" : "";
+}
+/** Open the chat panel if closed, in the background unless `reveal`. */
+function showChat(reveal = false): void {
+  if (!dock || isMobile()) return;
+  if (dock.has(CHAT)) {
+    if (reveal && !dock.visible(CHAT)) dock.show({ id: CHAT, title: "Chat" });
+    return;
+  }
+  const ids = dock.ids();
+  const tool = ids.find((id) => !isEditorPanel(id));
+  const editor = ids.find(isEditorPanel);
+  dock.show(
+    { id: CHAT, title: "Chat", keep: true },
+    {
+      background: !reveal,
+      beside: tool
+        ? { id: tool, direction: "right" }
+        : editor
+          ? { id: editor, direction: "left" }
+          : undefined,
+    },
+  );
+}
+addEventListener("recurse:show-chat", (event) => {
+  if (!dock || isMobile()) return;
+  showChat(true);
+  event.preventDefault();
+});
+
+/** The rail's Chat button: opens or brings forward the chat panel. */
+function chatButton(): HTMLButtonElement {
+  const shown = !!dock?.visible(CHAT);
+  const b = document.createElement("button");
+  b.className = "rail-btn" + (shown ? " active" : "");
+  b.id = "chat-btn";
+  b.title = "Chat";
+  b.setAttribute("aria-label", "Chat");
+  b.setAttribute("aria-pressed", String(shown));
+  b.innerHTML = MESSAGE_ICON;
+  b.onclick = () => {
+    showChat(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => $<HTMLTextAreaElement>("#input")?.focus()),
+    );
+  };
+  return b;
+}
+
 function titleOf(id: string): string {
   return registry.find((p) => p.id === id)?.title || id;
 }
@@ -1238,13 +1297,16 @@ function titleOf(id: string): string {
 function dockPlacement(id: string): DockPlacement {
   const editor = isEditorPanel(id);
   const ids = dock?.ids() ?? [];
-  const same = ids.filter((other) => isEditorPanel(other) === editor);
-  const other = ids.find((panel) => isEditorPanel(panel) !== editor);
+  const same = (other: string) =>
+    other !== CHAT && isEditorPanel(other) === editor;
+  const anchor = ids.includes(CHAT)
+    ? CHAT
+    : ids.find((other) => other !== CHAT && !same(other));
   return {
     background: nextBackground,
-    withPanel: same[same.length - 1],
-    beside: other
-      ? { id: other, direction: editor ? "right" : "left" }
+    withPanel: dock?.lastActive(same) ?? ids.filter(same).at(-1),
+    beside: anchor
+      ? { id: anchor, direction: editor ? "right" : "left" }
       : undefined,
   };
 }
@@ -1258,6 +1320,10 @@ function attachColumn(id: string, col: HTMLElement): void {
 }
 
 function dockElement(id: string): HTMLElement | null {
+  if (id === CHAT) {
+    chatEl.style.display = "";
+    return chatEl;
+  }
   if (registry.some((p) => p.id === id)) {
     const existing = columns.get(id);
     if (existing) return existing;
@@ -1282,6 +1348,12 @@ function dockElement(id: string): HTMLElement | null {
 }
 
 function dockClosed(id: string): void {
+  if (id === CHAT) {
+    parkChat();
+    railHash = "";
+    syncPanes();
+    return;
+  }
   const made = dockOnly.get(id);
   if (made) {
     dockOnly.delete(id);
@@ -1297,6 +1369,7 @@ function clearDockOnly(): void {
     dockOnly.delete(id);
   }
   dock?.restore(null);
+  showChat();
   layout();
 }
 
@@ -1321,6 +1394,7 @@ function loadDock(): void {
             syncPanes();
           }),
       });
+      showChat();
       layout();
       syncPanes();
     },
@@ -1340,6 +1414,7 @@ function unloadDock(): void {
   }
   dock.dispose();
   dock = null;
+  parkChat();
   $("#dock")?.remove();
 }
 
@@ -1422,6 +1497,7 @@ function syncPanesNow(): void {
     const saved = pendingDockLayout;
     pendingDockLayout = undefined;
     dock.restore(saved);
+    showChat();
     layout();
   }
   // Invariant: A conversation's own dock layout wins over its remembered pane.
