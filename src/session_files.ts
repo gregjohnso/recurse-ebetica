@@ -766,6 +766,7 @@ async function describe(
   return manifest;
 }
 
+/** Accepted files, omitting copies a published document's reference map owns. */
 async function acceptedPage(
   opened: OpenCollection,
   limit: number,
@@ -777,6 +778,7 @@ async function acceptedPage(
     const names = (await readdirAt(opened.directory.fd)).sort();
     let debris = 0;
     let truncated = false;
+    const supporting = new Set<string>();
     for (const name of names) {
       if (debris >= limit + PAGE_DEBRIS_SLACK) {
         truncated = true;
@@ -787,6 +789,10 @@ async function acceptedPage(
       if (!UPLOAD_ID_RE.test(id)) continue;
       const manifest = await readManifest(opened, id);
       if (manifest !== null && manifest.published === true) {
+        for (const ref of Object.values(
+          base.readRelatedFiles(manifest.related_files) ?? {},
+        ))
+          supporting.add(ref);
         if (
           !before ||
           Number(manifest.created_at) < before[0] ||
@@ -796,7 +802,8 @@ async function acceptedPage(
           rows.push(manifest);
       } else debris += 1;
     }
-    rows.sort(
+    const listed = rows.filter((row) => !supporting.has(String(row.id)));
+    listed.sort(
       (a, b) =>
         Number(b.created_at) - Number(a.created_at) ||
         (String(a.id) < String(b.id)
@@ -806,8 +813,8 @@ async function acceptedPage(
             : 0),
     );
     return {
-      rows: rows.slice(0, limit),
-      truncated: truncated || rows.length > limit,
+      rows: listed.slice(0, limit),
+      truncated: truncated || listed.length > limit,
     };
   } catch {
     return { rows: [], truncated: false };

@@ -12,6 +12,7 @@ import {
   CALL_ID_REGEX,
   type Manifest,
   displayName,
+  readRelatedFiles,
 } from "./base";
 import { describe, publicMetadata, readDownload } from "./preview";
 import {
@@ -225,7 +226,7 @@ export async function publishedCallIndex(
   return index;
 }
 // Every published file per tool call, oldest first: a bash call may publish
-// many.
+// many. Copies a document's reference map owns appear only through it.
 export async function publishedCallFiles(
   collection: string,
   owner: string,
@@ -238,9 +239,18 @@ export async function publishedCallFiles(
       const manifests = (await iterManifests(fd, owner))
         .map(([, manifest]) => manifest)
         .sort((a, b) => Number(a.created_at) - Number(b.created_at));
+      const supporting = new Set(
+        manifests.flatMap((manifest) =>
+          Object.values(readRelatedFiles(manifest.related_files) ?? {}),
+        ),
+      );
       for (const manifest of manifests) {
         const call = manifest.tool_call_id;
-        if (manifest.published === true && typeof call === "string")
+        if (
+          manifest.published === true &&
+          typeof call === "string" &&
+          !supporting.has(String(manifest.id))
+        )
           (index[call] ??= []).push(publicMetadata(manifest));
       }
     } finally {

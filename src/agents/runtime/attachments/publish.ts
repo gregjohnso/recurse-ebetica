@@ -209,6 +209,23 @@ export async function removeFile(
         manifestBlob(manifest),
       );
       if (result === "record-failed") return false;
+      const related = readRelatedFiles(manifest.related_files);
+      if (related) {
+        const remaining = await cleanupDebris(fd, owner);
+        const kept = new Set(
+          remaining.flatMap((item) =>
+            Object.values(readRelatedFiles(item.related_files) ?? {}),
+          ),
+        );
+        for (const item of remaining)
+          if (Object.values(related).includes(String(item.id)))
+            if (!kept.has(String(item.id)))
+              await removeCommittedLocked(
+                fd,
+                String(item.id),
+                manifestBlob(item),
+              );
+      }
       return true;
     });
   } catch (error) {

@@ -22,6 +22,7 @@ import {
 } from "../../src/agents/runtime/attachments/publish";
 import { registerDocumentFile } from "../../src/agents/runtime/attachments/document";
 import { listPage, previewSnippet } from "../../src/session_files";
+import { publishedCallFiles } from "../../src/agents/runtime/attachments/published";
 import { collectionSnapshot } from "../../src/agents/runtime/node_files";
 import { exchange, normalise, requestBytes } from "./http_corpus";
 import { Refs } from "./http_refs";
@@ -300,10 +301,22 @@ describe("owner scoping", () => {
       );
       expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     }
+    const listed = page.files.map((file) => file.id);
+    expect(listed).toContain(published.item.id);
+    for (const id of Object.values(related)) expect(listed).not.toContain(id);
+    expect(
+      (await publishedCallFiles(collection, "owner-b"))["call-doc"]!.map(
+        (item) => item.id,
+      ),
+    ).toEqual([published.item.id]);
     await removeFile(collection, "owner-b", related["results/figure.png"]!);
     expect(
       (await get(`${prefix}${related["results/figure.png"]}/preview`)).status,
     ).toBe(404);
+    await removeFile(collection, "owner-b", String(published.item.id));
+    for (const id of [published.item.id, ...Object.values(related)])
+      expect((await get(`${prefix}${id}`)).status).toBe(404);
+    expect(JSON.stringify(page)).toContain("clip.mp4");
   });
 
   test("a large published file streams from its open blob", async () => {

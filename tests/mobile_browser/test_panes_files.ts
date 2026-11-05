@@ -1064,6 +1064,7 @@ export const tests: BrowserTest[] = [
           hasText: "report.md",
         });
         await item.waitFor({ timeout: 15_000 });
+        expect(await page.locator(".agent-attachment-item").count()).toBe(1);
         const chip = (await item.boundingBox())!;
         if (width === 1280) expect(chip.height).toBeLessThanOrEqual(34);
         expect(chip.width).toBeLessThan(220);
