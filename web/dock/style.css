@@ -48,30 +48,32 @@
 /* The strip's bottom border runs under background tabs; the visible tab
    covers it so it merges with its window. Too many tabs scroll sideways. */
 #dock .dv-tabs-and-actions-container { padding: 0;
-  box-shadow: inset 0 -1px 0 var(--border); }
+  background-image: linear-gradient(var(--border), var(--border)); background-size: 100% 1px;
+  background-position: bottom; background-repeat: no-repeat; }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
 #dock .dv-tabs-container { scrollbar-width: thin; }
 #dock .dv-tabs-container { padding: 0; }
 #dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
-  padding: 0 6px 0 10px; min-width: 80px; max-width: 220px; font-weight: 400;
-  box-shadow: inset 0 -1px 0 var(--border); }
+  padding: 0 var(--space-3) 0 var(--space-4); min-width: 80px; max-width: 220px; font-weight: 400;
+  background-image: linear-gradient(var(--border), var(--border)); background-size: 100% 1px;
+  background-position: bottom; background-repeat: no-repeat; }
 #dock .dv-tab.dv-inactive-tab + .dv-tab.dv-inactive-tab .dv-default-tab::before { content: "";
-  position: absolute; left: -10px; top: 25%; bottom: 25%; width: 1px; background: var(--border); }
-#dock .dv-tab.dv-active-tab { z-index: 1; box-shadow: none;
+  position: absolute; left: calc(-1 * var(--space-4)); top: 25%; bottom: 25%; width: 1px; background: var(--border); }
+#dock .dv-tab.dv-active-tab { z-index: var(--z-raised); background-image: none;
   border-radius: var(--radius-md) var(--radius-md) 0 0; }
 #dock .dv-tab.dv-active-tab .dv-default-tab::before,
 #dock .dv-tab.dv-active-tab .dv-default-tab::after {
   content: ""; position: absolute; bottom: 0; width: var(--radius-md); height: var(--radius-md);
   pointer-events: none; }
-#dock .dv-tab.dv-active-tab .dv-default-tab::before { left: calc(-10px - var(--radius-md));
+#dock .dv-tab.dv-active-tab .dv-default-tab::before { left: calc(-1 * var(--space-4) - var(--radius-md));
   background: radial-gradient(circle at 0 0, transparent calc(var(--radius-md) - 0.5px),
     var(--bg) var(--radius-md)); }
-#dock .dv-tab.dv-active-tab .dv-default-tab::after { right: calc(-6px - var(--radius-md));
+#dock .dv-tab.dv-active-tab .dv-default-tab::after { right: calc(-1 * var(--space-3) - var(--radius-md));
   background: radial-gradient(circle at 100% 0, transparent calc(var(--radius-md) - 0.5px),
     var(--bg) var(--radius-md)); }
 #dock .dv-default-tab { gap: 0; min-width: 0; }
 #dock .dv-default-tab-content { min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; padding: 0; margin: 0 4px 0 6px; }
+  white-space: nowrap; padding: 0; margin: 0 var(--space-2); }
 #dock .dv-tab.dv-inactive-tab:hover {
   background: color-mix(in srgb, var(--dock-strip) 70%, var(--bg)); }
 #dock .dock-tab-icon { display: inline-flex; flex: none; width: 16px; height: 16px;
@@ -118,4 +120,5 @@
 #dock .explorer-preview-name, #dock .explorer-preview-bar .explorer-action[aria-label="Close preview"] {
   display: none; }
 #dock .explorer-preview-meta { min-height: 32px; display: flex; align-items: center;
-  padding-right: 120px; white-space: nowrap; }
+  padding-right: 120px; /* space-check: allow room for the file's three actions */
+  white-space: nowrap; }
