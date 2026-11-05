@@ -189,6 +189,43 @@ export const tests: BrowserTest[] = [
     await page.locator("#explorer").waitFor({ state: "detached" });
     await page.locator("body").press("E");
     await docs.waitFor();
+    await tree.locator('[data-path=".gitignore"]').click();
+    await ignoreTab.waitFor();
+    const ignoreText = page.locator(".dock-panel pre.report-doc", {
+      hasText: "*.log",
+    });
+    await ignoreText.waitFor();
+    const span = await ignoreText.evaluate((pre: any) => {
+      const node = pre.ownerDocument.createTreeWalker(pre, 4).nextNode();
+      const range = pre.ownerDocument.createRange();
+      range.setStart(node, 0);
+      range.setEnd(node, 5);
+      const rect = range.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        y: (rect.top + rect.bottom) / 2,
+      };
+    });
+    await page.mouse.move(span.left + 1, span.y);
+    await page.mouse.down();
+    await page.mouse.move(span.right - 1, span.y, { steps: 8 });
+    await page.mouse.up();
+    const popover = page.locator(".report-comment-popover");
+    await popover.waitFor();
+    await popover.locator("textarea").fill("Why ignore logs?");
+    await popover.getByRole("button", { name: "Comment" }).click();
+    const filePanel = page.locator(".dock-panel", {
+      has: page.locator("pre.report-doc", { hasText: "*.log" }),
+    });
+    await filePanel.locator(".report-comment").waitFor();
+    const delivered = page.waitForRequest((request) =>
+      request.url().endsWith(`/api/conversations/${cid}/deliver`),
+    );
+    await filePanel.getByRole("button", { name: "Submit comments" }).click();
+    expect((await delivered).postDataJSON().content).toMatch(
+      /^Comments on file "\.gitignore" \(path: \/\S+\/\.gitignore\):\n\n- line 1, chars 0-5:\n> \*\.log\nWhy ignore logs\?$/,
+    );
     expect(errors).toEqual([]);
     await desktop.close();
 

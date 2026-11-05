@@ -1300,10 +1300,9 @@ function titleOf(id: string): string {
 
 /** Where a new dock panel goes: tools left, files and Artifacts right. */
 function dockPlacement(id: string): DockPlacement {
-  const editor = isEditorPanel(id);
+  const kind = dockKindOf(id);
   const ids = dock?.ids() ?? [];
-  const same = (other: string) =>
-    other !== CHAT && isEditorPanel(other) === editor;
+  const same = (other: string) => dockKindOf(other) === kind;
   const anchor = ids.includes(CHAT)
     ? CHAT
     : ids.find((other) => other !== CHAT && !same(other));
@@ -1311,9 +1310,17 @@ function dockPlacement(id: string): DockPlacement {
     background: nextBackground,
     withPanel: dock?.lastActive(same) ?? ids.filter(same).at(-1),
     beside: anchor
-      ? { id: anchor, direction: editor ? "right" : "left" }
+      ? { id: anchor, direction: kind === "tool" ? "left" : "right" }
       : undefined,
   };
+}
+
+/** Which windows share a group: chat, tools, Artifacts/Files, or a tab kind. */
+function dockKindOf(id: string): string {
+  if (id === CHAT) return CHAT;
+  for (const prefix of dockKinds.keys())
+    if (id.startsWith(prefix)) return prefix;
+  return EDITOR_PANES.has(id) ? "editor" : "tool";
 }
 
 let attachingFromDock = false;

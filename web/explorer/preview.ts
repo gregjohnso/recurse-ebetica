@@ -30,6 +30,13 @@ import {
   treeFor,
   treeUrl,
 } from "./state.js";
+import { commentMount, type CommentPane } from "../artifacts/artifact-state.js";
+import { renderComments } from "../artifacts/comment-bar.js";
+import {
+  claimComments,
+  dropComments,
+  reanchor,
+} from "../artifacts/selection-comments.js";
 
 interface Preview {
   cid: string;
@@ -45,6 +52,7 @@ interface Preview {
 interface PreviewEl extends HTMLElement {
   _explorerKey?: string;
   _markdownAbort?: AbortController;
+  _rs?: CommentPane["_rs"];
 }
 
 interface PreviewHandlers {
@@ -52,6 +60,8 @@ interface PreviewHandlers {
   close(): void;
   /** Open another file from a relative Markdown link. */
   link(path: string): void;
+  /** Take selection comments on text, sent with the file's path. */
+  comments?: boolean;
 }
 
 export interface FilePreview {
@@ -115,6 +125,8 @@ export function createFilePreview(
       repaint();
     },
     dispose() {
+      if (element._rs?.selId) dropComments(`${cid}\n${element._rs.selId}`);
+      if (commentMount.current === element) commentMount.current = null;
       shown = null;
       offExplorerChange(listener);
       element._markdownAbort?.abort();
@@ -327,7 +339,50 @@ function renderPreview(
           : ""}
       </div>
       ${content(shown, element, handlers)}
+      ${handlers.comments
+        ? html`<div class="report-comments"></div>
+            <div class="report-bar"></div>`
+        : nothing}
     </div>`,
     element,
   );
+  if (handlers.comments) syncComments(element, shown);
+}
+
+// Spec: A dock tab's text takes selection comments like a Files preview:
+// staged in its comment bar and sent to this conversation with the file path.
+function syncComments(element: PreviewEl, shown: Preview): void {
+  const text =
+    shown.status === "ready" && !!element.querySelector(".report-doc");
+  const id = `explorer:${shown.path}`;
+  element._rs ??= {
+    deleting: false,
+    sending: false,
+    sendFailed: false,
+    sendSeq: 0,
+    agentId: shown.cid,
+    selId: null,
+    contentInfo: null,
+  };
+  Object.assign(element._rs, {
+    agentId: shown.cid,
+    selId: text ? id : null,
+    contentInfo: text
+      ? {
+          noun: "file",
+          id,
+          title: baseName(shown.path),
+          version: String(shown.size ?? 0),
+          path: absolutePath(treeFor(shown.cid), shown.path),
+        }
+      : null,
+  });
+  const pane = element as CommentPane;
+  if (!text) {
+    if (commentMount.current === pane) commentMount.current = null;
+    return;
+  }
+  claimComments(pane);
+  reanchor(pane, id);
+  renderComments(pane);
 }

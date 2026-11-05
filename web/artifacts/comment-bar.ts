@@ -184,9 +184,11 @@ function composeMessage(
     );
   if (!notes.length) return "";
   const lines = [
-    displayed.noun === "file"
-      ? `Comments on file "${displayed.title}" (id: ${displayed.id}):`
-      : `Comments on artifact "${displayed.title}" (id: ${displayed.id}, version: ${displayed.version}, path: ${artifactWorkingPath(displayed.owner_agent_id ?? parseConversationId(pane._rs.agentId!).cid, displayed.id)}):`,
+    displayed.noun === "file" && displayed.path
+      ? `Comments on file "${displayed.title}" (path: ${displayed.path}):`
+      : displayed.noun === "file"
+        ? `Comments on file "${displayed.title}" (id: ${displayed.id}):`
+        : `Comments on artifact "${displayed.title}" (id: ${displayed.id}, version: ${displayed.version}, path: ${artifactWorkingPath(displayed.owner_agent_id ?? parseConversationId(pane._rs.agentId!).cid, displayed.id)}):`,
     "",
   ];
   let boxNumber = 0;

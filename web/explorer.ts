@@ -265,6 +265,7 @@ registerDockPanelKind(FILE_TAB, (id, agentId) => {
   const preview = createFilePreview(agentId, {
     close: () => closeDockPanel(id),
     link: (next) => openFile(agentId, next),
+    comments: true,
   });
   void preview.open(path);
   return preview;

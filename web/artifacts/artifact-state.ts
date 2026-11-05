@@ -79,6 +79,8 @@ export interface CommentDoc {
   title: string;
   version: string | null;
   noun?: "file";
+  /** A workspace file's absolute path, named in sent comments. */
+  path?: string;
 }
 export interface CommentPane extends HTMLElement {
   _rs: Pick<
