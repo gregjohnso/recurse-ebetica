@@ -293,6 +293,14 @@ const RETIRE_STAGES: ReadonlyArray<[string, string]> = [
   ["pi session retirement failed", "pi_session_retirement_failed"],
 ];
 
+/** The parked reason for a failed live archive: its error code, and for
+ * EXDEV what the operator must fix. */
+function liveArchiveFailure(exc: unknown, code: string | null): string {
+  if (code === "EXDEV")
+    return "live-archive failed: EXDEV, the data directory's storage refused to rename a folder; deletion resumes when folder renames work again";
+  return `live-archive failed: ${code ?? (exc instanceof Error ? exc.name : typeof exc)}`;
+}
+
 /** A safe stage label for a failed retirement diagnostic. */
 export function retireReasonCode(reason: string): string {
   for (const [prefix, code] of RETIRE_STAGES)
@@ -508,7 +516,15 @@ export class SupervisorReap {
             );
           } catch (exc) {
             if (exc instanceof Cancelled) throw exc;
-            archived = false;
+            const code = isSystemError(exc)
+              ? (exc as NodeJS.ErrnoException).code!
+              : null;
+            logException(this.deps.log, "live_archive_failed", exc, {
+              conversation_id: d,
+              level: ERROR,
+              fields: code === null ? {} : { error_code: code },
+            });
+            return [false, liveArchiveFailure(exc, code), null, tempEntry];
           }
           if (!archived) return [false, "live-archive failed", null, tempEntry];
           if (!truthy(conv.reap_deferred)) conv.reap_retry_attempt = 0;
