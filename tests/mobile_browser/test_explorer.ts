@@ -53,6 +53,10 @@ export const tests: BrowserTest[] = [
     await guide.waitFor();
     await docs.press("ArrowRight");
     await focused(page, "docs/guide.md");
+    const explorerGroup = page
+      .locator(".dv-groupview")
+      .filter({ has: page.locator(".dv-tab", { hasText: "Explorer" }) });
+    const explorerWidth = (await explorerGroup.boundingBox())!.width;
     await guide.press("Enter");
     const pane = page.locator('.pane-col[data-pane="explorer"]');
     const guideTab = page.locator(".dv-tab", { hasText: "guide.md" });
@@ -60,6 +64,9 @@ export const tests: BrowserTest[] = [
       hasText: "Explorer guide",
     });
     await guideDoc.waitFor();
+    expect(
+      Math.abs((await explorerGroup.boundingBox())!.width - explorerWidth),
+    ).toBeLessThanOrEqual(2);
     expect(
       await guideTab
         .locator(
@@ -118,7 +125,9 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-split.png`,
       });
+    await ignoreTab.hover();
     await ignoreTab.locator(".dv-default-tab-action").click();
+    await guideTab.hover();
     await guideTab.locator(".dv-default-tab-action").click();
     await guideTab.waitFor({ state: "detached" });
     expect(await tabs.count()).toBe(3);
@@ -155,6 +164,7 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-chat.png`,
       });
+    await chatTab.hover();
     await chatTab.locator(".dv-default-tab-action").click();
     await chatTab.waitFor({ state: "detached" });
     expect(await input.isVisible()).toBe(false);
@@ -166,6 +176,7 @@ export const tests: BrowserTest[] = [
       () => (globalThis as any).document.activeElement?.id === "input",
     );
     expect(await input.inputValue()).toBe("draft survives the move");
+    await chatTab.hover();
     await chatTab.locator(".dv-default-tab-action").click();
     await chatTab.waitFor({ state: "detached" });
     await chatButton.click();

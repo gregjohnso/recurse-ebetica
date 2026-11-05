@@ -214,15 +214,36 @@ export function createDockHost(
       const position: AddPanelPositionOptions | undefined = near
         ? { referenceGroup: near.group }
         : beside
-          ? { referencePanel: beside, direction: placement.beside!.direction }
+          ? {
+              referenceGroup: beside.group,
+              direction: placement.beside!.direction,
+            }
           : undefined;
+      // Invariant: A new split takes space only from the group it splits;
+      // every other group keeps its width.
+      const widths =
+        !near && beside
+          ? api.groups
+              .filter((group) => group !== beside.group)
+              .map((group) => [group, group.api.width] as const)
+          : [];
+      const shared =
+        !near && beside ? Math.round(beside.group.api.width / 2) : 0;
       api.addPanel({
         id: spec.id,
         component: "panel",
         title: spec.title,
         inactive: placement.background && !!position,
+        ...(shared ? { initialWidth: shared } : {}),
         ...(position ? { position } : {}),
       });
+      const added = !near && beside ? api.getPanel(spec.id)?.group : undefined;
+      if (added)
+        for (let pass = 0; pass < 2; pass++) {
+          for (const [group, width] of widths)
+            if (api.groups.includes(group)) group.api.setSize({ width });
+          added.api.setSize({ width: shared });
+        }
       place();
     },
     remove(id) {
