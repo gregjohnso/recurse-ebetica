@@ -95,9 +95,11 @@ export const tests: BrowserTest[] = [
         const bar = pane.locator(".pane-powerbar");
         expect(await bar.count()).toBe(1);
         expect(await pane.locator(".pane-top-controls").count()).toBe(0);
-        expect(await bar.getByRole("button", { name: /^Close / }).count()).toBe(
-          1,
-        );
+        expect(
+          await (width === 412 ? bar : page.locator(".dv-tab"))
+            .getByRole("button", { name: /^Close / })
+            .count(),
+        ).toBe(1);
         const controls =
           id === "report"
             ? ".artifact-title-select, .artifact-icon-btn"
@@ -105,7 +107,7 @@ export const tests: BrowserTest[] = [
               ? ".files-back, .files-actions .artifact-icon-btn, .pane-powerbar-overflow > summary"
               : ".diff-base-btn, .pane-powerbar-overflow > summary";
         const boxes = await bar
-          .locator(controls + ", .x")
+          .locator(controls + (width === 412 ? ", .x" : ""))
           .evaluateAll((nodes) =>
             nodes.map((node) => {
               const rect = node.getBoundingClientRect();
@@ -280,7 +282,11 @@ export const tests: BrowserTest[] = [
             node.scrollTop = 300;
           });
           await page.keyboard.press("Escape");
-        } else await bar.getByRole("button", { name: /^Close / })[act]();
+        } else
+          await page
+            .locator(".dv-tab")
+            .getByRole("button", { name: /^Close / })
+            [act]();
         if (width === 412) {
           await page.locator("#pane-fab").tap();
           await page.locator(`.pane-menu-item[data-pane="${id}"]`).tap();
@@ -342,7 +348,7 @@ export const tests: BrowserTest[] = [
         String((globalThis as any).document.activeElement?.id),
       ),
     ).toBe("pane-title-report");
-    const close = pane.getByRole("button", { name: "Close Artifacts" });
+    const close = page.getByRole("button", { name: "Close Artifacts" });
     expect(
       await close.evaluate((node) => node.closest("[inert]") === null),
     ).toBe(true);

@@ -1774,7 +1774,7 @@ export const tests: BrowserTest[] = [
         .nth(fourth - 1)
         .waitFor({ timeout: 15_000 });
       await (await focusedResponse).finished();
-      expect(await pane.count()).toBe(0);
+      expect(await pane.count()).toBe(1);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

@@ -20,13 +20,15 @@ conversation and subscribes to its live updates.
   ([sidebar/script.ts](sidebar/script.ts)) or the built-in
   [sidebar/default_sidebar.js](sidebar/default_sidebar.js) (Inbox, Active and
   Archive).
-- [explorer.ts](explorer.ts) registers the Explorer panel; [explorer/](explorer/) holds its folder
+- [explorer.ts](explorer.ts) registers the Explorer panel and its file tabs; [explorer/](explorer/) holds its folder
   state and the File pane, which reuses the Files pane's preview renderers.
 - [panes.ts](panes.ts), [artifacts/](artifacts/), [files.ts](files.ts) and
   [diff.ts](diff.ts) provide side panels. On desktop the icon rail sits at the
-  left edge (Agents, the panels, then Settings and Delete at its foot); an open
-  panel takes the agent list's place, and Agents or the agent-list toggle
-  closes it so the list returns. [side-pane.ts](side-pane.ts) displays
+  left edge (Agents, the panels, then Settings and Delete at its foot), and
+  [dock/](dock/) hosts open panels and Explorer file tabs in dockview, loaded
+  after the first conversation renders: tabs, drag-and-drop splitting and
+  layout serialization are dockview's; each conversation keeps its own layout
+  in memory. Phones show one full-screen panel at a time. [side-pane.ts](side-pane.ts) displays
   read-only side conversations.
 - [models.ts](models.ts), [settings.ts](settings.ts) and [settings/](settings/)
   configure the app; [keymap.ts](keymap.ts) handles keyboard controls.

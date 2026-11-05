@@ -474,13 +474,6 @@ export const tests: BrowserTest[] = [
       });
       await gotoRoot(page, base);
       await page.locator("#conv-status.running").waitFor();
-      if (width === 1280) {
-        await page.locator('.pane-col[data-pane="report"]').waitFor();
-        expect(await page.locator("#sidebar").isVisible()).toBe(false);
-        await page.locator("#agents-btn").click();
-        await page.locator("#sidebar").waitFor();
-        expect(await page.locator("#panes .pane-col").count()).toBe(0);
-      }
       const shot = async (stage: string) => {
         const dir = process.env.RECURSE_SCREENSHOT_DIR;
         if (!dir) return;
@@ -779,8 +772,8 @@ export const tests: BrowserTest[] = [
     expect(await page.locator("#up-top.on").count()).toBe(0);
     await context.close();
   },
-  // Feature: #0 the left rail swaps panels into the agent list's place
-  async function test_left_rail_swaps_panels_and_agent_list(browser, base) {
+  // Feature: #0 the left rail toggles panels and the agent list
+  async function test_left_rail_toggles_panels_and_agent_list(browser, base) {
     const { cid } = await postFixture(base, "seed-explorer");
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
@@ -811,27 +804,21 @@ export const tests: BrowserTest[] = [
     await explorer.click();
     const pane = page.locator('.pane-col[data-pane="explorer"]');
     await pane.waitFor();
-    expect(await sidebar.isVisible()).toBe(false);
-    expect(await agents.getAttribute("aria-pressed")).toBe("false");
+    expect(await sidebar.isVisible()).toBe(true);
     if (dir) await page.screenshot({ path: `${dir}/left-rail-explorer.png` });
     expect((await pane.boundingBox())!.x).toBeLessThan(
       (await page.locator("#main").boundingBox())!.x,
     );
     await agents.click();
-    await pane.waitFor({ state: "detached" });
-    await sidebar.waitFor();
-    await page
-      .locator('#agents-btn[aria-pressed="true"]')
-      .waitFor({ state: "attached" });
-    await explorer.click();
-    await pane.waitFor();
-    await explorer.click();
-    await pane.waitFor({ state: "detached" });
-    await sidebar.waitFor();
-    await agents.click();
     await sidebar.waitFor({ state: "hidden" });
+    expect(await pane.isVisible()).toBe(true);
+    await page
+      .locator('#agents-btn[aria-pressed="false"]')
+      .waitFor({ state: "attached" });
     await agents.click();
     await sidebar.waitFor();
+    await explorer.click();
+    await pane.waitFor({ state: "detached" });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("#pane-fab").waitFor();
     expect(await page.locator("#pane-rail").isVisible()).toBe(false);

@@ -220,13 +220,12 @@ body.resizing { cursor: col-resize; user-select: none; }
 .pane-col.fullscreen { position: fixed; inset: 0; z-index: calc(var(--z-drawer) + 4); border-left: 0; }
 
 /* ---------- the rail (desktop, left edge) ----------
-   Order: rail, agent list, open panel, chat. An open panel takes the agent
-   list's place; the rail's Agents button brings the list back. */
+   Order: rail, agent list, open panels (the dock), chat. The rail's Agents
+   button shows or hides the agent list. */
 @media (min-width: 701px) {
   #pane-rail { order: -3; }
   #sidebar { order: -2; }
   #panes { order: -1; }
-  body:has(#panes.on) #sidebar { display: none; }
   #panes.on { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset); }
   .resize-grip.pn { left: auto; right: -4px; }
 }

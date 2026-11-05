@@ -56,6 +56,10 @@ export function onExplorerChange(listener: () => void): void {
   listeners.add(listener);
 }
 
+export function offExplorerChange(listener: () => void): void {
+  listeners.delete(listener);
+}
+
 export function treeFor(cid: string): ExplorerTree {
   let tree = trees.get(cid);
   if (tree) {

@@ -1,7 +1,7 @@
-// Previews one Explorer file below its tree with the Files pane's renderers:
-// document Markdown, plain text in a report-doc block, pdf.js and raster
-// images served only after the server's magic-byte check. Other files show
-// their size and a download link. Credential files show the server's refusal.
+// Previews Explorer files below the tree (phones) or one per dock tab, with the
+// Files pane's renderers: Markdown, plain text, pdf.js and raster images served
+// after the server's magic-byte check. Other files show their size and a
+// download link; credential files show the server's refusal.
 import { html, nothing, render, type TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
@@ -23,6 +23,7 @@ import {
   changed,
   copyPath,
   insertPath,
+  offExplorerChange,
   onExplorerChange,
   parentPath,
   showChanges,
@@ -46,72 +47,119 @@ interface PreviewEl extends HTMLElement {
   _markdownAbort?: AbortController;
 }
 
-let preview: Preview | null = null;
-/** The preview's element; the Explorer pane places it below the tree. */
-export const previewHost: PreviewEl = document.createElement("div");
-previewHost.className = "explorer-preview-host";
-
-/** Whether a file from conversation `cid` is being previewed. */
-export function previewShown(cid: string): boolean {
-  return preview?.cid === cid;
+interface PreviewHandlers {
+  /** Close this preview (its × button). */
+  close(): void;
+  /** Open another file from a relative Markdown link. */
+  link(path: string): void;
 }
 
-/** Close the preview, or only one belonging to another conversation. */
+export interface FilePreview {
+  element: HTMLElement;
+  open(path: string): Promise<void>;
+  dispose(): void;
+}
+
+/** Create a preview of files from conversation `cid`. */
+export function createFilePreview(
+  cid: string,
+  handlers: PreviewHandlers,
+): FilePreview {
+  const element: PreviewEl = document.createElement("div");
+  element.className = "explorer-preview-host";
+  let shown: Preview | null = null;
+  const repaint = () => {
+    if (shown) renderPreview(element, shown, handlers);
+  };
+  const listener = repaint;
+  onExplorerChange(listener);
+  return {
+    element,
+    async open(path) {
+      const current: Preview = { cid, path, status: "loading" };
+      shown = current;
+      repaint();
+      try {
+        const response = await backendFor(cid).api(
+          treeUrl(cid, "/file", path),
+          { cache: "no-store" },
+        );
+        const body = (await response.json().catch(() => null)) as Record<
+          string,
+          unknown
+        > | null;
+        if (shown !== current) return;
+        if (!response.ok || !body)
+          Object.assign(current, {
+            status: "error",
+            detail:
+              typeof body?.detail === "string"
+                ? body.detail
+                : `Couldn’t open this file (${response.status}).`,
+          });
+        else
+          Object.assign(current, {
+            status: "ready",
+            kind: body.kind,
+            text: typeof body.text === "string" ? body.text : undefined,
+            truncated: body.truncated === true,
+            size: Number(body.size) || 0,
+          });
+      } catch {
+        if (shown === current)
+          Object.assign(current, {
+            status: "error",
+            detail: "Couldn’t reach the server.",
+          });
+      }
+      repaint();
+    },
+    dispose() {
+      shown = null;
+      offExplorerChange(listener);
+      element._markdownAbort?.abort();
+      element._explorerKey = undefined;
+      releasePdfs(element);
+      render(nothing, element);
+    },
+  };
+}
+
+let inline: { cid: string; preview: FilePreview } | null = null;
+/** The inline preview's element, placed below the tree; null when closed. */
+export function previewHost(): HTMLElement | null {
+  return inline?.preview.element ?? null;
+}
+
+/** Whether a file from conversation `cid` is being previewed inline. */
+export function previewShown(cid: string): boolean {
+  return inline?.cid === cid;
+}
+
+/** Close the inline preview, or only one belonging to another conversation. */
 export function closePreview(keepCid?: string): void {
-  if (!preview || preview.cid === keepCid) return;
-  treeFor(preview.cid).selected = "";
-  preview = null;
-  previewHost._markdownAbort?.abort();
-  previewHost._explorerKey = undefined;
-  releasePdfs(previewHost);
-  render(nothing, previewHost);
+  if (!inline || inline.cid === keepCid) return;
+  treeFor(inline.cid).selected = "";
+  inline.preview.dispose();
+  inline = null;
   changed();
 }
 
 /** Preview `path` from conversation `cid` below the Explorer tree. */
 export async function openPreview(cid: string, path: string): Promise<void> {
   treeFor(cid).selected = path;
-  const shown: Preview = { cid, path, status: "loading" };
-  preview = shown;
-  changed();
-  repaint();
-  try {
-    const response = await backendFor(cid).api(treeUrl(cid, "/file", path), {
-      cache: "no-store",
-    });
-    const body = (await response.json().catch(() => null)) as Record<
-      string,
-      unknown
-    > | null;
-    if (preview !== shown) return;
-    if (!response.ok || !body)
-      Object.assign(shown, {
-        status: "error",
-        detail:
-          typeof body?.detail === "string"
-            ? body.detail
-            : `Couldn’t open this file (${response.status}).`,
-      });
-    else
-      Object.assign(shown, {
-        status: "ready",
-        kind: body.kind,
-        text: typeof body.text === "string" ? body.text : undefined,
-        truncated: body.truncated === true,
-        size: Number(body.size) || 0,
-      });
-  } catch {
-    if (preview === shown)
-      Object.assign(shown, {
-        status: "error",
-        detail: "Couldn’t reach the server.",
-      });
+  if (inline?.cid !== cid) {
+    closePreview();
+    inline = {
+      cid,
+      preview: createFilePreview(cid, {
+        close: () => closePreview(),
+        link: (next) => void openPreview(cid, next),
+      }),
+    };
   }
-  repaint();
-}
-
-function repaint(): void {
-  if (preview) renderPreview(previewHost, preview);
+  changed();
+  await inline.preview.open(path);
 }
 
 const icon = (svg: string) => unsafeHTML(svg);
@@ -132,7 +180,11 @@ function actionButton(
   </button>`;
 }
 
-function markdown(shown: Preview, element: PreviewEl): HTMLElement {
+function markdown(
+  shown: Preview,
+  element: PreviewEl,
+  handlers: PreviewHandlers,
+): HTMLElement {
   const body = document.createElement("div");
   body.className = "files-markdown artifact-doc report-doc";
   element._markdownAbort?.abort();
@@ -166,12 +218,16 @@ function markdown(shown: Preview, element: PreviewEl): HTMLElement {
     if (!path) return;
     event.preventDefault();
     event.stopPropagation();
-    void openPreview(shown.cid, path);
+    handlers.link(path);
   });
   return body;
 }
 
-function content(shown: Preview, element: PreviewEl): unknown {
+function content(
+  shown: Preview,
+  element: PreviewEl,
+  handlers: PreviewHandlers,
+): unknown {
   if (shown.status === "loading")
     return html`<div class="files-preview-placeholder">Loading preview…</div>`;
   if (shown.status === "error")
@@ -201,7 +257,7 @@ function content(shown: Preview, element: PreviewEl): unknown {
     `${shown.cid}\n${shown.path}`,
     html`<div class="files-text-wrap">
       ${/\.(?:md|markdown)$/i.test(shown.path)
-        ? markdown(shown, element)
+        ? markdown(shown, element, handlers)
         : html`<pre class="report-doc">${shown.text}</pre>`}
       ${shown.truncated
         ? html`<span class="files-preview-note"
@@ -215,7 +271,11 @@ function content(shown: Preview, element: PreviewEl): unknown {
   );
 }
 
-function renderPreview(element: PreviewEl, shown: Preview): void {
+function renderPreview(
+  element: PreviewEl,
+  shown: Preview,
+  handlers: PreviewHandlers,
+): void {
   const key = JSON.stringify([
     shown.cid,
     shown.path,
@@ -258,7 +318,7 @@ function renderPreview(element: PreviewEl, shown: Preview): void {
               >${icon(FILE_DOWNLOAD_ICON)}</a
             >`
           : nothing}
-        ${actionButton("Close preview", CLOSE_ICON, () => closePreview())}
+        ${actionButton("Close preview", CLOSE_ICON, () => handlers.close())}
       </div>
       <div class="explorer-preview-meta">
         ${folder ? `${folder}/` : ""}${baseName(shown.path)}
@@ -266,9 +326,8 @@ function renderPreview(element: PreviewEl, shown: Preview): void {
           ? ` · ${attachmentSize(shown.size)}`
           : ""}
       </div>
-      ${content(shown, element)}
+      ${content(shown, element, handlers)}
     </div>`,
     element,
   );
 }
-onExplorerChange(repaint);

@@ -119,7 +119,6 @@ import {
   paneKeyboardLayerOpen,
   paneActionable,
   togglePaneFromKeyboard,
-  paneCoversAgents,
   focusPaneFromKeyboard,
   closeFocusedPaneFromKeyboard,
   switchPane,
@@ -415,10 +414,8 @@ function execute(command: KeyCommand | null): void {
     case "toggle-agents": {
       const sidebar = $("#sidebar");
       const focusInside = sidebar?.contains(document.activeElement);
-      const covered = paneCoversAgents();
       $<HTMLButtonElement>("#menu-btn")?.click();
-      if (covered && !paneCoversAgents()) restoreAgentFocus();
-      else if (focusInside && sidebar?.classList.contains("desktop-hidden"))
+      if (focusInside && sidebar?.classList.contains("desktop-hidden"))
         execute("focus-thread");
       break;
     }
@@ -476,7 +473,6 @@ function execute(command: KeyCommand | null): void {
       break;
     }
     case "focus-agents":
-      if (paneCoversAgents()) $<HTMLButtonElement>("#menu-btn")?.click();
       restoreAgentFocus();
       break;
     case "pane-next":

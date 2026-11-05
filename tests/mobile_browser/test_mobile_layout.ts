@@ -336,8 +336,6 @@ export const tests: BrowserTest[] = [
         ).toBeTrue();
         await page.locator('.pane-col[data-pane="report"]').waitFor();
         await assertArtifactVersionMenuEscape(page);
-        expect(await page.locator("#sidebar").isVisible()).toBeFalse();
-        await page.locator("#agents-btn").click();
         await visibleAndUncovered(page, ".agent");
         await visibleAndUncovered(page, "#input");
       }

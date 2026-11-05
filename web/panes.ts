@@ -1,7 +1,7 @@
-// Registers optional panes and owns visibility, selection, bounded body caches
-// and desktop/mobile layout. Conversation actions retain their module owners.
-// Phone content/header share a scroller. Unregistered/unavailable panes hide
-// their rail; unavailable open panes close on refresh.
+// Registers optional panes; owns visibility, selection, body caches and layout.
+// Desktop panes are dockview tabs (dock/host.ts), one layout per conversation;
+// phones show one pane at a time in #panes, content and header sharing a
+// scroller. Unavailable panes hide their rail button and close on refresh.
 import { currentUiOwnerId, embedded, state } from "./state.js";
 import { phoneListEntry } from "./phone-nav.js";
 import {
@@ -45,6 +45,7 @@ import {
 } from "./panes/view-state.js";
 import { PaneInstanceCache, validPaneCacheDef } from "./panes/cache.js";
 import type { PaneContext, PaneDef } from "./types.js";
+import type { DockHost, DockLayout, DockPlacement } from "./dock/host.js";
 export { setPaneLoading } from "./panes/loading.js";
 
 for (const [id, icon] of [
@@ -80,6 +81,20 @@ const paneOwners = new Map<string, string>();
 const paneAgents = new Map<string, string>();
 const paneViewState = new PaneViewStateLifecycle();
 const paneInstances = new PaneInstanceCache();
+const columns = new Map<string, HTMLElement>();
+let dock: DockHost | null = null;
+let dockLoading = false;
+/** Saved dock layouts by conversation owner, for this page's lifetime. */
+const dockLayouts = new Map<string, DockLayout>();
+/** The incoming conversation's layout, restored once it renders. */
+let pendingDockLayout: DockLayout | null | undefined;
+interface DockOnlyPanel {
+  element: HTMLElement;
+  dispose(): void;
+}
+type DockPanelFactory = (id: string, agentId: string) => DockOnlyPanel | null;
+const dockKinds = new Map<string, DockPanelFactory>();
+const dockOnly = new Map<string, DockOnlyPanel>();
 let paneParking: HTMLElement | null = null;
 let paneVisitAgentId: string | null = null;
 let paneVisitOwnerId: string | null = null;
@@ -129,7 +144,10 @@ export function beginPaneVisit(
     document.activeElement instanceof HTMLElement &&
     !!document.activeElement.closest(".pane-col");
   const outgoingOwnerId = paneVisitOwnerId;
+  if (dock && outgoingOwnerId) dockLayouts.set(outgoingOwnerId, dock.save());
   for (const id of [...open]) closePane(id);
+  clearDockOnly();
+  pendingDockLayout = dockLayouts.get(ownerId);
   if (outgoingOwnerId) conversationUiState.flush(outgoingOwnerId);
   if (held) restoreAgentFocus();
 
@@ -405,7 +423,10 @@ interface OpenPaneOptions {
   preserveLastId?: boolean;
   // Keyboard opens focus the body; mobile modal opens focus the heading.
   focusTarget?: "heading" | "body";
+  // Docked: add as a tab without showing it (automatic opens).
+  background?: boolean;
 }
+let nextBackground = false;
 
 function usableFocusOrigin(
   element: HTMLElement | null | undefined,
@@ -438,7 +459,9 @@ export function openPane(id: string, options: OpenPaneOptions = {}): boolean {
   // Invariant: Replacing a comment-capable pane is a leave action just like
   // closing it. Do not clear its attention/visit state until the operator
   // accepts the existing shared comment guard.
+  const replacing = !dock || isMobile();
   if (
+    replacing &&
     userInitiated &&
     [...open].some((openId) => openId !== id) &&
     !guardLeaveComments()
@@ -454,7 +477,8 @@ export function openPane(id: string, options: OpenPaneOptions = {}): boolean {
       );
     return false;
   }
-  for (const openId of open) if (openId !== id) capturePaneState(openId);
+  if (replacing)
+    for (const openId of open) if (openId !== id) capturePaneState(openId);
   const active = document.activeElement;
   focusOrigins.clear();
   // Invariant: A keyboard menu choice is hidden immediately before openPane
@@ -467,12 +491,16 @@ export function openPane(id: string, options: OpenPaneOptions = {}): boolean {
         : active
       : null;
   if (usableFocusOrigin(origin)) focusOrigins.set(id, origin);
-  // Invariant: At most one panel is open; opening another replaces it. Layout
-  // owns removal/reattachment of desktop columns and mobile grips.
-  open.clear();
+  // Invariant: Without the dock at most one panel is open; opening another
+  // replaces it. Layout owns removal/reattachment of columns and grips.
+  if (replacing) open.clear();
+  else if (open.has(id) && !options.background)
+    dock?.show({ id, title: titleOf(id) });
+  nextBackground = !!options.background;
   if (isMobile()) {
     for (const paneId of [...bodies.keys()]) forgetPaneState(paneId);
     panesEl.innerHTML = "";
+    columns.clear();
     mobileActive = id;
   }
   open.add(id);
@@ -532,6 +560,10 @@ function closePane(
 }
 /** Open or close pane `id` as its rail button does; true when it opened. */
 export function togglePane(id: string): boolean {
+  if (open.has(id) && dock && !isMobile() && !dock.visible(id)) {
+    dock.show({ id, title: titleOf(id) });
+    return true;
+  }
   if (open.has(id)) {
     closePane(id, true, true);
     return false;
@@ -808,6 +840,7 @@ function ensureColumn(id: string, ctx: PaneContext): HTMLElement | undefined {
     () => closePane(id, true, true),
   );
   col.setAttribute("aria-labelledby", `pane-title-${id}`);
+  columns.set(id, col);
   const scope = paneCacheScope(id, ownerId, ctx, p);
   const cached =
     scope && p.cache ? paneInstances.take(scope, ctx, p.cache) : null;
@@ -818,7 +851,7 @@ function ensureColumn(id: string, ctx: PaneContext): HTMLElement | undefined {
   }
   body.dataset.pane = id;
   col.append(retainPanePowerbar(body, head));
-  panesEl.appendChild(col);
+  attachColumn(id, col);
   if (body.dataset.paneParked === "true") {
     try {
       const move = (
@@ -850,26 +883,44 @@ function ensureColumn(id: string, ctx: PaneContext): HTMLElement | undefined {
 }
 
 function layout(): void {
+  // Invariant: Desktop panes render only once the dock has loaded, so no
+  // body (or its frames) is rendered twice or reparented into the dock.
+  if (!isMobile() && !dock && !embedded) {
+    loadDock();
+    return;
+  }
   const ctx = buildCtx();
   ensurePanesGrip();
   if (fullId && !open.has(fullId)) fullId = null;
-  for (const col of panesEl.querySelectorAll<HTMLElement>(".pane-col")) {
-    const pid = col.dataset.pane;
-    if (!pid || !open.has(pid)) {
-      if (pid) forgetPaneState(pid);
-      col.remove();
-    }
+  for (const [pid, col] of [...columns]) {
+    if (open.has(pid)) continue;
+    forgetPaneState(pid);
+    columns.delete(pid);
+    col.remove();
   }
-  for (const p of registry) if (open.has(p.id)) ensureColumn(p.id, ctx);
+  for (const id of dock?.ids() ?? [])
+    if (registry.some((p) => p.id === id) && !open.has(id)) dock!.remove(id);
+  for (const p of registry)
+    if (open.has(p.id)) {
+      const col = columns.get(p.id);
+      if (col && !col.isConnected) attachColumn(p.id, col);
+      else ensureColumn(p.id, ctx);
+    }
+  nextBackground = false;
 
   const mobile = isMobile();
-  panesEl.classList.toggle("on", open.size > 0);
+  const docked = !!dock && !mobile;
+  panesEl.classList.toggle(
+    "on",
+    docked ? dock!.ids().length > 0 : open.size > 0,
+  );
+  panesEl.classList.toggle("docked", docked);
   const w = mobile ? null : storedPanesWidth();
   if (w != null) {
     panesEl.style.flex = "none";
     panesEl.style.width = w + "px";
   } else {
-    panesEl.style.flex = mobile ? "" : String(open.size);
+    panesEl.style.flex = mobile ? "" : docked ? "1" : String(open.size);
     panesEl.style.width = "";
   }
 
@@ -916,32 +967,9 @@ function paneBadge(pane: PaneDef, ctx: PaneContext): string {
   }
 }
 
-/** Desktop: whether an open pane takes the agent list's place. */
-export function paneCoversAgents(): boolean {
-  return !isMobile() && open.size > 0;
-}
-
-$("#menu-btn")!.addEventListener(
-  "click",
-  (event) => {
-    // Spec: On desktop the agent-list toggle (menu button, H, the rail's
-    // Agents) first closes a pane shown in the list's place.
-    if (!paneCoversAgents()) return;
-    event.stopImmediatePropagation();
-    const current = [...open][0];
-    if (current && closePane(current, true, false)) {
-      const sidebar = $("#sidebar")!;
-      if (sidebar.classList.contains("desktop-hidden"))
-        $<HTMLButtonElement>("#menu-btn")!.click();
-    }
-  },
-  true,
-);
-
 /** The rail's Agents button: shows the agent list, or hides it when shown. */
 function agentsButton(): HTMLButtonElement {
-  const shown =
-    !paneCoversAgents() && !$("#sidebar")!.classList.contains("desktop-hidden");
+  const shown = !$("#sidebar")!.classList.contains("desktop-hidden");
   const b = document.createElement("button");
   b.className = "rail-btn" + (shown ? " active" : "");
   b.id = "agents-btn";
@@ -1172,6 +1200,8 @@ backdropEl.onclick = () => {
   if (isMobile() && mobileActive) closePane(mobileActive, true, true);
 };
 mq.addEventListener("change", () => {
+  if (isMobile()) unloadDock();
+  else loadDock();
   closeMenu();
   railHash = "";
   layout();
@@ -1192,6 +1222,153 @@ let syncFailureAnnounced = false;
 
 export function notePaneConversationRendered(agentId: string): void {
   if (paneVisitAgentId === agentId) paneRenderedAgentId = agentId;
+  loadDock();
+}
+
+// ---- the desktop dock ------------------------------------------------------
+const EDITOR_PANES = new Set([ARTIFACTS_PANE_ID, FILES_PANE_ID]);
+const isEditorPanel = (id: string): boolean =>
+  EDITOR_PANES.has(id) || [...dockKinds.keys()].some((k) => id.startsWith(k));
+
+function titleOf(id: string): string {
+  return registry.find((p) => p.id === id)?.title || id;
+}
+
+/** Where a new dock panel goes: tools left, files and Artifacts right. */
+function dockPlacement(id: string): DockPlacement {
+  const editor = isEditorPanel(id);
+  const ids = dock?.ids() ?? [];
+  const same = ids.filter((other) => isEditorPanel(other) === editor);
+  const other = ids.find((panel) => isEditorPanel(panel) !== editor);
+  return {
+    background: nextBackground,
+    withPanel: same[same.length - 1],
+    beside: other
+      ? { id: other, direction: editor ? "right" : "left" }
+      : undefined,
+  };
+}
+
+let attachingFromDock = false;
+function attachColumn(id: string, col: HTMLElement): void {
+  if (attachingFromDock) return;
+  if (dock && !isMobile())
+    dock.show({ id, title: titleOf(id) }, dockPlacement(id));
+  else panesEl.appendChild(col);
+}
+
+function dockElement(id: string): HTMLElement | null {
+  if (registry.some((p) => p.id === id)) {
+    const existing = columns.get(id);
+    if (existing) return existing;
+    open.add(id);
+    attachingFromDock = true;
+    try {
+      ensureColumn(id, buildCtx());
+    } finally {
+      attachingFromDock = false;
+    }
+    return columns.get(id) ?? null;
+  }
+  const existing = dockOnly.get(id);
+  if (existing) return existing.element;
+  for (const [prefix, create] of dockKinds)
+    if (id.startsWith(prefix)) {
+      const made = create(id, state.selectedId);
+      if (made) dockOnly.set(id, made);
+      return made?.element ?? null;
+    }
+  return null;
+}
+
+function dockClosed(id: string): void {
+  const made = dockOnly.get(id);
+  if (made) {
+    dockOnly.delete(id);
+    made.dispose();
+  } else if (open.has(id)) closePane(id, true, false, true);
+  layout();
+}
+
+function clearDockOnly(): void {
+  for (const id of [...dockOnly.keys()]) {
+    dock?.remove(id);
+    dockOnly.get(id)?.dispose();
+    dockOnly.delete(id);
+  }
+  dock?.restore(null);
+  layout();
+}
+
+function loadDock(): void {
+  if (dock || dockLoading || isMobile() || embedded) return;
+  dockLoading = true;
+  void import("./dock/host.js").then(
+    ({ createDockHost }) => {
+      dockLoading = false;
+      if (dock || isMobile()) return;
+      const root = document.createElement("div");
+      root.id = "dock";
+      panesEl.append(root);
+      dock = createDockHost(root, {
+        element: dockElement,
+        closed: dockClosed,
+        // Invariant: dockview reports changes while panes.ts is still
+        // adding a panel; resync afterwards, never re-entrantly.
+        changed: () =>
+          queueMicrotask(() => {
+            railHash = "";
+            syncPanes();
+          }),
+      });
+      layout();
+      syncPanes();
+    },
+    () => {
+      dockLoading = false;
+    },
+  );
+}
+
+function unloadDock(): void {
+  if (!dock) return;
+  const keep = [...open][0];
+  for (const id of [...open]) if (id !== keep) closePane(id);
+  for (const id of [...dockOnly.keys()]) {
+    dockOnly.get(id)?.dispose();
+    dockOnly.delete(id);
+  }
+  dock.dispose();
+  dock = null;
+  $("#dock")?.remove();
+}
+
+/** Register a kind of dock-only panel whose ids start with `prefix`. */
+export function registerDockPanelKind(
+  prefix: string,
+  create: DockPanelFactory,
+): void {
+  dockKinds.set(prefix, create);
+}
+
+/** Close dock-only panel `id`, as its tab's close button does. */
+export function closeDockPanel(id: string): void {
+  if (!dockOnly.has(id)) return;
+  dock?.remove(id);
+  dockClosed(id);
+}
+
+/** Open or focus dock-only panel `id`; false when the dock isn't showing. */
+export function openDockPanel(
+  id: string,
+  title: string,
+  tooltip?: string,
+): boolean {
+  if (!dock || isMobile()) return false;
+  if (!dock.has(id) && !dockElement(id)) return false;
+  dock.show({ id, title, tooltip }, dockPlacement(id));
+  layout();
+  return true;
 }
 
 function restorePanePreference(availableIds: ReadonlySet<string>): boolean {
@@ -1235,7 +1412,21 @@ function syncPanesNow(): void {
   // Artifact discovery. openPane() re-enters sync with the pane present, so
   // return after a successful restore rather than refreshing the same body
   // twice.
-  if (restorePanePreference(availIds)) return;
+  if (
+    dock &&
+    !isMobile() &&
+    pendingDockLayout !== undefined &&
+    paneRenderedAgentId === state.selectedId &&
+    paneVisitAgentId === state.selectedId
+  ) {
+    const saved = pendingDockLayout;
+    pendingDockLayout = undefined;
+    dock.restore(saved);
+    layout();
+  }
+  // Invariant: A conversation's own dock layout wins over its remembered pane.
+  const ownLayout = !!dock && dockLayouts.has(currentUiOwnerId());
+  if (!ownLayout && restorePanePreference(availIds)) return;
 
   const artifacts = registry.find((p) => p.id === ARTIFACTS_PANE_ID);
   let generation: string | null | undefined;
@@ -1248,7 +1439,7 @@ function syncPanesNow(): void {
     agentId: ctx.agentId,
     generation,
     artifactsPaneOpen: open.has(ARTIFACTS_PANE_ID),
-    otherPaneOpen: [...open].some((id) => id !== ARTIFACTS_PANE_ID),
+    otherPaneOpen: !dock && [...open].some((id) => id !== ARTIFACTS_PANE_ID),
     ...artifactAutoOpenGuards(),
   });
   if (artifactsAttention !== autoDecision.badged) {
@@ -1263,6 +1454,7 @@ function syncPanesNow(): void {
       // heading.
       focusHeading: isMobile() ? true : autoDecision.focusHeading,
       userInitiated: false,
+      background: true,
     });
     return;
   }
@@ -1278,13 +1470,17 @@ function syncPanesNow(): void {
     agentId: ctx.agentId,
     generation: fileGeneration,
     artifactsPaneOpen: open.has(FILES_PANE_ID),
-    otherPaneOpen: [...open].some((id) => id !== FILES_PANE_ID),
+    otherPaneOpen: !dock && [...open].some((id) => id !== FILES_PANE_ID),
     ...artifactAutoOpenGuards(),
   });
   if (filesDecision.open && files && availIds.has(FILES_PANE_ID)) {
     files.autoOpened?.(ctx);
     announceArtifacts("opened", "Files");
-    openPane(FILES_PANE_ID, { focusHeading: false, userInitiated: false });
+    openPane(FILES_PANE_ID, {
+      focusHeading: false,
+      userInitiated: false,
+      background: true,
+    });
     return;
   }
 
@@ -1292,6 +1488,7 @@ function syncPanesNow(): void {
   for (const id of open) {
     const p = registry.find((x) => x.id === id);
     const body = bodies.get(id);
+    if (dock && !isMobile() && !dock.visible(id)) continue;
     if (p && body && p.refresh) {
       try {
         p.refresh(body, ctx);

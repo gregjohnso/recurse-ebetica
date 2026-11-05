@@ -39,6 +39,7 @@
     "@excalidraw/excalidraw": "0.18.1",
     "@ff-labs/pi-fff": "0.11.0",
     "@git-diff-view/core": "0.1.7",
+    "dockview": "8.8.3",
     "dompurify": "3.2.4",
     "dotenv": "17.4.2",
     "katex": "0.16.47",

@@ -17,6 +17,7 @@
         "@excalidraw/excalidraw": "0.18.1",
         "@ff-labs/pi-fff": "0.11.0",
         "@git-diff-view/core": "0.1.7",
+        "dockview": "8.8.3",
         "dompurify": "3.2.4",
         "dotenv": "17.4.2",
         "katex": "0.16.47",
@@ -590,6 +591,10 @@
     "devlop": ["devlop@1.1.0", "", { "dependencies": { "dequal": "^2.0.0" } }, "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA=="],
 
     "diff": ["diff@8.0.4", "", {}, "sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw=="],
+
+    "dockview": ["dockview@8.8.3", "", { "dependencies": { "dockview-core": "^8.8.3" } }, "sha512-hTb5X4Z74k0+5wtOlx1gNsx/q5ve1p0JQ6s7Ovl24YhdkaR9AhfWFlq1dQYwXjXIoWm8RFW6aTZMhCTiEv94EA=="],
+
+    "dockview-core": ["dockview-core@8.8.3", "", {}, "sha512-B9v+ibiXnZ5qgFJ7VEqMcNxpG0S5Y7Yx7uuGqqSyEFSC3bRZktUoXWo3HCrFp+QTdFmA1dJD1ye/gI4yL3hU2g=="],
 
     "dompurify": ["dompurify@3.2.4", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-ysFSFEDVduQpyhzAob/kkuJjf5zWkZD8/A9ywSp1byueyuCfHamrCBa14/Oc2iiB0e51B+NpxSl5gmzn+Ms/mg=="],
 

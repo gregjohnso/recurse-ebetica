@@ -931,7 +931,6 @@ export const tests: BrowserTest[] = [
         .locator("body[data-ready]")
         .waitFor();
       if (width === 1280) {
-        await page.locator("#agents-btn").click();
         await page.locator('.agent[data-id="artifact-link-source"]').click();
         expect(page.url()).not.toContain("artifact=");
         await page.goBack();

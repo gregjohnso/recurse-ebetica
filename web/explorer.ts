@@ -1,5 +1,5 @@
-// The Explorer pane (first panel in the left rail) shows a read-only tree of
-// the open conversation's working directory, with a file preview below it.
+// The Explorer pane shows a read-only tree of the conversation's work folder.
+// A clicked file opens in a dock tab on desktop, else previews below the tree.
 // Folders load lazily on expand and re-read on Refresh, opening the pane, a
 // settled turn or a changed cwd (no watcher).
 import { html, nothing, render, type TemplateResult } from "lit";
@@ -7,11 +7,18 @@ import { repeat } from "lit/directives/repeat.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { DISCLOSURE_ICON, EXPLORER_ICON, REFRESH_ICON } from "./icons.js";
-import { registerPane, togglePane } from "./panes.js";
+import {
+  closeDockPanel,
+  openDockPanel,
+  registerDockPanelKind,
+  registerPane,
+  togglePane,
+} from "./panes.js";
 import { DRAFT, state } from "./state.js";
 import { UI_REFRESH_EVENT } from "./ui-events.js";
 import {
   closePreview,
+  createFilePreview,
   openPreview,
   previewHost,
   previewShown,
@@ -218,7 +225,7 @@ function paint(): void {
           (row) => rowTemplate(tree, row, marks, folders),
         )}
       </div>
-      ${previewShown(cid) ? previewHost : nothing}`,
+      ${previewShown(cid) ? previewHost() : nothing}`,
     view,
   );
   view.classList.toggle("previewing", previewShown(cid));
@@ -236,10 +243,32 @@ function activateRow(tree: ExplorerTree, row: Row, toChild = false): void {
       if (child?.entry && child.depth > row.depth) tree.cursor = child.path;
       paint();
     } else setExpanded(tree, row.path, toChild || !open);
-  } else if (entry.type === "file") void openPreview(tree.cid, row.path);
+  } else if (entry.type === "file") openFile(tree.cid, row.path);
   else paint();
   focusCursor();
 }
+
+const FILE_TAB = "file:";
+
+/** Open `path` in a dock tab (focusing an open one), else preview it inline. */
+function openFile(cid: string, path: string): void {
+  treeFor(cid).selected = path;
+  if (openDockPanel(FILE_TAB + path, baseName(path), path)) {
+    closePreview();
+    paint();
+  } else void openPreview(cid, path);
+}
+
+registerDockPanelKind(FILE_TAB, (id, agentId) => {
+  if (agentId === DRAFT) return null;
+  const path = id.slice(FILE_TAB.length);
+  const preview = createFilePreview(agentId, {
+    close: () => closeDockPanel(id),
+    link: (next) => openFile(agentId, next),
+  });
+  void preview.open(path);
+  return preview;
+});
 
 function focusCursor(): void {
   requestAnimationFrame(() => {

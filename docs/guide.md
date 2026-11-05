@@ -252,15 +252,17 @@ step of the plan-implement-merge loop in [Worktrees](#worktrees).
 
 ### Explorer
 
-On a computer, the icon bar on the left edge holds **Agents**, a button for
-each panel, and **Settings** and **Delete** at the bottom. A panel opens in the
-agent list's place; choose **Agents**, or the panel's button again, to bring
-the list back.
+On a computer, the icon bar on the left edge holds **Agents** (show or hide
+the agent list), a button for each panel, and **Settings** and **Delete** at
+the bottom. Panels open as tabs beside the chat; drag a tab onto another group,
+or onto a group's edge to split it. A panel's button shows its tab, or closes
+it when it is already showing. Each agent keeps its own arrangement while the
+page is open.
 
 The **Explorer** panel (the first panel button in the left bar, or `E`) shows the
 open agent's working folder. Folders open as you expand them; files Git ignores
 are dimmed, and `M`/`U` mark changed and untracked files. Click a file to
-preview it below the tree, or right-click to copy its path or insert it into
+open it in a tab (on a phone, below the tree), or right-click to copy its path or insert it into
 your message. The Explorer never follows symbolic links and never shows the
 contents of credential files such as `.env` or `*.pem`. On a phone, open it
 from the **More actions** menu.
