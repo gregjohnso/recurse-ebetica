@@ -199,7 +199,9 @@ alpha channel when embedded inline.
 
 The frontend asset build copies this directory to `/static/brand/`.
 [index.html](index.html) links the SVG favicon, its 32 px PNG fallback and the
-180 px Apple touch icon. The web manifest advertises 192 and 512 px app icons
+180 px Apple touch icon. These links carry the original artwork's SHA-256 prefix
+as a query version; update it when replacing the artwork so browsers discard
+cached icons. The web manifest advertises 192 and 512 px app icons
 and full-bleed maskable variants; push notifications use the 192 px app icon.
 The SVGs embed a reduced PNG copy of the artwork. PNG exports are resized from
 the original at their named dimensions; maskable icons inset the circle to keep

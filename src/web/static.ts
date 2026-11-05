@@ -590,7 +590,7 @@ export function registerStaticRoutes(
     const page = shell
       .replace("<html ", embed ? "<html data-embed " : "<html ")
       .replace(
-        /(href|src)="\/static\/brand\/(?:favicon-32\.png|favicon\.svg|apple-touch-icon\.png|mark\.svg)"/gu,
+        /(href|src)="\/static\/brand\/(?:favicon-32\.png|favicon\.svg|apple-touch-icon\.png|mark\.svg)(?:\?[^"\s]*)?"/gu,
         (original, attr: string) =>
           brand.icon ? `${attr}="${brand.icon}"` : original,
       )
