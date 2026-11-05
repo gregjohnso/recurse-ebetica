@@ -71,12 +71,10 @@ for the conversation on screen.
   version on the install's channel and offers "Update now", which the
   launcher applies with a restart; the page then reloads into the new version.
 - Side panels: `panes.ts`, `artifacts/`, `diff.ts`, `files.ts`, `comments.ts`.
-  Published Markdown resolves local images and file links through the document's
-  captured reference map, returned with its text preview. The map points to
-  immutable, conversation-owned file IDs, so previews do not depend on source
-  files remaining on disk or on the Files list having loaded every page.
-  Older documents without a map retain same-name published-file resolution;
-  a missing entry in a new document never falls back to another version's file.
+  Markdown previews resolve local images and links from immutable owned file IDs
+  captured at publication, independent of source files or Files pagination.
+  Legacy documents without a map resolve by name; new maps never fall back to
+  another version's file.
   Action menus close before running a choice, including opening a confirmation;
   cancelling the confirmation does not reopen the menu. The conversation menu
   keeps Delete's first tap open for its inline second-tap confirmation. Pane
@@ -123,20 +121,15 @@ for the conversation on screen.
   Offline remotes keep their last tree and show neutral relative last-seen times,
   with exact timestamps in tooltips. Tree
   retries back off from five seconds to one minute; recovery needs no new sign-in.
-  Each connected remote section offers **New agent**: its draft stays in that
-  section and creates a top-level agent on that remote on first send. Offline
-  sections disable creation. Draft uploads and queued first messages retain the
-  selected backend through creation and retries. A new remote agent stays
-  selected until its own tree refreshes past creation; home tree reads cannot
-  mistake an older remote snapshot for a deletion.
-  Remote agents use the same controls as home agents through the same
-  backend-bound paths: send (including queued/steered input), uploads, stop,
-  rename, effort choice, safety review, delete, take-over, /compact and
-  /clear. Remote drafts and agents use that remote's effort ladder, read
-  through the proxy. The remote's key policy is the
-  only authority; the browser keeps no second allowlist, and a remote that
-  refuses an action reports it like a home refusal. Agents never
-  move between backends; side conversations and revive stay on the home.
+  **New agent** creates a remote top-level agent on first send; offline sections
+  disable it. Drafts, uploads and queued sends retain that backend across retries.
+  Selection waits for the remote tree to pass creation, so a home refresh cannot
+  misread an older remote snapshot as deletion.
+  Backend-bound controls cover sends (queued or steered), uploads, stop, rename,
+  effort, safety review, delete, take-over, /compact and /clear. Remote drafts
+  and agents read the remote ladder through the proxy. Its key policy alone
+  authorizes actions; refusals display like home refusals, without a browser
+  allowlist. Agents cannot move backends; side conversations and revive stay home.
   Settings → Remotes also lists homes allowed to connect to this instance, with
   last-used times and access revocation, instead of a separate Settings card.
   It lists agent-requested addresses with a password-only sign-in;

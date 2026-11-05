@@ -11,6 +11,7 @@ import {
   AttachmentError,
   MAX_FILE_BYTES,
   MAX_RELATED_FILES,
+  PUBLICATION_LIMITS,
   readRelatedFiles,
   relatedFilePath,
   type Manifest,
@@ -150,8 +151,15 @@ export async function registerDocumentFile(
   let directory: FileHandle | undefined;
   let root: FileHandle | undefined;
   try {
-    directory = await open(dirname(fullPath), DIRECTORY_FLAGS);
-    root = await openAt(directory.fd, basename(fullPath), FILE_FLAGS);
+    directory = await open(
+      dirname(fullPath),
+      constants.O_RDONLY | constants.O_DIRECTORY,
+    );
+    root = await openAt(
+      directory.fd,
+      basename(fullPath),
+      constants.O_RDONLY | constants.O_NONBLOCK,
+    );
     const rootStat = await root.stat();
     if (!rootStat.isFile())
       throw new AttachmentError("source must be a regular file");
@@ -231,6 +239,13 @@ export async function registerDocumentFile(
               workdir,
               {
                 ...options,
+                limits: {
+                  ...(options.limits ?? PUBLICATION_LIMITS),
+                  maxFileBytes: Math.min(
+                    options.limits?.maxFileBytes ?? MAX_FILE_BYTES,
+                    MAX_FILE_BYTES - totalBytes,
+                  ),
+                },
                 name: undefined,
                 manyPerCall: true,
                 sourceHandle: dependency,
@@ -239,6 +254,10 @@ export async function registerDocumentFile(
                 reserveParentSlot: true,
               },
             );
+            if (totalBytes + Number(item.size) > MAX_FILE_BYTES)
+              throw new AttachmentError(
+                "100 MB combined publication limit reached",
+              );
             const id = String(item.id);
             if (
               readRelatedFiles(JSON.stringify({ ...related, [href]: id })) ===

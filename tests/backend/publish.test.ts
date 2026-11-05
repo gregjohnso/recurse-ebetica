@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   mkdir,
   mkdtemp,
+  open,
   rm,
   symlink,
   truncate,
@@ -264,6 +265,74 @@ test("published Markdown pins direct local references without changing its bytes
     );
     expect(textManifest!.related_files).toBeUndefined();
     expect(namedMarkdown.item.related_files).toBeUndefined();
+    // Explicitly chosen symlinks are followed; dependency symlinks stay refused.
+    await writeFile(join(workspace, "a", "report.md"), "![F](fenced.png)\n");
+    await symlink("a/report.md", join(workspace, "report-link.md"));
+    const linkedFile = await registerDocumentFile(
+      collection,
+      "owner",
+      run,
+      "doc-link-file",
+      join(workspace, "report-link.md"),
+      workspace,
+    );
+    expect(linkedFile.item.name).toBe("report-link.md");
+    const linkedDirectory = await registerDocumentFile(
+      collection,
+      "owner",
+      run,
+      "doc-link-dir",
+      join(workspace, "linked", "report.md"),
+      workspace,
+    );
+    expect(linkedDirectory.included).toBe(1);
+    // A dependency that grows after its size check cannot exceed the 100 MB total.
+    await writeFile(join(workspace, "big.bin"), "x");
+    await truncate(join(workspace, "big.bin"), 30 * 1024 * 1024);
+    const growing = join(workspace, "grow.bin");
+    await writeFile(growing, "x");
+    await writeFile(source, "[Big](big.bin) [Grow](grow.bin)\n");
+    const probe = await open(growing, "r");
+    const target = await probe.stat();
+    const proto = Object.getPrototypeOf(probe);
+    await probe.close();
+    const stat = proto.stat;
+    let seen = 0;
+    proto.stat = async function (this: unknown, ...args: unknown[]) {
+      const info = await stat.apply(this, args);
+      if (info.dev === target.dev && info.ino === target.ino && ++seen === 2)
+        await truncate(growing, 80 * 1024 * 1024);
+      return info;
+    };
+    let raced;
+    try {
+      raced = await registerDocumentFile(
+        collection,
+        "owner",
+        run,
+        "doc-race",
+        source,
+        workspace,
+      );
+    } finally {
+      proto.stat = stat;
+    }
+    expect(seen).toBeGreaterThanOrEqual(2);
+    expect(raced.included).toBe(1);
+    expect(raced.warnings).toEqual([
+      'Skipped reference "grow.bin": file is too large (max 69 MB).',
+    ]);
+    const racedManifest = await registeredFile(
+      collection,
+      "owner",
+      run,
+      "doc-race",
+      source,
+      { manyPerCall: true },
+    );
+    expect(
+      Object.keys(readRelatedFiles(racedManifest?.related_files)!),
+    ).toEqual(["big.bin"]);
   }));
 
 test("rejects one file above the per-file limit", () =>
