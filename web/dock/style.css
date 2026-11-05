@@ -51,7 +51,7 @@
   box-shadow: inset 0 -1px 0 var(--border); }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
 #dock .dv-tabs-container { scrollbar-width: thin; }
-#dock .dv-tabs-container { padding: 0 var(--space-3); }
+#dock .dv-tabs-container { padding: 0; }
 #dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
   padding: 0 6px 0 10px; min-width: 80px; max-width: 220px; font-weight: 400;
   box-shadow: inset 0 -1px 0 var(--border); }
@@ -80,13 +80,17 @@
 #dock .dock-tab-icon:is([data-ext="md"], [data-ext="txt"]) { color: var(--context-prompt); }
 #dock .dock-tab-icon:is([data-ext="ts"], [data-ext="js"], [data-ext="py"], [data-ext="sh"]) { color: var(--context-call); }
 #dock .dock-tab-icon:is([data-ext="png"], [data-ext="jpg"], [data-ext="svg"], [data-ext="gif"]) { color: var(--context-message); }
-/* Close: a 16px × in a 20px square, shown on hover or keyboard focus
-   (always on touch). */
-#dock .dv-default-tab-action { flex: none; width: 20px; height: 20px; padding: 2px;
-  box-sizing: border-box; border-radius: 4px; display: inline-flex; align-items: center;
-  justify-content: center; }
-#dock .dv-default-tab-action svg { width: 16px; height: 16px; }
-#dock .dv-default-tab-action:hover { background: var(--dv-icon-hover-background-color); }
+/* Close: a slim 9px hairline × in an 18px square, shown on hover or keyboard
+   focus (always on touch). */
+#dock .dv-default-tab-action { flex: none; position: relative; width: 18px; height: 18px;
+  padding: 0; box-sizing: border-box; border-radius: var(--radius-sm); color: var(--muted); }
+#dock .dv-default-tab-action svg { display: none; }
+#dock .dv-default-tab-action::before, #dock .dv-default-tab-action::after { content: "";
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 1.25px;
+  background: currentColor; transform: translate(-50%, -50%) rotate(45deg); }
+#dock .dv-default-tab-action::after { transform: translate(-50%, -50%) rotate(-45deg); }
+#dock .dv-default-tab-action:hover { color: var(--text);
+  background: var(--dv-icon-hover-background-color); }
 @media (hover: hover) {
   #dock .dv-tab:not(:hover):not(:focus-within) .dv-default-tab-action { opacity: 0; }
 }
