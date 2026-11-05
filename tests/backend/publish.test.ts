@@ -56,7 +56,7 @@ test("published Markdown pins direct local references without changing its bytes
     await writeFile(join(workspace, "..", "outside.txt"), "outside");
     await symlink("../outside.txt", join(workspace, "escape.txt"));
     await symlink("a", join(workspace, "linked"));
-    expect(Bun.spawnSync(["mkfifo", join(workspace, "pipe")]).exitCode).toBe(0);
+    expect(await Bun.spawn(["mkfifo", join(workspace, "pipe")]).exited).toBe(0);
     await writeFile(join(workspace, "large.bin"), "x");
     await truncate(join(workspace, "large.bin"), MAX_FILE_BYTES);
     const source = join(workspace, "README.md");
