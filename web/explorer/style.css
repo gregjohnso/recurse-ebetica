@@ -52,3 +52,6 @@
   .explorer-row { min-height: 40px; font-size: 0.9375rem; }
   .explorer-head { padding-left: var(--space-3); }
 }
+.explorer-view-toggle { width: auto; padding: 0 var(--space-3); font-size: 0.75rem; }
+.explorer-html .report-embed { height: 70vh; }
+.explorer-preview-meta > :not(.explorer-preview-folder) { flex: none; }

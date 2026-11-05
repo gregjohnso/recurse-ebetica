@@ -221,6 +221,16 @@ function appendMarkdown(
 }
 
 function appendEmbed(body: HTMLElement, source: string, title: string): void {
+  body.append(...htmlEmbed(source, title));
+}
+
+/** An offline, opaque-origin preview of HTML `source`: a sandboxed frame that
+ * runs inline scripts but cannot reach the network or the app, and its
+ * screen-reader description. */
+export function htmlEmbed(
+  source: string,
+  title: string,
+): [HTMLElement, HTMLIFrameElement] {
   const frame = document.createElement("iframe");
   const description = document.createElement("p");
   description.className = "sr-only";
@@ -231,7 +241,7 @@ function appendEmbed(body: HTMLElement, source: string, title: string): void {
   frame.title = `${title} live preview`;
   frame.setAttribute("aria-describedby", description.id);
   frame.srcdoc = htmlPreviewSrcdoc(source);
-  body.append(description, frame);
+  return [description, frame];
 }
 
 export function renderDocumentMarkdown(

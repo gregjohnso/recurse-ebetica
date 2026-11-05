@@ -122,3 +122,5 @@
 #dock .explorer-preview-meta { min-height: 32px; display: flex; align-items: center;
   padding-right: 120px; /* space-check: allow room for the file's three actions */
   white-space: nowrap; }
+#dock .explorer-preview:has(.explorer-view-toggle) .explorer-preview-meta {
+  padding-right: 172px; /* space-check: allow room for the toggle too */ }

@@ -24,6 +24,49 @@ const dockLayout = (page: Page) =>
   );
 
 export const tests: BrowserTest[] = [
+  // Feature: #0 Explorer HTML files render in the offline sandbox, with their source a toggle away
+  async function test_explorer_html_page(browser, base) {
+    const { cid } = await postFixture(base, "seed-explorer");
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await page.goto(`${base}#agent=${cid}`, { waitUntil: "domcontentloaded" });
+    await page.locator("#conv-title", { hasText: "Explorer demo" }).waitFor();
+    await page.locator('#pane-rail-panels [data-pane="explorer"]').click();
+    const tree = page.locator("#explorer .explorer-tree");
+    await tree.locator('[role="treeitem"][data-path="docs"]').click();
+    await tree.locator('[data-path="docs/page.html"]').click();
+    const tab = page.locator(".dock-panel", {
+      has: page.locator(".explorer-view-toggle"),
+    });
+    const frame = tab.locator("iframe.report-embed");
+    await frame.waitFor();
+    expect(await frame.getAttribute("sandbox")).toBe("allow-scripts");
+    expect(await frame.getAttribute("srcdoc")).toStartWith(
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\';',
+    );
+    await page
+      .frameLocator(".dock-panel iframe.report-embed")
+      .locator("h1", { hasText: "Rendered page" })
+      .waitFor();
+    if (process.env.RECURSE_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: `${process.env.RECURSE_SCREENSHOT_DIR}/explorer-html.png`,
+      });
+    await tab.getByRole("button", { name: "Source" }).click();
+    expect(await frame.count()).toBe(0);
+    await tab
+      .locator("pre.report-doc", { hasText: '<h1 id="t">Static page</h1>' })
+      .waitFor();
+    await tab.getByRole("button", { name: "Preview" }).click();
+    await frame.waitFor();
+    expect(
+      errors.filter((error) => !error.includes("directive 'navigate-to'")),
+    ).toEqual([]);
+    await context.close();
+  },
   // Feature: #0 the Explorer browses and previews the conversation's working folder
   async function test_explorer_desktop_and_phone(browser, base) {
     const { cid } = await postFixture(base, "seed-explorer");

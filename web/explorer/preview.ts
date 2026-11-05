@@ -1,13 +1,13 @@
-// Previews Explorer files below the tree (phones) or one per dock tab, with the
-// Files pane's renderers: Markdown, plain text, pdf.js and raster images served
-// after the server's magic-byte check. Other files show their size and a
-// download link; credential files show the server's refusal.
+// Previews Explorer files below the tree (phones) or one per dock tab with the
+// Files pane's renderers (Markdown, text, pdf.js, checked raster images) and
+// HTML in the Artifacts' offline sandbox, its source a toggle away. Others show
+// their size and a download link; credential files show the server's refusal.
 import { html, nothing, render, type TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { backendFor } from "../backends/backend.js";
 import { attachmentSize } from "../agent-attachments.js";
-import { renderDocumentMarkdown } from "../document-markdown.js";
+import { htmlEmbed, renderDocumentMarkdown } from "../document-markdown.js";
 import {
   CHANGES_ICON,
   CLOSE_ICON,
@@ -53,7 +53,11 @@ interface PreviewEl extends HTMLElement {
   _explorerKey?: string;
   _markdownAbort?: AbortController;
   _rs?: CommentPane["_rs"];
+  /** Show an HTML file's markup instead of its page. */
+  _htmlSource?: boolean;
 }
+
+const isHtml = (path: string): boolean => /\.html?$/i.test(path);
 
 interface PreviewHandlers {
   /** Close this preview (its × button). */
@@ -87,6 +91,7 @@ export function createFilePreview(
     element,
     async open(path) {
       const current: Preview = { cid, path, status: "loading" };
+      element._htmlSource = false;
       shown = current;
       repaint();
       try {
@@ -235,6 +240,13 @@ function markdown(
   return body;
 }
 
+function htmlPage(shown: Preview): HTMLElement {
+  const page = document.createElement("div");
+  page.className = "explorer-html";
+  page.append(...htmlEmbed(shown.text ?? "", baseName(shown.path)));
+  return page;
+}
+
 function content(
   shown: Preview,
   element: PreviewEl,
@@ -270,7 +282,9 @@ function content(
     html`<div class="files-text-wrap">
       ${/\.(?:md|markdown)$/i.test(shown.path)
         ? markdown(shown, element, handlers)
-        : html`<pre class="report-doc">${shown.text}</pre>`}
+        : isHtml(shown.path) && !element._htmlSource
+          ? htmlPage(shown)
+          : html`<pre class="report-doc">${shown.text}</pre>`}
       ${shown.truncated
         ? html`<span class="files-preview-note"
             >Showing the first 1 MiB.
@@ -295,6 +309,7 @@ function renderPreview(
     shown.kind,
     shown.size,
     changeMarks(shown.cid, treeFor(shown.cid).prefix).get(shown.path)?.mark,
+    element._htmlSource,
   ]);
   if (element._explorerKey === key) return;
   element._explorerKey = key;
@@ -309,6 +324,19 @@ function renderPreview(
         <span class="explorer-preview-name" title=${shown.path}
           >${baseName(shown.path)}</span
         >
+        ${isHtml(shown.path) && shown.kind === "text"
+          ? html`<button
+              class="explorer-action explorer-view-toggle"
+              type="button"
+              aria-pressed=${element._htmlSource ? "true" : "false"}
+              @click=${() => {
+                element._htmlSource = !element._htmlSource;
+                renderPreview(element, shown, handlers);
+              }}
+            >
+              ${element._htmlSource ? "Preview" : "Source"}
+            </button>`
+          : nothing}
         ${mark
           ? actionButton("Show changes", CHANGES_ICON, () =>
               showChanges(mark.diffPath),

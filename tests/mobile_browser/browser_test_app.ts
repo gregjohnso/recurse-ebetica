@@ -910,6 +910,10 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
       join(cwd, "docs", "guide.md"),
       "# Explorer guide\n\n- Lists folders lazily\n- Previews Markdown\n",
     );
+    await writeFile(
+      join(cwd, "docs", "page.html"),
+      '<h1 id="t">Static page</h1><script>document.getElementById("t").textContent = "Rendered page";</script>\n',
+    );
     await Bun.spawn(["git", "init", "-q", "-b", "main"], { cwd }).exited;
     durableModel.set("explorer-demo", "fauxfast/faux-1");
     await instance.create.create({
