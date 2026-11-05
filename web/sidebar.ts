@@ -1312,6 +1312,61 @@ export function commitRename(): boolean {
   return true;
 }
 
+/** Optimistically retitle a conversation (sidebar edit or /rename). */
+export async function renameConversation(
+  id: string,
+  val: string,
+): Promise<boolean> {
+  const action = titleActions.begin(id);
+  state.pendingTitles[id] = {
+    title: val,
+    acknowledged: false,
+    waitForSettle: false,
+  };
+  if (state.nodes[id]) state.nodes[id].title = val;
+  renderSidebar();
+  try {
+    const r = await backendFor(id).jpost(`/api/conversations/${id}/rename`, {
+      title: val,
+      title_order: action.order,
+    });
+    if (!r.ok) throw new Error("rename failed");
+    // Invariant: Reconcile to the normalized stored title, not raw input.
+    // Whitespace/length normalization can otherwise pin a stale overlay
+    // forever; a newer rename always wins.
+    const { title, superseded, pending } = (await r.json()) as {
+      title: string;
+      superseded?: boolean;
+      pending?: boolean;
+    };
+    const optimistic = state.pendingTitles[id];
+    if (!titleActions.isCurrent(id, action) || optimistic?.title !== val)
+      return true;
+    if (superseded) {
+      delete state.pendingTitles[id];
+    } else {
+      // Invariant: An idle rename was applied before replying; keep the
+      // acknowledged overlay through the next causal tree reconciliation so
+      // the open conversation's older cached title cannot flash back.
+      state.pendingTitles[id] = {
+        title,
+        acknowledged: true,
+        waitForSettle: !!pending,
+      };
+    }
+    if (state.nodes[id]) state.nodes[id].title = title;
+    return true;
+  } catch {
+    if (
+      titleActions.isCurrent(id, action) &&
+      state.pendingTitles[id]?.title === val
+    )
+      delete state.pendingTitles[id];
+    poll();
+    return false;
+  }
+}
+
 export function startRename(id: string): void {
   if (renaming) return;
   const n = id && id !== DRAFT ? state.nodes[id] : null;
@@ -1341,64 +1396,7 @@ export function startRename(id: string): void {
     input.remove();
     titleSpan.style.display = "";
     const val = input.value.trim();
-    if (commit && val && val !== orig) {
-      const action = titleActions.begin(id);
-      state.pendingTitles[id] = {
-        title: val,
-        acknowledged: false,
-        waitForSettle: false,
-      };
-      if (state.nodes[id]) {
-        state.nodes[id].title = val;
-      }
-      backendFor(id)
-        .jpost(`/api/conversations/${id}/rename`, {
-          title: val,
-          title_order: action.order,
-        })
-        .then(async (r) => {
-          if (!r.ok) throw new Error("rename failed");
-          // Invariant: Reconcile to the normalized stored title, not raw input.
-          // Whitespace/length normalization can otherwise pin a stale overlay
-          // forever; a newer rename always wins.
-          const { title, superseded, pending } = (await r.json()) as {
-            title: string;
-            superseded?: boolean;
-            pending?: boolean;
-          };
-          const optimistic = state.pendingTitles[id];
-          if (!titleActions.isCurrent(id, action) || optimistic?.title !== val)
-            return;
-          if (superseded) {
-            delete state.pendingTitles[id];
-          } else if (pending) {
-            state.pendingTitles[id] = {
-              title,
-              acknowledged: true,
-              waitForSettle: true,
-            };
-          } else {
-            // Invariant: The backend applied an idle rename before replying.
-            // Keep the acknowledged overlay through the next causal tree
-            // reconciliation so the open conversation's older cached title
-            // cannot flash back.
-            state.pendingTitles[id] = {
-              title,
-              acknowledged: true,
-              waitForSettle: false,
-            };
-          }
-          if (state.nodes[id]) state.nodes[id].title = title;
-        })
-        .catch(() => {
-          if (
-            titleActions.isCurrent(id, action) &&
-            state.pendingTitles[id]?.title === val
-          )
-            delete state.pendingTitles[id];
-          poll();
-        });
-    }
+    if (commit && val && val !== orig) void renameConversation(id, val);
     renderSidebar();
   };
   finishRename = finish;

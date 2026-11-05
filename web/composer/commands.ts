@@ -24,6 +24,10 @@ export const COMPOSER_COMMANDS: ComposerCommand[] = [
       "Ask a read-only side conversation that starts from here · Action",
   },
   {
+    name: "rename",
+    description: "Rename this conversation: /rename <title> · Action",
+  },
+  {
     name: "revive",
     description:
       "Bring back a deleted or cleared agent with its history · Action",
@@ -47,17 +51,22 @@ export interface ComposerCommandMatch {
   question?: string;
 }
 
-// Compact/Clear stay bare actions. /btw owns its trailing question, which
-// starts a side conversation instead of entering this one.
+// Commands that own their trailing text: /btw's question, /rename's title.
+const ARGUMENT_COMMANDS = ["btw", "rename"];
+
+// Compact/Clear stay bare actions. /btw starts a side conversation instead of
+// entering this one; /rename retitles it like Pi's /name.
 export function matchComposerCommand(
   text: string,
 ): ComposerCommandMatch | null {
   const trimmed = text.trim();
   if (!trimmed.startsWith("/")) return null;
   const body = trimmed.slice(1);
-  if (body === "btw") return { name: "btw", question: "" };
-  if (body.startsWith("btw "))
-    return { name: "btw", question: body.slice(4).trim() };
+  for (const name of ARGUMENT_COMMANDS) {
+    if (body === name) return { name, question: "" };
+    if (body.startsWith(`${name} `))
+      return { name, question: body.slice(name.length + 1).trim() };
+  }
   return COMMAND_NAMES.has(body) ? { name: body } : null;
 }
 

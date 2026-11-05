@@ -158,6 +158,27 @@ export const tests: BrowserTest[] = [
     await page
       .locator(".msg.assistant .content", { hasText: "Parent ready" })
       .waitFor();
+    await input.fill("/renam");
+    await page.getByRole("option", { name: /^\/rename / }).click();
+    expect(await input.inputValue()).toBe("/rename ");
+    await input.fill("/rename  Parent renamed ");
+    await input.press("Enter");
+    await page.locator("#conv-title", { hasText: "Parent renamed" }).waitFor();
+    await page
+      .locator(`#agent-list .agent[data-id="${agent}"] .title`, {
+        hasText: "Parent renamed",
+      })
+      .waitFor();
+    expect(await input.inputValue()).toBe("");
+    const renamed = (await (
+      await page.request.get(`${base}api/tree`)
+    ).json()) as { id: string; title: string }[];
+    expect(renamed.find((row) => row.id === agent)?.title).toBe(
+      "Parent renamed",
+    );
+    expect(
+      await page.locator(".msg.user", { hasText: "/rename" }).count(),
+    ).toBe(0);
     await input.fill("/btw Reply only Side answer");
     await input.press("Enter");
     const pane = page.locator('.pane-col[data-pane="side"]');

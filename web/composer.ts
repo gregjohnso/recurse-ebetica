@@ -20,6 +20,7 @@ import {
   syncHistoryToSelection,
   asHistoryCorrection,
   refreshUpBtn,
+  renameConversation,
 } from "./sidebar.js";
 import { renderDraft } from "./conversation/chrome.js";
 import { poll, waitForInitialAuthoritativeRead } from "./conversation/poll.js";
@@ -574,6 +575,28 @@ function startComposerCommand(
   return true;
 }
 
+// /rename <title>: the sidebar's optimistic rename, shown in the status line.
+function startRenameCommand(convId: string, title: string): boolean {
+  const key = `${convId}:rename`;
+  if (runningComposerCommands.has(key)) return false;
+  runningComposerCommands.add(key);
+  setComposerCommandStatus(key, convId, "/rename…", "pending", true);
+  void renameConversation(convId, title).then((ok) => {
+    runningComposerCommands.delete(key);
+    const msg = ok ? `Renamed to ${title}` : "/rename failed";
+    setComposerCommandStatus(key, convId, msg, ok ? "" : "command-error");
+    setTimeout(() => {
+      if (composerCommandStatusKey === key && statusEl.textContent === msg) {
+        composerCommandStatusKey = null;
+        setSendStatus("", "");
+      }
+    }, 3000);
+    state.openConvHash = "";
+    poll();
+  });
+  return true;
+}
+
 // /revive: the archive finder; a revived agent opens once the tree lists it.
 function startRevive(): boolean {
   return openAgentFinderRevive((result) => {
@@ -608,8 +631,8 @@ setComposerCommandRunner((name) => {
   }
   const convId = state.selectedId;
   if (!convId || convId === DRAFT) return false;
-  if (name === "btw") {
-    inputEl.value = "/btw ";
+  if (name === "btw" || name === "rename") {
+    inputEl.value = `/${name} `;
     inputEl.dispatchEvent(new Event("input", { bubbles: true }));
     inputEl.focus();
     return true;
@@ -639,6 +662,11 @@ export function send(): void {
         setSendStatus(`/${cmd.name} unavailable`, "command-error");
       } else if (cmd.name === "btw" && !cmd.question) {
         setSendStatus("/btw needs a question", "command-error");
+      } else if (cmd.name === "rename") {
+        if (!cmd.question)
+          setSendStatus("Usage: /rename <title>", "command-error");
+        else if (startRenameCommand(convId, cmd.question))
+          clearComposer(convId);
       } else if (startComposerCommand(cmd.name, convId, cmd.question)) {
         clearComposer(convId);
       }

@@ -220,6 +220,9 @@ work. The effort level and safety review are in the conversation header. Open
 any message to see the exact request that went to the model, including the
 system prompt: nothing is sent that you cannot read.
 
+`/rename <title>` renames the open conversation, like Pi's `/name`; it is the
+same as renaming it in the sidebar and never reaches the model.
+
 ### Side conversations
 
 `/btw <question>` starts a side conversation: a read-only fork of the current
