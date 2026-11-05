@@ -47,13 +47,14 @@ export const tests: BrowserTest[] = [
       for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
         const pixels = await page.evaluate(async () => {
-          const icon = document.querySelector<HTMLLinkElement>(
+          const browser = globalThis as any;
+          const icon = browser.document.querySelector(
             'link[rel="icon"][type="image/svg+xml"]',
-          )!;
-          const image = new Image();
+          );
+          const image = new browser.Image();
           image.src = icon.href;
           await image.decode();
-          const canvas = document.createElement("canvas");
+          const canvas = browser.document.createElement("canvas");
           canvas.width = canvas.height = 256;
           const context = canvas.getContext("2d")!;
           context.drawImage(image, 0, 0, 256, 256);
