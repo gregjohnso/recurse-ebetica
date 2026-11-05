@@ -170,6 +170,46 @@ test("new conversations and children use Durable", async () => {
   );
 });
 
+test("a ladder model keeps a picked reasoning that no level runs", async () => {
+  const t = setup();
+  const config = t.world.config;
+  const levels = config.effortLevels();
+  const model = levels[3]!.model;
+  const used = new Set(
+    Object.values(levels)
+      .filter((entry) => entry.model === model)
+      .map((entry) => entry.reasoning),
+  );
+  const offLadder = [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+  ].find((reasoning) => !used.has(reasoning))!;
+  const picked = await t.create.create({
+    cid: "pick-off",
+    model,
+    effort: offLadder,
+  });
+  expect([picked.level ?? null, picked.model, picked.effort]).toEqual([
+    null,
+    model,
+    offLadder,
+  ]);
+  const onLadder = await t.create.create({
+    cid: "pick-on",
+    model,
+    effort: levels[3]!.reasoning,
+  });
+  expect(onLadder.level).toBe(
+    config.nearestEffortLevel(model, levels[3]!.reasoning),
+  );
+  expect(config.ladderHome(model, offLadder)).toBeNull();
+});
+
 test("new conversations and spawns on a Settings custom provider use Durable", async () => {
   const t = setup();
   t.world.config.upsertCustomProvider("local-llm", {

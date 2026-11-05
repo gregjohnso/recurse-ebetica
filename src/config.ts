@@ -1812,7 +1812,11 @@ export class Config {
     const canonical = this.canonicalModelId(model);
     const level = this.nearestEffortLevel(canonical, reasoning);
     const [resolvedModel, resolvedReasoning] = this.resolveEffortLevel(level);
-    return resolvedModel === canonical
+    // Invariant: A requested reasoning is a home only on a level that runs it;
+    // otherwise the caller keeps the exact model and reasoning off the ladder.
+    const want = this.thinkingOrNone(reasoning);
+    return resolvedModel === canonical &&
+      (want === null || resolvedReasoning === want)
       ? [level, resolvedModel, resolvedReasoning]
       : null;
   }
