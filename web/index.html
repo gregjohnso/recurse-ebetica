@@ -196,25 +196,19 @@
      append this removed hover-summary node. Keep it inert, including its .on state. */
   #agent-tip, #agent-tip.on { display: none !important; }
 
-  #sidebar-foot { padding: var(--space-3) var(--space-5) var(--space-4); border-top: 1px solid var(--frame-border);
-    font-size: 0.65625rem; color: var(--muted); }
-  #shortcut-pane > summary { cursor: pointer; color: var(--text); font-size: 0.71875rem;
-    font-weight: 600; list-style-position: inside; }
-  #shortcut-pane[open] > summary { margin-bottom: var(--space-3); }
-  #sidebar-foot .shortcut-group + .shortcut-group { margin-top: var(--space-3); }
-  #sidebar-foot .shortcut-title { color: var(--text); font-size: 0.65625rem;
-    font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: var(--space-1); }
-  #sidebar-foot .keys { display: flex; flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4); }
-  #sidebar-foot .k { display: inline-flex; align-items: center; gap: var(--space-2);
-    white-space: nowrap; }
-  #sidebar-foot kbd { font-family: inherit; font-size: 0.65625rem; color: var(--text);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-bottom-color: var(--kbd-edge); border-radius: var(--radius-sm); padding: 1px var(--space-2);
-    line-height: 1.4; }
-  #sidebar-foot .note { margin-top: var(--space-3); padding-top: var(--space-3);
-    border-top: 1px solid var(--border); line-height: 1.6; }
-  #settings-btn { display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  /* Settings > Keyboard shortcuts (web/settings/shortcuts.ts). */
+ .shortcut-group + .shortcut-group { margin-top: var(--space-5); }
+ .shortcut-title { color: var(--text); font-size: 0.71875rem;
+ font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: var(--space-2); }
+ #shortcut-groups .keys { display: flex; flex-wrap: wrap; color: var(--muted); font-size: 0.78125rem;
+ gap: var(--space-2) var(--space-5); }
+ #shortcut-groups .k { display: inline-flex; align-items: center; gap: var(--space-2);
+ white-space: nowrap; }
+ #shortcut-groups kbd { font-family: inherit; font-size: 0.71875rem; color: var(--text);
+ background: var(--panel-2); border: 1px solid var(--border);
+ border-bottom-color: var(--kbd-edge); border-radius: var(--radius-sm); padding: 1px var(--space-2);
+ line-height: 1.4; }
+ #settings-btn { display: flex; align-items: center; gap: var(--space-3); width: 100%;
     background: none; border: 0; border-top: 1px solid var(--frame-border);
     color: var(--muted); font-family: inherit; font-size: 0.78125rem; cursor: pointer;
     padding: var(--space-4) var(--space-5); text-align: left; }
@@ -1550,9 +1544,6 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
     #backdrop.on { display: block; position: fixed; inset: 0; z-index: calc(var(--z-drawer) + 2);
       background: color-mix(in srgb, var(--shadow) 50%, transparent); }
     #menu-btn { display: inline-flex; }
-    #sidebar-foot { display: block;
-      padding-bottom: max(var(--space-3), env(safe-area-inset-bottom)); }
-    #shortcut-pane:not([open]) { padding: 0; }
     /* Status, queue, mute/safety, title, and child count outrank relative time
        when the row is narrow; every actual state remains written out. */
     .agent .time { display: none; }
@@ -1629,7 +1620,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
     .tree-section-toggle { align-items: center; }
     #brand #settings-btn { width: 44px; height: 44px; padding: 0; border: 0;
       justify-content: center; color: var(--text); }
-    #brand #settings-btn span, #sidebar-foot, #conv-titlebar #chip-kids { display: none; }
+    #brand #settings-btn span, #conv-titlebar #chip-kids { display: none; }
     .phone-list #main { visibility: hidden; }
   }
   @media (pointer: coarse) {
@@ -1683,12 +1674,6 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   </div>
   <div id="sidebar-script-notice" hidden></div>
   <nav id="agent-list" aria-label="Agent tree" role="tree"></nav>
-  <div id="sidebar-foot">
-    <details id="shortcut-pane">
-      <summary>Keyboard shortcuts</summary>
-      <div id="shortcut-groups"></div>
-    </details>
-  </div>
   <button id="settings-btn" title="Settings">
     <svg data-icon="SETTINGS_ICON"></svg>
     <span>Settings</span>

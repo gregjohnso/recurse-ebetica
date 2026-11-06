@@ -77,6 +77,9 @@ export const SETTINGS_CATEGORY_ICONS = {
   agents: outline(
     '<path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v4"/>',
   ),
+  keyboard: outline(
+    '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
+  ),
 };
 export const CHEVRON_RIGHT_ICON = outline('<path d="m9 6 6 6-6 6"/>');
 export const PERSON_ICON =

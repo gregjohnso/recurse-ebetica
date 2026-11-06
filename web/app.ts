@@ -11,7 +11,6 @@ import { treeOf } from "./backends/tree.js";
 import { keepSubagentsOpen } from "./sidebar/agent-folds.js";
 import {
   state,
-  chordLabel,
   embedded,
   embeddedFrameHidden,
   primaryPointerIsCoarse,
@@ -50,9 +49,7 @@ import {
 } from "./keyboard_context.js";
 import { installKeyboardModeController } from "./modal-mode.js";
 import {
-  SHORTCUT_GROUPS,
   adjacentCursor,
-  formatShortcutKey,
   initialKeymapState,
   keymapModeLabel,
   reduceKeymap,
@@ -845,60 +842,6 @@ window.addEventListener("recurse:selection-change", () => {
     setKeyState(initialKeymapState());
 });
 
-// The sole shortcuts UI is rendered from dispatch metadata, including the live
-// platform modifier spelling. On touch it starts collapsed but remains
-// available.
-function renderShortcuts(): void {
-  const host = $("#shortcut-groups");
-  if (!host) return;
-  host.textContent = "";
-  for (const group of SHORTCUT_GROUPS) {
-    const section = document.createElement("section");
-    section.className = "shortcut-group";
-    const title = document.createElement("div");
-    title.className = "shortcut-title";
-    title.textContent = group.title;
-    const keys = document.createElement("div");
-    keys.className = "keys";
-    for (const item of group.items) {
-      const row = document.createElement("span");
-      row.className = "k";
-      item.keys.forEach((raw, index) => {
-        const key = document.createElement("kbd");
-        if (item.platform) {
-          const shifted = !!item.shift && index === 0;
-          key.textContent = chordLabel(raw, shifted, shifted);
-        } else key.textContent = formatShortcutKey(raw);
-        row.appendChild(key);
-      });
-      row.append(document.createTextNode(item.description));
-      keys.appendChild(row);
-    }
-    section.append(title, keys);
-    host.appendChild(section);
-  }
-}
-
-// Shortcuts help restores desktop choices; touch always starts closed.
-const SHORTCUT_PANE_KEY = "recurse.shortcutsPaneOpen";
-function restoreShortcutPane(): void {
-  const pane = $<HTMLDetailsElement>("#shortcut-pane");
-  if (!pane) return;
-  let wantOpen = false;
-  if (!primaryPointerIsCoarse()) {
-    try {
-      wantOpen = localStorage.getItem(SHORTCUT_PANE_KEY) === "open";
-    } catch {}
-  }
-  pane.open = wantOpen;
-  pane.addEventListener("toggle", () => {
-    try {
-      localStorage.setItem(SHORTCUT_PANE_KEY, pane.open ? "open" : "closed");
-    } catch {}
-  });
-}
-renderShortcuts();
-restoreShortcutPane();
 paintKeyState();
 
 window.addEventListener("recurse:update-ready", (event: Event) => {

@@ -234,6 +234,7 @@ export const tests: BrowserTest[] = [
       "Authentication",
       "Models",
       "MCPs",
+      "Keyboard shortcuts",
     ]);
     for (const button of await nav.all())
       expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -498,7 +499,7 @@ export const tests: BrowserTest[] = [
     );
     await visibleAndUncovered(page, ".update-now");
     await closeDetails(page);
-    expect(await page.locator("#settings-nav button").count()).toBe(5);
+    expect(await page.locator("#settings-nav button").count()).toBe(6);
     expect(await page.locator("#settings-modal .signout").count()).toBe(3);
     expect(
       await page
@@ -1100,10 +1101,7 @@ export const tests: BrowserTest[] = [
     expect(errors).toEqual([]);
     await closeWithRoutes(context);
   },
-  async function test_shortcut_pane_default_closed_persists_and_keymap_active(
-    browser,
-    base,
-  ) {
+  async function test_keyboard_shortcuts_live_in_settings(browser, base) {
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
     });
@@ -1111,34 +1109,16 @@ export const tests: BrowserTest[] = [
     const errors = captureErrors(page);
     await gotoRoot(page, base);
     await page.locator(".agent").first().waitFor();
-    await page.locator("#shortcut-pane").waitFor();
-    expect(
-      await page.evaluate("!document.getElementById('shortcut-pane').open"),
-    ).toBeTrue();
-    const shortcutGroup = page
-      .locator("#shortcut-groups .shortcut-group")
-      .first();
-    await shortcutGroup.waitFor({ state: "attached" });
-    expect(await shortcutGroup.isVisible()).toBeFalse();
-    const storedPane = await page.evaluate(
-      "localStorage.getItem('recurse.shortcutsPaneOpen')",
-    );
-    expect(storedPane === null || storedPane === "closed").toBeTrue();
+    expect(await page.locator("#sidebar #shortcut-groups").count()).toBe(0);
     const composer = page.locator("#input");
     await page.evaluate("document.getElementById('input')?.blur()");
     await page.keyboard.press("j");
     expect(await composer.inputValue()).toBe("");
-    await page.locator("#shortcut-pane > summary").click();
-    expect(
-      await page.evaluate("document.getElementById('shortcut-pane').open"),
-    ).toBeTrue();
-    await page.waitForFunction(
-      "localStorage.getItem('recurse.shortcutsPaneOpen') === 'open'",
-    );
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page.locator(".agent").first().waitFor();
-    await page.waitForFunction("document.getElementById('shortcut-pane').open");
-    await shortcutGroup.waitFor();
+    await page.locator("#settings-btn").click();
+    await page.locator('#settings-nav button[data-cat="keyboard"]').click();
+    const group = page.locator("#settings-sections .shortcut-group").first();
+    await group.waitFor();
+    expect(await group.locator("kbd").count()).toBeGreaterThan(0);
     expect(await page.locator("#key-mode").isVisible()).toBeTrue();
     expect(errors).toEqual([]);
     await context.close();
