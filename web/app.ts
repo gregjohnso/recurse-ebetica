@@ -467,10 +467,19 @@ function execute(command: KeyCommand | null): void {
       break;
     case "focus-thread": {
       const thread = $("#scroll");
-      if (thread) {
+      if (!thread) break;
+      const focus = (frames: number): void => {
+        if (!thread.checkVisibility({ visibilityProperty: true }) && frames) {
+          requestAnimationFrame(() => focus(frames - 1));
+          return;
+        }
         thread.tabIndex = -1;
         thread.focus({ preventScroll: true });
-      }
+      };
+      // Invariant: A chat hidden behind another dock tab shows first.
+      if (!thread.checkVisibility({ visibilityProperty: true }))
+        dispatchEvent(new Event("recurse:show-chat", { cancelable: true }));
+      focus(10);
       break;
     }
     case "focus-agents":

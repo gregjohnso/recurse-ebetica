@@ -257,14 +257,16 @@ On a computer, the icon bar on the left edge holds **Agents** (show or hide
 the agent list), **Chat**, a button for each panel, and **Settings** and
 **Delete** at the bottom. The chat and panels are tabbed windows: drag a tab
 onto another window to share it, or onto a window's edge to split it. A
-panel's button shows its tab, or closes it when it is already showing. If you
+window opens as a new tab in the last window you used other than the chat
+and Explorer. A panel's button shows its tab, or closes it when it is
+already showing. If you
 close the chat, **Chat** or `i` reopens it with your draft intact. Each agent
 keeps its own arrangement, remembered in this browser across reloads.
 
 The **Explorer** panel (the first panel button in the left bar, or `E`) shows the
 open agent's working folder. Folders open as you expand them; files Git ignores
 are dimmed, and `M`/`U` mark changed and untracked files. Click a file to
-open it in a tab beside the chat, next to the other open files (on a phone, below the tree), or right-click to copy its path or insert it into
+open it in a new tab (on a phone, below the tree), or right-click to copy its path or insert it into
 your message. The Explorer never follows symbolic links and never shows the
 contents of credential files such as `.env` or `*.pem`. On a phone, open it
 from the **More actions** menu.

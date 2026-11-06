@@ -107,20 +107,17 @@ export const tests: BrowserTest[] = [
     await guide.waitFor();
     await docs.press("ArrowRight");
     await focused(page, "docs/guide.md");
-    const explorerGroup = page
-      .locator(".dv-groupview")
-      .filter({ has: page.locator(".dv-tab", { hasText: "Explorer" }) });
-    const explorerWidth = (await explorerGroup.boundingBox())!.width;
+    const groups = page.locator(".dv-groupview");
+    const tabs = page.locator(".dv-tab");
+    expect(await dockLayout(page)).toEqual([["Chat", "Explorer"]]);
     await guide.press("Enter");
     const pane = page.locator('.pane-col[data-pane="explorer"]');
-    const guideTab = page.locator(".dv-tab", { hasText: "guide.md" });
+    const guideTab = tabs.filter({ hasText: "guide.md" });
     const guideDoc = page.locator(".dock-panel h1", {
       hasText: "Explorer guide",
     });
     await guideDoc.waitFor();
-    expect(
-      Math.abs((await explorerGroup.boundingBox())!.width - explorerWidth),
-    ).toBeLessThanOrEqual(2);
+    expect(await dockLayout(page)).toEqual([["Chat", "Explorer", "guide.md"]]);
     expect(
       await guideTab
         .locator(
@@ -128,9 +125,28 @@ export const tests: BrowserTest[] = [
         )
         .count(),
     ).toBe(1);
-    expect(await pane.isVisible()).toBe(true);
-    await tree.locator('[data-path="README.md"]').waitFor();
     expect(await guideDoc.locator("xpath=..").locator("li").count()).toBe(2);
+    const explorerTab = tabs.filter({ hasText: "Explorer" });
+    await explorerTab.click();
+    await docs.waitFor();
+    const edgeDrop = async (tab: typeof tabs, x: number, y: number) => {
+      const count = await groups.count();
+      await tab.dragTo(page.locator("body"), { targetPosition: { x, y } });
+      await page.waitForFunction(
+        (count) =>
+          (globalThis as any).document.querySelectorAll(".dv-groupview")
+            .length ===
+          count + 1,
+        count,
+      );
+    };
+    const whole = (await groups.first().boundingBox())!;
+    await edgeDrop(explorerTab, whole.x + 12, whole.y + whole.height / 2);
+    expect(await dockLayout(page)).toEqual([
+      ["Chat", "guide.md"],
+      ["Explorer"],
+    ]);
+    expect(await pane.isVisible()).toBe(true);
     await guide.press("h");
     await focused(page, "docs");
     await docs.press("h");
@@ -141,107 +157,43 @@ export const tests: BrowserTest[] = [
       hasText: "Demo project",
     });
     await readmeDoc.waitFor();
-    const tabs = page.locator(".dv-tab");
-    expect(await tabs.count()).toBe(4);
-    expect(await page.locator(".dv-groupview").count()).toBe(3);
-    const widthOf = async (title: string) =>
-      (await page
-        .locator(".dv-groupview")
-        .filter({ has: page.locator(".dv-tab", { hasText: title }) })
-        .boundingBox())!.width;
-    expect(Math.abs((await widthOf("Explorer")) - 280)).toBeLessThanOrEqual(2);
-    const leftOf = async (title: string) =>
-      (await page
-        .locator(".dv-groupview")
-        .filter({ has: page.locator(".dv-tab", { hasText: title }) })
-        .boundingBox())!.x;
-    const before = {
-      explorer: (await leftOf("Chat")) - (await leftOf("Explorer")),
-      chat: await widthOf("Chat"),
-      readme: await widthOf("README.md"),
-    };
-    await panels.first().click();
-    await page.locator("#explorer").waitFor({ state: "detached" });
-    await page.waitForFunction(
-      (width) =>
-        Math.abs(
-          [...(globalThis as any).document.querySelectorAll(".dv-groupview")]
-            .find((group: any) => group.textContent.includes("Chat"))
-            .getBoundingClientRect().width - width,
-        ) <= 2,
-      before.chat + before.explorer,
-    );
-    expect(
-      Math.abs((await widthOf("README.md")) - before.readme),
-    ).toBeLessThanOrEqual(2);
-    await panels.first().click();
-    await docs.waitFor();
-    expect(Math.abs((await widthOf("Explorer")) - 280)).toBeLessThanOrEqual(2);
-    expect(
-      Math.abs((await widthOf("README.md")) - before.readme),
-    ).toBeLessThanOrEqual(2);
-    expect(Math.abs((await widthOf("Chat")) - before.chat)).toBeLessThanOrEqual(
-      2,
-    );
-    const edge = (await explorerGroup.boundingBox())!;
-    const sash = await page.evaluate((x) => {
-      const sashes = [
-        ...(globalThis as any).document.querySelectorAll("#dock .dv-sash"),
-      ];
-      const rect = sashes
-        .map((element: any) => element.getBoundingClientRect())
-        .find(
-          (r: any) => Math.abs(r.left + r.width / 2 - x) <= 4 && r.height > 100,
-        );
-      return (
-        rect && { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-      );
-    }, edge.x + edge.width);
-    expect(sash).toBeTruthy();
-    await page.mouse.move(sash!.x, sash!.y);
-    await page.mouse.down();
-    await page.mouse.move(sash!.x + 40, sash!.y, { steps: 6 });
-    await page.mouse.up();
-    const resized = await widthOf("Explorer");
-    expect(Math.abs(resized - 320)).toBeLessThanOrEqual(3);
-    await panels.first().click();
-    await page.locator("#explorer").waitFor({ state: "detached" });
-    await panels.first().click();
-    await docs.waitFor();
-    expect(Math.abs((await widthOf("Explorer")) - resized)).toBeLessThanOrEqual(
-      2,
-    );
-    expect(
-      Math.abs((await widthOf("README.md")) - before.readme),
-    ).toBeLessThanOrEqual(2);
+    expect(await dockLayout(page)).toEqual([
+      ["Chat", "guide.md", "README.md"],
+      ["Explorer"],
+    ]);
     await guideTab.click();
     await guideDoc.waitFor();
     expect(await readmeDoc.isVisible()).toBe(false);
     await readme.click();
     await readmeDoc.waitFor();
     expect(await tabs.count()).toBe(4);
-    const groups = page.locator(".dv-groupview");
+    await panels.first().click();
+    await page.locator("#explorer").waitFor({ state: "detached" });
+    expect(await dockLayout(page)).toEqual([["Chat", "guide.md", "README.md"]]);
+    await panels.first().click();
+    await docs.waitFor();
+    expect(await dockLayout(page)).toEqual([
+      ["Chat", "guide.md", "README.md", "Explorer"],
+    ]);
+    const files = (await groups.first().boundingBox())!;
+    await edgeDrop(explorerTab, files.x + 12, files.y + files.height / 2);
     const readmeBox = (await readmeDoc.boundingBox())!;
     const filesGroup = (await groups
       .filter({ has: tabs.filter({ hasText: "README.md" }) })
       .boundingBox())!;
-    await guideTab.dragTo(page.locator("body"), {
-      targetPosition: {
-        x: filesGroup.x + filesGroup.width / 2,
-        y: filesGroup.y + filesGroup.height - 30,
-      },
-    });
-    await page.waitForFunction(
-      () =>
-        (globalThis as any).document.querySelectorAll(".dv-groupview")
-          .length === 4,
+    await guideTab.click();
+    await guideDoc.waitFor();
+    await edgeDrop(
+      guideTab,
+      filesGroup.x + filesGroup.width / 2,
+      filesGroup.y + filesGroup.height - 30,
     );
     expect(await guideDoc.isVisible()).toBe(true);
     await readmeDoc.waitFor();
     await tree.locator('[data-path=".gitignore"]').click();
     const ignoreTab = tabs.filter({ hasText: ".gitignore" });
     await ignoreTab.waitFor();
-    expect(await groups.count()).toBe(4);
+    expect(await groups.count()).toBe(3);
     expect(
       await groups.filter({ has: guideTab }).filter({ has: ignoreTab }).count(),
     ).toBe(1);
@@ -279,18 +231,13 @@ export const tests: BrowserTest[] = [
     expect(await tabs.count()).toBe(3);
     const chatTab = tabs.filter({ hasText: "Chat" });
     const input = page.locator("#input");
+    await chatTab.click();
     await input.fill("draft survives the move");
     await input.press("ArrowLeft");
-    await chatTab.dragTo(page.locator("body"), {
-      targetPosition: {
-        x: readmeBox.x + readmeBox.width / 2,
-        y: readmeBox.y + 120,
-      },
-    });
-    await page.waitForFunction(
-      () =>
-        (globalThis as any).document.querySelectorAll(".dv-groupview")
-          .length === 2,
+    await edgeDrop(
+      chatTab,
+      readmeBox.x + readmeBox.width - 12,
+      readmeBox.y + readmeBox.height / 2,
     );
     expect(await input.inputValue()).toBe("draft survives the move");
     expect(await input.isVisible()).toBe(true);
@@ -300,12 +247,7 @@ export const tests: BrowserTest[] = [
         return [doc.activeElement?.id, doc.activeElement?.selectionStart];
       }),
     ).toEqual(["input", 22]);
-    expect(await readmeDoc.isVisible()).toBe(false);
-    await tabs.filter({ hasText: "README.md" }).click();
-    await readmeDoc.waitFor();
-    expect(await input.isVisible()).toBe(false);
-    await chatTab.click();
-    await input.waitFor();
+    expect(await readmeDoc.isVisible()).toBe(true);
     if (process.env.RECURSE_SCREENSHOT_DIR)
       await page.screenshot({
         path: `${process.env.RECURSE_SCREENSHOT_DIR}/dock-chat.png`,
@@ -383,7 +325,10 @@ export const tests: BrowserTest[] = [
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator(".dv-tab", { hasText: "Chat" }).waitFor();
     await page.locator(".dv-tab", { hasText: "Explorer" }).waitFor();
-    expect(await dockLayout(page)).toEqual([["Chat"], ["Explorer"]]);
+    await page.locator(".dv-tab", { hasText: ".gitignore" }).waitFor();
+    expect(await dockLayout(page)).toEqual([
+      ["README.md", "Chat", "Explorer", ".gitignore"],
+    ]);
     expect(errors).toEqual([]);
     await desktop.close();
 

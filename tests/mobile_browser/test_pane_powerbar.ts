@@ -10,6 +10,7 @@ import {
   runBrowserTests,
   routeArtifacts,
   type BrowserTest,
+  showDockTab,
 } from "./common";
 
 export const tests: BrowserTest[] = [
@@ -340,6 +341,7 @@ export const tests: BrowserTest[] = [
     const page = await context.newPage();
     await routeArtifacts(page, base);
     await gotoRoot(page, base);
+    await showDockTab(page, "Artifacts");
     const pane = page.locator('.pane-col[data-pane="report"]');
     await pane.locator(".report-doc").waitFor();
     await pane.locator(".artifact-version-btn").click();

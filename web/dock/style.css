@@ -83,6 +83,9 @@
 #dock .dv-default-tab { gap: 0; min-width: 0; }
 #dock .dv-default-tab-content { min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; padding: 0; margin: 0 var(--space-2); }
+/* A tab opened out of sight (an automatic open) shows in the accent until
+   it is first shown. */
+#dock .dv-tab.dock-new .dv-default-tab-content { color: var(--accent); font-weight: 600; }
 #dock .dv-tab.dv-inactive-tab:hover {
   background: color-mix(in srgb, var(--dock-strip) 70%, var(--bg)); }
 #dock .dock-tab-icon { display: inline-flex; flex: none; width: 16px; height: 16px;

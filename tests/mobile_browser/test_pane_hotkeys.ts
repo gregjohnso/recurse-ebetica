@@ -4,6 +4,7 @@ import {
   postFixture,
   runBrowserTests,
   type BrowserTest,
+  splitDockTab,
 } from "./common";
 
 export const tests: BrowserTest[] = [
@@ -15,6 +16,7 @@ export const tests: BrowserTest[] = [
     });
     const page = await context.newPage();
     await gotoRoot(page, base);
+    await splitDockTab(page, "Artifacts");
     const pane = page.locator('.pane-col[data-pane="report"]');
     await pane.waitFor();
     const thread = page.locator("#scroll");
@@ -85,7 +87,8 @@ export const tests: BrowserTest[] = [
     await page.keyboard.press("Shift+H");
     expect(await sidebar.isVisible()).toBeTrue();
     await focused("#scroll");
-    await pane.locator(".pane-body").focus();
+    await page.keyboard.press("p");
+    await focused('.pane-col[data-pane="report"] .pane-body');
     await page.keyboard.press("Shift+H");
     expect(await sidebar.isVisible()).toBeFalse();
     await focused('.pane-col[data-pane="report"] .pane-body');

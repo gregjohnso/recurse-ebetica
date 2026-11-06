@@ -149,14 +149,15 @@ function clearComposer(ownerId = currentUiOwnerId()): void {
 // the caret at the end, while an already-focused composer keeps its selection.
 export function focusComposerAtEnd(): boolean {
   // Invariant: A closed or hidden desktop chat opens before focusing.
-  if (!inputEl.getClientRects().length) {
+  if (!inputEl.checkVisibility({ visibilityProperty: true })) {
     const show = new Event("recurse:show-chat", { cancelable: true });
     dispatchEvent(show);
     // Invariant: Focus after the dock settles; adding the panel moves focus.
     if (show.defaultPrevented) {
       let frames = 10;
       const retry = (): void => {
-        if (inputEl.getClientRects().length) focusComposerAtEnd();
+        if (inputEl.checkVisibility({ visibilityProperty: true }))
+          focusComposerAtEnd();
         else if (--frames) requestAnimationFrame(retry);
       };
       requestAnimationFrame(retry);

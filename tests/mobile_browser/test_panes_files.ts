@@ -12,6 +12,8 @@ import {
   showAgentList,
   themeColors,
   type BrowserTest,
+  showDockTab,
+  splitDockTab,
 } from "./common";
 
 async function renderedText(target: Locator): Promise<string> {
@@ -389,7 +391,7 @@ export const tests: BrowserTest[] = [
     await page.locator(`.agent[data-id="${fixture.empty}"]`).click();
     await page
       .locator("#conv-title", { hasText: "Files empty agent" })
-      .waitFor();
+      .waitFor({ state: "attached" });
     await filesButton.waitFor({ timeout: 15_000 });
     expect(await filesButton.count()).toBe(1);
     if ((await filesButton.getAttribute("aria-expanded")) !== "true")
@@ -429,7 +431,7 @@ export const tests: BrowserTest[] = [
     expect(download.ok()).toBeTrue();
     await page
       .locator("#conv-title", { hasText: "Files empty agent" })
-      .waitFor();
+      .waitFor({ state: "attached" });
     await page.locator('.rail-btn[data-pane="files"]').waitFor();
     pane = page.locator('.pane-col[data-pane="files"]');
     await pane.locator(".files-card", { hasText: "empty-agent.txt" }).waitFor();
@@ -558,7 +560,9 @@ export const tests: BrowserTest[] = [
         await page.request.post(base + "__browser-test/append-files-message")
       ).ok(),
     ).toBeTrue();
-    await page.getByText("Files recorded.", { exact: true }).waitFor();
+    await page
+      .getByText("Files recorded.", { exact: true })
+      .waitFor({ state: "attached" });
     expect(
       (await page.evaluate(
         "window.__filesFetchOrder.filter(item => item === 'list').length",
@@ -611,6 +615,7 @@ export const tests: BrowserTest[] = [
     await page
       .locator(".file-jump-target", { hasText: "Browser files source message" })
       .waitFor();
+    await showDockTab(page, "Files");
     await detail.getByRole("button", { name: "All files" }).click();
     const failed: Route[] = [];
     const failUrl = `**/api/conversations/${fixture.demo}/files?*`;
@@ -880,6 +885,7 @@ export const tests: BrowserTest[] = [
       .locator(".files-card", { hasText: "browser-notes.txt" })
       .waitFor();
     expect(await pane.locator(".files-card").count()).toBe(2);
+    await splitDockTab(page, "Files");
     await page.locator("#file-input").setInputFiles({
       name: "browser-upload.txt",
       mimeType: "text/plain",
@@ -1248,6 +1254,7 @@ export const tests: BrowserTest[] = [
         .click();
       const svg = detail.locator(".files-detail img");
       await svg.waitFor({ timeout: 15_000 });
+      await splitDockTab(page, "Files");
       await page.waitForFunction(
         (el: any) => el.complete && el.naturalWidth === 40,
         await svg.elementHandle(),
@@ -1305,6 +1312,7 @@ export const tests: BrowserTest[] = [
       expect(pdfRequests).toEqual([]);
       const initialWorker = page.waitForEvent("worker", { timeout: 10_000 });
       let detail = await open("slides.pdf");
+      await splitDockTab(page, "Files");
       const pages = detail.locator(".files-pdf-page");
       await detail
         .getByRole("img", { name: "Page 2 of 2" })
@@ -1526,6 +1534,7 @@ export const tests: BrowserTest[] = [
       await filesButton.click();
       const pane = page.locator('.pane-col[data-pane="files"]');
       await pane.locator(".files-card", { hasText: "first.md" }).waitFor();
+      await splitDockTab(page, "Files");
       const later = (await postFixture(base, "publish-later-file")) as {
         name: string;
       };
@@ -1734,6 +1743,7 @@ export const tests: BrowserTest[] = [
       expect(await pane.count()).toBe(0);
       const heading = pane.locator(".files-detail .files-markdown h1");
       const first = await republish();
+      await showDockTab(page, "Files");
       await heading
         .filter({ hasText: `Draft ${first}` })
         .waitFor({ timeout: 15_000 });
@@ -1769,6 +1779,7 @@ export const tests: BrowserTest[] = [
           r.url().includes("focused=1"),
       );
       await page.locator(`.agent[data-id="${demo}"]`).click();
+      await showDockTab(page, "Chat");
       await page
         .getByRole("button", { name: "Open report.md in Files" })
         .nth(fourth - 1)

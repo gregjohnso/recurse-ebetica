@@ -222,6 +222,12 @@ const jumpHighlightTimers = new WeakMap<
 
 function settleJumpTarget(target: HTMLElement | null, focus = true): boolean {
   if (!target) return false;
+  // Invariant: A jump into a chat hidden behind another dock tab shows it,
+  // after the click that asked has settled on its pane.
+  if (!target.checkVisibility({ visibilityProperty: true }))
+    requestAnimationFrame(() =>
+      dispatchEvent(new Event("recurse:show-chat", { cancelable: true })),
+    );
   // Invariant: A repeat jump starts a fresh highlight; the earlier removal must
   // not win.
   clearTimeout(jumpHighlightTimers.get(target));

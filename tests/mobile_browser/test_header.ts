@@ -800,9 +800,10 @@ export const tests: BrowserTest[] = [
     await pane.waitFor();
     expect(await sidebar.isVisible()).toBe(true);
     if (dir) await page.screenshot({ path: `${dir}/left-rail-explorer.png` });
-    expect((await pane.boundingBox())!.x).toBeLessThan(
-      (await page.locator("#main").boundingBox())!.x,
-    );
+    expect(await page.locator("#main").isVisible()).toBe(false);
+    expect(
+      await page.locator("#dock .dv-tab", { hasText: "Chat" }).count(),
+    ).toBe(1);
     await agents.click();
     await sidebar.waitFor({ state: "hidden" });
     expect(await pane.isVisible()).toBe(true);

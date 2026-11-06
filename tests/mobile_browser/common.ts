@@ -460,6 +460,32 @@ export async function gotoRoot(page: Page, base: string): Promise<void> {
   });
 }
 
+export async function showDockTab(page: Page, title: string): Promise<void> {
+  const tab = page.locator("#dock .dv-tab", { hasText: title });
+  await tab.waitFor();
+  await tab.click();
+}
+
+export async function splitDockTab(page: Page, title: string): Promise<void> {
+  const tab = page.locator("#dock .dv-tab", { hasText: title });
+  await tab.waitFor();
+  const groups = page.locator("#dock .dv-groupview");
+  const count = await groups.count();
+  const owner = groups.filter({
+    has: page.locator(".dv-tab", { hasText: title }),
+  });
+  const box = (await owner.boundingBox())!;
+  await tab.dragTo(page.locator("body"), {
+    targetPosition: { x: box.x + box.width - 12, y: box.y + box.height / 2 },
+  });
+  await page.waitForFunction(
+    (count) =>
+      (globalThis as any).document.querySelectorAll("#dock .dv-groupview")
+        .length > count,
+    count,
+  );
+}
+
 export async function followAgentLink(page: Page, id: string): Promise<void> {
   await page.evaluate((agentId) => {
     (globalThis as any).location.hash = `agent=${agentId}`;

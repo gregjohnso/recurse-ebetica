@@ -727,7 +727,8 @@ function activePaneId(fallback = false): string | null {
   const focused = active?.closest<HTMLElement>(".pane-col")?.dataset.pane;
   if (focused && open.has(focused)) return focused;
   if (mobileActive && open.has(mobileActive)) return mobileActive;
-  return fallback ? [...open][0] || null : null;
+  if (!fallback) return null;
+  return dock?.lastActive((id) => open.has(id)) ?? ([...open][0] || null);
 }
 
 // Pane keyboard actions are available when a pane is open or can be opened.
@@ -772,6 +773,12 @@ export function focusPaneFromKeyboard(): boolean {
   const body = panesEl.querySelector<HTMLElement>(
     `.pane-col[data-pane="${CSS.escape(id)}"] .pane-body`,
   );
+  if (dock && !isMobile() && !dock.visible(id)) {
+    dock.show({ id, title: titleOf(id) });
+    // Invariant: The tab's content shows on the next frame; focus it then.
+    requestAnimationFrame(() => body?.focus({ preventScroll: true }));
+    return true;
+  }
   body?.focus({ preventScroll: true });
   return document.activeElement === body;
 }
@@ -1234,11 +1241,6 @@ export function notePaneConversationRendered(agentId: string): void {
   loadDock();
 }
 
-// ---- the desktop dock ------------------------------------------------------
-const EDITOR_PANES = new Set([ARTIFACTS_PANE_ID, FILES_PANE_ID]);
-const isEditorPanel = (id: string): boolean =>
-  EDITOR_PANES.has(id) || [...dockKinds.keys()].some((k) => id.startsWith(k));
-
 /** The chat's dock panel. Closing it parks the chat, hidden, at its home. */
 const CHAT = "chat";
 const chatEl = $("#main")!;
@@ -1254,19 +1256,9 @@ function showChat(reveal = false): void {
     if (reveal && !dock.visible(CHAT)) dock.show({ id: CHAT, title: "Chat" });
     return;
   }
-  const ids = dock.ids();
-  const tool = ids.find((id) => !isEditorPanel(id));
-  const editor = ids.find(isEditorPanel);
   dock.show(
     { id: CHAT, title: "Chat", keep: true },
-    {
-      background: !reveal,
-      beside: tool
-        ? { id: tool, direction: "right" }
-        : editor
-          ? { id: editor, direction: "left" }
-          : undefined,
-    },
+    { background: !reveal, withPanel: dockPlacement().withPanel },
   );
 }
 addEventListener("recurse:show-chat", (event) => {
@@ -1330,46 +1322,21 @@ function titleOf(id: string): string {
   return registry.find((p) => p.id === id)?.title || id;
 }
 
-/** Where a new dock panel goes: tools left, files and Artifacts right. */
-function dockPlacement(id: string): DockPlacement {
-  if (id === EXPLORER) {
-    return {
-      background: nextBackground,
-      leftmost: true,
-      width: explorerWidth(),
-    };
-  }
-  const kind = dockKindOf(id);
-  const ids = dock?.ids() ?? [];
-  const same = (other: string) => dockKindOf(other) === kind;
-  const anchor = ids.includes(CHAT)
-    ? CHAT
-    : ids.find((other) => other !== CHAT && !same(other));
+/** A new dock panel opens as a tab beside the most recent window other than
+ * the chat and Explorer, else the chat's; only dragging a tab splits. */
+function dockPlacement(): DockPlacement {
+  const recent = (test: (id: string) => boolean) => dock?.lastActive(test);
   return {
     background: nextBackground,
-    withPanel: dock?.lastActive(same) ?? ids.filter(same).at(-1),
-    beside: anchor
-      ? { id: anchor, direction: kind === "tool" ? "left" : "right" }
-      : undefined,
+    withPanel:
+      recent((id) => id !== CHAT && id !== EXPLORER) ??
+      recent((id) => id === CHAT) ??
+      recent(() => true) ??
+      dock?.ids()[0],
   };
 }
 
 const EXPLORER = "explorer";
-const EXPLORER_WIDTH_KEY = "recurse.explorerWidth";
-const clampExplorer = (width: number): number =>
-  Math.round(Math.max(180, Math.min(600, width)));
-
-/** The Explorer's opening width: the user's last, or a default. */
-function explorerWidth(): number {
-  const saved = Number(localStorage.getItem(EXPLORER_WIDTH_KEY));
-  return Number.isFinite(saved) && saved > 0 ? clampExplorer(saved) : 280;
-}
-
-function rememberExplorerWidth(): void {
-  const width = dock?.width(EXPLORER);
-  if (width)
-    localStorage.setItem(EXPLORER_WIDTH_KEY, String(clampExplorer(width)));
-}
 
 /** A tab's icon: the pane's rail icon, the chat's, or a file's. */
 function dockIcon(id: string): string {
@@ -1378,19 +1345,11 @@ function dockIcon(id: string): string {
   return pane ? pane.icon || PANE_ICON : ATTACHMENT_FILE_ICON;
 }
 
-/** Which windows share a group: chat, tools, Artifacts/Files, or a tab kind. */
-function dockKindOf(id: string): string {
-  if (id === CHAT) return CHAT;
-  for (const prefix of dockKinds.keys())
-    if (id.startsWith(prefix)) return prefix;
-  return EDITOR_PANES.has(id) ? "editor" : "tool";
-}
-
 let attachingFromDock = false;
 function attachColumn(id: string, col: HTMLElement): void {
   if (attachingFromDock) return;
   if (dock && !isMobile())
-    dock.show({ id, title: titleOf(id) }, dockPlacement(id));
+    dock.show({ id, title: titleOf(id) }, dockPlacement());
   else panesEl.appendChild(col);
 }
 
@@ -1467,7 +1426,6 @@ function loadDock(): void {
           element: dockElement,
           closed: dockClosed,
           icon: dockIcon,
-          resized: rememberExplorerWidth,
           // Invariant: dockview reports changes while panes.ts is still
           // adding a panel; resync afterwards, never re-entrantly.
           changed: () =>
@@ -1524,7 +1482,7 @@ export function openDockPanel(
 ): boolean {
   if (!dock || isMobile()) return false;
   if (!dock.has(id) && !dockElement(id)) return false;
-  dock.show({ id, title, tooltip }, dockPlacement(id));
+  dock.show({ id, title, tooltip }, dockPlacement());
   layout();
   return true;
 }

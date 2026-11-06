@@ -5,7 +5,6 @@
 import {
   createDockview,
   type DockviewApi,
-  type AddPanelPositionOptions,
   type IDockviewPanel,
   type SerializedDockview,
   themeAbyssSpaced,
@@ -24,14 +23,8 @@ export interface DockPanelSpec {
 export interface DockPlacement {
   /** Add without making it the visible tab of its group. */
   background?: boolean;
-  /** Join the group showing this panel. */
+  /** Join the group showing this panel, as a new tab. */
   withPanel?: string;
-  /** Otherwise split beside this panel, on the given side. */
-  beside?: { id: string; direction: "left" | "right" };
-  /** Otherwise split at the far left, narrowing only the leftmost window. */
-  leftmost?: boolean;
-  /** The new split's width in pixels; half the split window by default. */
-  width?: number;
 }
 
 export interface DockCallbacks {
@@ -43,8 +36,6 @@ export interface DockCallbacks {
   changed(): void;
   /** SVG markup shown before panel `id`'s tab title. */
   icon(id: string): string;
-  /** The user finished dragging a divider between windows. */
-  resized(): void;
 }
 
 export interface DockHost {
@@ -53,8 +44,6 @@ export interface DockHost {
   has(id: string): boolean;
   visible(id: string): boolean;
   ids(): string[];
-  /** Panel `id`'s window width in pixels, if it is open. */
-  width(id: string): number | undefined;
   /** The most recently active panel that passes `test`. */
   lastActive(test: (id: string) => boolean): string | undefined;
   save(): DockLayout;
@@ -279,15 +268,7 @@ export function createDockHost(
       api.groups.map((group) => [group, group.element.getBoundingClientRect()]),
     );
   };
-  container.addEventListener(
-    "pointerdown",
-    (event) => {
-      record();
-      if (!(event.target as Element).closest?.(".dv-sash")) return;
-      addEventListener("pointerup", () => callbacks.resized(), { once: true });
-    },
-    true,
-  );
+  container.addEventListener("pointerdown", record, true);
   api.onDidRemoveGroup((removed) => {
     const gone = sizes.get(removed);
     if (!gone) return;
@@ -344,67 +325,23 @@ export function createDockHost(
       if (spec.tooltip) tooltips.set(spec.id, spec.tooltip);
       if (spec.keep) kept.add(spec.id);
       const near = placement.withPanel && api.getPanel(placement.withPanel);
-      const left = (group: { element: HTMLElement }) =>
-        group.element.getBoundingClientRect().left;
-      const leftmost = placement.leftmost
-        ? api.groups.reduce<(typeof api.groups)[number] | undefined>(
-            (best, group) => (!best || left(group) < left(best) ? group : best),
-            undefined,
-          )
-        : undefined;
-      const besidePanel = placement.beside && api.getPanel(placement.beside.id);
-      const beside = leftmost
-        ? { group: leftmost }
-        : besidePanel
-          ? { group: besidePanel.group }
-          : undefined;
-      const direction = leftmost ? "left" : placement.beside?.direction;
-      const position: AddPanelPositionOptions | undefined = near
-        ? { referenceGroup: near.group }
-        : beside
-          ? { referenceGroup: beside.group, direction: direction! }
-          : undefined;
-      // Invariant: A new split takes space only from the group it splits;
-      // every other group keeps its width.
-      const widths =
-        !near && beside
-          ? api.groups
-              .filter((group) => group !== beside.group)
-              .map(
-                (group) =>
-                  [group, group.element.getBoundingClientRect().width] as [
-                    DockGroup,
-                    number,
-                  ],
-              )
-          : [];
-      const donor = beside?.group.element.getBoundingClientRect().width ?? 0;
-      const gap = gutter();
-      const shared =
-        !near && beside
-          ? Math.round(
-              Math.min(placement.width ?? (donor - gap) / 2, donor - gap - 120),
-            )
-          : 0;
       api.addPanel({
         id: spec.id,
         component: "panel",
         title: spec.title,
-        inactive: placement.background && !!position,
-        ...(shared ? { initialWidth: shared + gap } : {}),
-        ...(position ? { position } : {}),
+        inactive: placement.background && !!near,
+        ...(near ? { position: { referenceGroup: near.group } } : {}),
       });
-      const added = !near && beside ? api.getPanel(spec.id)?.group : undefined;
-      if (added) {
-        const targets: [DockGroup, number][] = [
-          [beside!.group, donor - shared - gap],
-          ...widths,
-          [added, shared],
-        ];
-        fit(targets, "width");
-        // Invariant: dockview lays a new window out again on the next frame;
-        // size once more after it.
-        requestAnimationFrame(() => fit(targets, "width"));
+      const added = api.getPanel(spec.id);
+      if (added && !added.api.isVisible) {
+        // Invariant: A tab added out of sight is marked new until it shows.
+        const tab = added.view.tab.element;
+        tab.classList.add("dock-new");
+        const seen = added.api.onDidVisibilityChange(({ isVisible }) => {
+          if (!isVisible) return;
+          tab.classList.remove("dock-new");
+          seen.dispose();
+        });
       }
       place();
     },
@@ -414,10 +351,11 @@ export function createDockHost(
       if (panel) silently(() => api.removePanel(panel));
     },
     has: (id) => !!api.getPanel(id),
-    visible: (id) => !!api.getPanel(id)?.api.isVisible,
+    visible: (id) => {
+      const panel = api.getPanel(id);
+      return !!panel?.api.isVisible && panel.group.activePanel === panel;
+    },
     ids: () => api.panels.map((panel) => panel.id),
-    width: (id) =>
-      api.getPanel(id)?.group.element.getBoundingClientRect().width,
     lastActive: (test) => recent.filter(test).at(-1),
     save: () => api.toJSON(),
     restore(layout) {

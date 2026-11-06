@@ -558,6 +558,11 @@ export function queueComments(
     sends.push(send);
     void attempt(send);
     repaint(data.recipient);
+    // Invariant: Sent comments show in the chat, so a hidden chat tab shows,
+    // after the click that sent them has settled on its pane.
+    requestAnimationFrame(() =>
+      dispatchEvent(new Event("recurse:show-chat", { cancelable: true })),
+    );
     return true;
   });
 }

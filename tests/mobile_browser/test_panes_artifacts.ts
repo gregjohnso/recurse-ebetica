@@ -14,6 +14,7 @@ import {
   rootAgentId,
   routeArtifacts,
   runBrowserTests,
+  showDockTab,
   themeColors,
   visibleAndUncovered,
   type BrowserTest,
@@ -1221,6 +1222,7 @@ export const tests: BrowserTest[] = [
     await routeArtifacts(page, base);
     await gotoRoot(page, base);
     await page.locator(".agent").first().waitFor();
+    await showDockTab(page, "Artifacts");
     const picker = page.locator("#artifact-picker.artifact-title-select");
     await page
       .locator(".pane-powerbar-controls:not([inert]) #artifact-picker")
@@ -1309,6 +1311,7 @@ export const tests: BrowserTest[] = [
     });
     await gotoRoot(page, base);
     await page.locator(".agent").first().waitFor();
+    await showDockTab(page, "Artifacts");
     await page.locator(".report-doc", { hasText: "Visible body" }).waitFor();
     const dialogMessages: string[] = [];
     page.once("dialog", (dialog) => {
@@ -1369,6 +1372,7 @@ export const tests: BrowserTest[] = [
       waitUntil: "domcontentloaded",
     });
     await page.locator(".agent").first().waitFor();
+    await showDockTab(page, "Artifacts");
     await page.locator('.pane-col[data-pane="report"]').waitFor();
     const expected = [`agent=${rootAgentId()}`, `version=${ARTIFACT_VERSION}`];
     await page.waitForFunction(
@@ -1392,6 +1396,7 @@ export const tests: BrowserTest[] = [
     const errors = captureErrors(page);
     const app = await postFixture(base, "seed-artifact-app");
     await gotoRoot(page, base);
+    await showDockTab(page, "Artifacts");
     await page.locator('.pane-col[data-pane="report"]').waitFor();
     expect(await page.locator("#artifact-picker").inputValue()).toBe(app.id);
     const frame = page.frameLocator("iframe.artifact-embed-page");

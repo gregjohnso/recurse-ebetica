@@ -7,6 +7,8 @@ import {
   runBrowserTests,
   waitForLayout,
   type BrowserTest,
+  splitDockTab,
+  showDockTab,
 } from "./common";
 
 export const tests: BrowserTest[] = [
@@ -84,6 +86,10 @@ export const tests: BrowserTest[] = [
             .locator(".diff-line-input")
             .fill("Keep this comment bar visible");
           await page.locator(".diff-sendbar.on").waitFor();
+        }
+        if (width !== 412) {
+          await splitDockTab(page, pane === "report" ? "Artifacts" : "Changes");
+          await showDockTab(page, "Chat");
         }
         const body = page.locator(`.pane-col[data-pane="${pane}"] .pane-body`);
         const scrollerSelector =

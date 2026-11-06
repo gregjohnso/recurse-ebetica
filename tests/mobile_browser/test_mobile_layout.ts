@@ -15,6 +15,7 @@ import {
   openSettingsPanel,
   showAgentList,
   waitForLayout,
+  splitDockTab,
 } from "./common";
 
 async function layerAt(page: any, at: string | [number, number]) {
@@ -334,6 +335,7 @@ export const tests: BrowserTest[] = [
             "document.activeElement?.closest('#sidebar') === null",
           ),
         ).toBeTrue();
+        await splitDockTab(page, "Artifacts");
         await page.locator('.pane-col[data-pane="report"]').waitFor();
         await assertArtifactVersionMenuEscape(page);
         await visibleAndUncovered(page, ".agent");
