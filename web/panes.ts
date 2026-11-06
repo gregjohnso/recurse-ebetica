@@ -5,7 +5,6 @@
 import { currentUiOwnerId, embedded, state } from "./state.js";
 import { phoneListEntry } from "./phone-nav.js";
 import {
-  AGENTS_ICON,
   DELETE_ICON,
   MESSAGE_ICON,
   SHARE_ICON,
@@ -975,20 +974,6 @@ function paneBadge(pane: PaneDef, ctx: PaneContext): string {
   }
 }
 
-/** The rail's Agents button: shows the agent list, or hides it when shown. */
-function agentsButton(): HTMLButtonElement {
-  const shown = !$("#sidebar")!.classList.contains("desktop-hidden");
-  const b = document.createElement("button");
-  b.className = "rail-btn" + (shown ? " active" : "");
-  b.id = "agents-btn";
-  b.title = "Agents";
-  b.setAttribute("aria-label", "Agents");
-  b.setAttribute("aria-pressed", String(shown));
-  b.innerHTML = AGENTS_ICON;
-  b.onclick = () => $<HTMLButtonElement>("#menu-btn")?.click();
-  return b;
-}
-
 function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
   const mobile = isMobile();
   // Invariant: Reparent shared controls, retaining their owners and handlers.
@@ -1044,7 +1029,6 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
 
   const railPanels = $("#pane-rail-panels")!;
   railPanels.innerHTML = "";
-  railPanels.appendChild(agentsButton());
   if (dock && !mobile) railPanels.appendChild(chatButton());
   for (const p of avail) {
     const b = document.createElement("button");
@@ -1326,16 +1310,14 @@ function titleOf(id: string): string {
   return registry.find((p) => p.id === id)?.title || id;
 }
 
-/** A new dock panel opens as a tab beside the most recent window other than
- * the chat and Explorer, else the chat's; only dragging a tab splits. */
+/** A new dock panel opens as a tab in the right-most window, skipping one
+ * holding the Explorer so a file never hides the tree; only drags split. */
 function dockPlacement(): DockPlacement {
-  const recent = (test: (id: string) => boolean) => dock?.lastActive(test);
   return {
     background: nextBackground,
     withPanel:
-      recent((id) => id !== CHAT && id !== EXPLORER) ??
-      recent((id) => id === CHAT) ??
-      recent(() => true) ??
+      dock?.rightmost((id) => id !== EXPLORER) ??
+      dock?.rightmost(() => true) ??
       dock?.ids()[0],
   };
 }

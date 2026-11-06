@@ -134,7 +134,7 @@ export const tests: BrowserTest[] = [
       const parentBox = await page.waitForFunction(() => {
         const document = (globalThis as any).document;
         const button = document.querySelector("#pane-rail [data-pane]");
-        const agents = document.querySelector("#agents-btn");
+        const agents = document.querySelector("#chat-btn");
         if (!button || !agents) return false;
         const box = button.getBoundingClientRect();
         const agentsBox = agents.getBoundingClientRect();
@@ -512,9 +512,6 @@ export const tests: BrowserTest[] = [
       }
       await shot("closed");
       if (width === 1280) {
-        expect(
-          await page.locator("#agents-btn").getAttribute("aria-pressed"),
-        ).toBe("true");
         const sidebarHeader = await page.locator("#sidebar-head").boundingBox();
         const newSide = (await page.locator("#new-side").boundingBox())!;
         const chatTab = (await page
@@ -524,21 +521,17 @@ export const tests: BrowserTest[] = [
         expect(header.y).toBeGreaterThanOrEqual(chatTab.y + chatTab.height - 1);
         expect(await page.locator("#new-top").isVisible()).toBe(false);
         expect(await page.locator("#menu-btn").isVisible()).toBe(false);
-        await page.locator("#agents-btn").click();
-        expect(await page.locator("#sidebar").isVisible()).toBe(false);
+        await page.keyboard.press("Escape");
+        await page.keyboard.press("Shift+H");
+        await page.locator("#sidebar").waitFor({ state: "hidden" });
         expect(await page.locator("#new-top").isVisible()).toBe(true);
-        expect(
-          await page.locator("#agents-btn").getAttribute("aria-pressed"),
-        ).toBe("false");
         expect((await page.locator("#topbar").boundingBox())!.height).toBe(48);
         await shot("sidebar-collapsed");
-        await page.locator("#agents-btn").click();
+        await page.locator("#menu-btn").click();
         expect(await page.locator("#sidebar-head").boundingBox()).toEqual(
           sidebarHeader,
         );
-        expect(
-          await page.locator("#agents-btn").getAttribute("aria-pressed"),
-        ).toBe("true");
+        expect(await page.locator("#menu-btn").isVisible()).toBe(false);
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);
         const list = (await page.locator("#sidebar").boundingBox())!;
         const settings = (await page
@@ -772,16 +765,12 @@ export const tests: BrowserTest[] = [
     await page.goto(`${base}#agent=${cid}`, { waitUntil: "domcontentloaded" });
     const explorer = page.locator('#pane-rail-panels [data-pane="explorer"]');
     await explorer.waitFor();
-    const agents = page.locator("#agents-btn");
     const sidebar = page.locator("#sidebar");
     const rail = (await page.locator("#pane-rail").boundingBox())!;
     expect(rail.x + rail.width).toBe(1280);
     const listBox = (await sidebar.boundingBox())!;
     expect(listBox.x + listBox.width).toBeLessThanOrEqual(rail.x);
-    expect(
-      await page.locator("#pane-rail-panels > *").first().getAttribute("id"),
-    ).toBe("agents-btn");
-    expect(await agents.getAttribute("aria-pressed")).toBe("true");
+    expect(await page.locator("#agents-btn").count()).toBe(0);
     const dir = process.env.RECURSE_SCREENSHOT_DIR;
     if (dir) await page.screenshot({ path: `${dir}/left-rail-agents.png` });
     const settings = (await page
@@ -804,13 +793,11 @@ export const tests: BrowserTest[] = [
     expect(
       await page.locator("#dock .dv-tab", { hasText: "Chat" }).count(),
     ).toBe(1);
-    await agents.click();
+    await page.evaluate("document.activeElement?.blur()");
+    await page.keyboard.press("Shift+H");
     await sidebar.waitFor({ state: "hidden" });
     expect(await pane.isVisible()).toBe(true);
-    await page
-      .locator('#agents-btn[aria-pressed="false"]')
-      .waitFor({ state: "attached" });
-    await agents.click();
+    await page.keyboard.press("Shift+H");
     await sidebar.waitFor();
     await explorer.click();
     await pane.waitFor({ state: "detached" });

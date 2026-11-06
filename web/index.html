@@ -246,8 +246,8 @@
   #sidebar.desktop-hidden { display: none; }
   @media (min-width: 701px) {
     #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
-    /* The rail's Agents button opens the agent list on desktop. */
-    #menu-btn { display: none; }
+    /* Desktop shows the menu button only to bring back a hidden agent list. */
+    body:has(#sidebar:not(.desktop-hidden)) #menu-btn { display: none; }
     /* The agent list is a card like the chat's and each docked window. */
     #sidebar { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset);
       border-radius: var(--content-radius); box-shadow: var(--content-ring); }

@@ -46,6 +46,9 @@ export interface DockHost {
   ids(): string[];
   /** The most recently active panel that passes `test`. */
   lastActive(test: (id: string) => boolean): string | undefined;
+  /** The active panel of the right-most window (top-most on ties) that
+   * holds no panel failing `test`. */
+  rightmost(test: (id: string) => boolean): string | undefined;
   save(): DockLayout;
   restore(layout: DockLayout | null): void;
   dispose(): void;
@@ -357,6 +360,21 @@ export function createDockHost(
     },
     ids: () => api.panels.map((panel) => panel.id),
     lastActive: (test) => recent.filter(test).at(-1),
+    rightmost(test) {
+      let best: { id: string; right: number; top: number } | undefined;
+      for (const group of api.groups) {
+        const id = group.activePanel?.id;
+        if (!id || !group.panels.every((panel) => test(panel.id))) continue;
+        const { right, top } = group.element.getBoundingClientRect();
+        if (
+          !best ||
+          right > best.right + 1 ||
+          (right > best.right - 1 && top < best.top)
+        )
+          best = { id, right, top };
+      }
+      return best?.id;
+    },
     save: () => api.toJSON(),
     restore(layout) {
       for (const id of kept) {

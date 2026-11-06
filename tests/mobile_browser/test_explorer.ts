@@ -195,7 +195,10 @@ export const tests: BrowserTest[] = [
     await ignoreTab.waitFor();
     expect(await groups.count()).toBe(3);
     expect(
-      await groups.filter({ has: guideTab }).filter({ has: ignoreTab }).count(),
+      await groups
+        .filter({ has: tabs.filter({ hasText: "README.md" }) })
+        .filter({ has: ignoreTab })
+        .count(),
     ).toBe(1);
     if (process.env.RECURSE_SCREENSHOT_DIR)
       await page.screenshot({
