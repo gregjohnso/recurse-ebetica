@@ -46,8 +46,7 @@ export interface DockHost {
   ids(): string[];
   /** The most recently active panel that passes `test`. */
   lastActive(test: (id: string) => boolean): string | undefined;
-  /** The active panel of the right-most window (top-most on ties) that
-   * holds no panel failing `test`. */
+  /** Active panel of the right-most (then top-most) window passing `test`. */
   rightmost(test: (id: string) => boolean): string | undefined;
   save(): DockLayout;
   restore(layout: DockLayout | null): void;
