@@ -550,10 +550,10 @@ export const tests: BrowserTest[] = [
           true,
         );
         const rail = (await page.locator("#pane-rail").boundingBox())!;
-        const trash = (await page
-          .locator("#pane-rail #trash-btn")
+        const bottom = (await page
+          .locator("#pane-rail #settings-btn")
           .boundingBox())!;
-        expect(rail.y + rail.height - (trash.y + trash.height)).toBeLessThan(
+        expect(rail.y + rail.height - (bottom.y + bottom.height)).toBeLessThan(
           24,
         );
         await context.close();
@@ -793,8 +793,10 @@ export const tests: BrowserTest[] = [
       .locator("#pane-rail #settings-btn")
       .boundingBox())!;
     const trash = (await page.locator("#pane-rail #trash-btn").boundingBox())!;
-    expect(trash.y).toBeGreaterThan(settings.y);
-    expect(rail.y + rail.height - (trash.y + trash.height)).toBeLessThan(24);
+    expect(settings.y).toBeGreaterThan(trash.y);
+    expect(rail.y + rail.height - (settings.y + settings.height)).toBeLessThan(
+      24,
+    );
     await explorer.click();
     const pane = page.locator('.pane-col[data-pane="explorer"]');
     await pane.waitFor();
