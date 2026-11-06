@@ -1480,9 +1480,15 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   #send-status.command-error { color: var(--error-text); }
   #send-status.error { color: var(--error-text); cursor: pointer; }
   #send-status.error:hover { text-decoration: underline; text-underline-offset: 2px; }
-  #update-status { max-width: 780px; margin: var(--space-2) auto 0; padding: 0 var(--space-2);
-    display: none; color: var(--accent); font-size: 0.71875rem; line-height: 1.4; }
-  #update-status.on { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  /* A waiting page update shows in Settings and as a dot on its button. */
+  #update-status { margin-top: auto; padding: 0 var(--space-3); display: none; color: var(--accent);
+    font-size: 0.71875rem; line-height: 1.4; }
+  #update-status.on { display: flex; align-items: flex-start; gap: var(--space-2); flex-direction: column; }
+  #update-status.on + #settings-release { margin-top: 0; }
+  #settings-btn { position: relative; }
+  body:has(#update-status.on) #settings-btn::after { content: ""; position: absolute; top: 8px;
+    right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn);
+    box-shadow: 0 0 0 2px var(--panel); }
 
   /* pending attachment thumbnails, shown above the composer before send */
   #attachments { max-width: 780px; margin: 0 auto; display: flex; flex-wrap: wrap;
@@ -1699,6 +1705,7 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
         <select id="settings-backend" class="text-field sm" aria-label="Recurse these settings change" hidden></select>
       </header>
       <nav id="settings-nav" aria-label="Settings categories"></nav>
+      <div id="update-status" aria-live="polite"></div>
       <span id="settings-release" title="Recurse release and commit" hidden></span>
     </aside>
     <div id="settings-sections"></div>
@@ -1846,7 +1853,6 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
       </div>
     </div>
     <button id="send-status" type="button" aria-live="polite" disabled></button>
-    <div id="update-status" aria-live="polite"></div>
   </div>
 </main>
 

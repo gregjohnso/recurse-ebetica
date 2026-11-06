@@ -7,6 +7,7 @@ import {
   conversationRead,
   gotoRoot,
   mockConversation,
+  openSettingsPanel,
   rootAgentId,
   runBrowserTests,
   themeColors,
@@ -535,7 +536,14 @@ async function test_deferred_generation_recovery_keeps_chat_usable(
         : r.continue(),
     );
     await gotoRoot(page, base);
-    await page.locator("#update-status.on button").waitFor();
+    await page
+      .locator("#update-status.on button")
+      .waitFor({ state: "attached" });
+    expect(
+      await page
+        .locator("#settings-btn")
+        .evaluate((el) => getComputedStyle(el, "::after").content),
+    ).toBe('""');
     expect(counts.tree).toBeGreaterThanOrEqual(2);
     expect(counts.conversation).toBeGreaterThanOrEqual(1);
     await page.locator(".agent").first().waitFor();
@@ -555,10 +563,14 @@ async function test_deferred_generation_recovery_keeps_chat_usable(
     await page.evaluate(
       "for(let i=0;i<20;i++){dispatchEvent(new Event('focus'));dispatchEvent(new PageTransitionEvent('pageshow'))}",
     );
+    await openSettingsPanel(page);
     await page.locator("#update-status button").click();
     await page.waitForFunction(
       "document.querySelector('#update-status.on')?.textContent?.includes('send or clear unsent work first')",
     );
+    await page.locator("#settings-close").click();
+    if (mobile) await page.locator(".agent").first().click();
+    await page.locator("#input").waitFor();
     expect(counts.root).toBe(1);
     await page.locator("#input").fill("");
     await page.locator("#attachments .rm").click();
@@ -570,10 +582,12 @@ async function test_deferred_generation_recovery_keeps_chat_usable(
     await page.waitForFunction(
       "!document.querySelector('#send-status')?.classList.contains('show')",
     );
+    await openSettingsPanel(page);
     await page.locator("#update-status button").click();
     await page.waitForURL(`${base}?_recurse_generation=browser-e2e-current**`);
     await page.locator(".agent").first().waitFor();
     await page.waitForFunction("location.search === ''");
+    if (mobile) await page.locator(".agent").first().click();
     await visibleAndUncovered(page, "#messages");
     await visibleAndUncovered(page, "#input");
     expect(counts.root).toBe(2);

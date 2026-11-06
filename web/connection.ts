@@ -50,10 +50,13 @@ export function startConnectionMonitoring(
   let updateTarget: string | null = null;
   let generationEnabled = false;
 
+  // Invariant: #update-status lives in Settings; its button gets a dot via CSS.
+  const settingsButton = document.querySelector<HTMLElement>("#settings-btn");
   const clearUpdateStatus = () => {
     if (!updateStatus) return;
     updateStatus.textContent = "";
     updateStatus.classList.remove("on");
+    settingsButton?.setAttribute("title", "Settings");
   };
 
   const showUpdateStatus = (message: string, target: string) => {
@@ -68,6 +71,7 @@ export function startConnectionMonitoring(
     button.addEventListener("click", () => attemptUpdate(target, false));
     updateStatus.append(text, button);
     updateStatus.classList.add("on");
+    settingsButton?.setAttribute("title", "Settings — page update ready");
   };
 
   function attemptUpdate(target: string, automatic: boolean): void {
