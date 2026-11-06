@@ -240,17 +240,21 @@ body.resizing { cursor: col-resize; user-select: none; }
 #pane-rail > :is(#trash-btn, #takeover-btn).on, #pane-rail > #share-link-btn:not([hidden]) { display: flex; }
 /* Desktop: Settings and Delete share the agent list's foot row. The panel list
    keeps the rail's top, with its divider only under a visible take-over control. */
-#agent-list-foot { flex: none; display: flex; align-items: center;
+#agent-list-foot { flex: none; display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   border-top: 1px solid var(--frame-border); }
 #agent-list-foot:not(:has(> button)) { display: none; }
-#agent-list-foot > #settings-btn { flex: 1; min-width: 0; border-top: 0; }
-#agent-list-foot > #trash-btn { width: 44px; height: 44px; margin-right: var(--space-2); border: 0;
+#agent-list-foot > #settings-btn { width: 44px; height: 44px; padding: 0; border: 0;
+  justify-content: center; }
+#agent-list-foot > #settings-btn:hover { background: var(--panel-2); }
+#agent-list-foot > #trash-btn { width: 44px; height: 44px; border: 0;
   background: transparent; color: var(--muted); }
 #agent-list-foot > #trash-btn.on { display: flex; }
 #agent-list-foot > #trash-btn:not(.armed):hover { color: var(--danger); background: var(--panel-2); }
 #agent-list-foot > #trash-btn.armed { color: var(--danger); background: var(--panel-2); }
 #agent-list-foot > #trash-btn svg { width: 16px; height: 16px; }
-#agent-list-foot > #trash-btn > span { position: absolute; width: 1px; height: 1px;
+#agent-list-foot > button { position: relative; border-radius: var(--radius-md); }
+#agent-list-foot > button > span { position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #pane-rail > #takeover-btn:not(.on) ~ #pane-rail-panels { margin-top: 0; padding-top: 0;
   border-top: 0; }
