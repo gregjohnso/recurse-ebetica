@@ -95,7 +95,7 @@ tabs and the phone agent list close their stream; embedded side conversations
 never report a viewer. Received pushes always show a notification, avoiding
 browsers' generic background-update notices.
 
-[brand/](brand/) contains the ring logo. [logo.png](brand/logo.png) is the
+[brand/](brand/) contains the ouroboros logo (a snake eating its tail). [logo.png](brand/logo.png) is the
 transparent artwork, recoloured white with its own anti-aliased alpha. The
 mark, favicon and wordmark use black in light mode and white in dark mode via
 `prefers-color-scheme`, with no background tile. [mark.svg](brand/mark.svg)
