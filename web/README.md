@@ -95,20 +95,21 @@ tabs and the phone agent list close their stream; embedded side conversations
 never report a viewer. Received pushes always show a notification, avoiding
 browsers' generic background-update notices.
 
-[brand/](brand/) contains the ouroboros logo (a snake eating its tail). [logo.png](brand/logo.png) is the
-transparent artwork, recoloured white with its own anti-aliased alpha. The
-mark, favicon and wordmark use black in light mode and white in dark mode via
-`prefers-color-scheme`, with no background tile. [mark.svg](brand/mark.svg)
-is the small UI mark. The sidebar header holds the New button instead of a
-logo; phones keep New in the topbar. [wordmark.svg](brand/wordmark.svg)
-pairs it with the name in the same adaptive colour. The `-mono.svg` variants
-mask `currentColor` with the artwork's alpha channel when embedded inline.
+[brand/](brand/) contains the ouroboros logo (a snake eating its tail), with
+no name beside it. [logo.png](brand/logo.png) is the transparent artwork,
+recoloured white with its own anti-aliased alpha. The mark uses black in light
+mode and white in dark mode via `prefers-color-scheme`, with no background
+tile; the favicon is black on transparent in light mode and the app icon's
+white-on-black tile in dark mode. [mark.svg](brand/mark.svg) is the small UI mark. The sidebar
+header holds the New button instead of a logo; phones keep New in the topbar.
+The `-mono.svg` variant masks `currentColor` with the artwork's alpha channel
+when embedded inline.
 
 The frontend asset build copies this directory to `/static/brand/`.
 [index.html](index.html) links the adaptive SVG favicon, black and white 32 px
 PNG fallbacks selected by media query, and the 180 px Apple touch icon. These
-links carry the artwork's SHA-256 prefix as a query version; update it
-when replacing the artwork so browsers discard cached icons. The web manifest advertises 192 and 512 px app icons
+links carry the favicon.svg SHA-256 prefix as a query version; update it
+when changing the icons so browsers discard cached copies. The web manifest advertises 192 and 512 px app icons
 and full-bleed maskable variants; push notifications use the 192 px app icon.
 The SVGs embed a reduced PNG copy of the artwork. PNG exports are resized from
 the artwork at their named dimensions. Launcher PNGs and maskable icons

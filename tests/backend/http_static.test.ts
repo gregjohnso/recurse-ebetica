@@ -248,7 +248,7 @@ test("shell import map aliases lazy chunks to the versioned entry", async () => 
     const faviconUrl = shell.match(
       /<link rel="icon" href="([^"]+)" type="image\/svg\+xml"/,
     )?.[1];
-    expect(faviconUrl).toBe("/static/brand/favicon.svg?v=752ad5ef9c35");
+    expect(faviconUrl).toBe("/static/brand/favicon.svg?v=f55192d19934");
     const favicon = await fetch(
       `http://127.0.0.1:${running.port}${faviconUrl}`,
       { headers: { "accept-encoding": "identity" } },
