@@ -52,9 +52,9 @@ function sync(): void {
   settings.classList.toggle("icon-btn", active);
   settings.classList.toggle("lg", active);
   settings.setAttribute("aria-label", "Settings");
-  // Spec: Desktop Settings sits at the foot of the left rail.
+  // Spec: Desktop Settings sits at the agent list's foot, left of Delete.
   if (active) listActions.append(settings);
-  else $("#pane-rail")!.append(settings);
+  else $("#agent-list-foot")!.prepend(settings);
   dispatchEvent(new Event("recurse:phone-view"));
 }
 function seed(): void {

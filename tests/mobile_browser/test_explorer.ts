@@ -83,8 +83,8 @@ export const tests: BrowserTest[] = [
       .evaluateAll((nodes) =>
         nodes.map((node) => node.id || node.getAttribute("data-pane") || ""),
       );
-    expect(rail.indexOf("share-link-btn")).toBe(rail.length - 3);
-    expect(rail.slice(-1)).toEqual(["settings-btn"]);
+    expect(rail.indexOf("share-link-btn")).toBe(rail.length - 2);
+    expect(rail.slice(-1)).toEqual(["pane-rail-panels"]);
     const panels = page.locator("#pane-rail-panels .rail-btn[data-pane]");
     expect(await panels.first().getAttribute("data-pane")).toBe("explorer");
     await panels.first().click();

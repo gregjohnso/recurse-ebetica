@@ -51,12 +51,7 @@ export const tests: BrowserTest[] = [
       const actions = page.locator("#pane-rail > button");
       expect(
         await actions.evaluateAll((els) => els.map((el) => el.id)),
-      ).toEqual([
-        "trash-btn",
-        "takeover-btn",
-        "share-link-btn",
-        "settings-btn",
-      ]);
+      ).toEqual(["takeover-btn", "share-link-btn"]);
       expect(
         (await page.locator("#pane-rail").boundingBox())!.x,
       ).toBeLessThanOrEqual(0);
@@ -131,9 +126,9 @@ export const tests: BrowserTest[] = [
       expect(await page.locator("#pane-menu #trash-btn").count()).toBe(1);
       await page.setViewportSize({ width, height: 915 });
       await page
-        .locator("#pane-rail #trash-btn")
+        .locator("#agent-list-foot #trash-btn")
         .waitFor({ state: "attached" });
-      expect(await page.locator("#pane-rail #trash-btn").count()).toBe(1);
+      expect(await page.locator("#agent-list-foot #trash-btn").count()).toBe(1);
       await page.locator("#up-top").click();
       await page.locator("#takeover-btn.on").waitFor({ state: "hidden" });
       await page.locator('#pane-rail [data-pane="report"]').waitFor();
@@ -156,9 +151,9 @@ export const tests: BrowserTest[] = [
       expect(shareBox).not.toBeNull();
       expect(parentGeometry.agentsY).toBe(shareBox!.y + shareBox!.height);
       expect(parentGeometry.y).toBeGreaterThan(parentGeometry.agentsBottom);
-      expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(
-        true,
-      );
+      expect(
+        await page.locator("#agent-list-foot #trash-btn").isVisible(),
+      ).toBe(true);
       if (dir)
         await page.screenshot({
           path: `${dir}/${stage}-${width}-rail-root.png`,
@@ -546,16 +541,18 @@ export const tests: BrowserTest[] = [
           await page.locator("#agents-btn").getAttribute("aria-pressed"),
         ).toBe("true");
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);
-        expect(await page.locator("#pane-rail #trash-btn").isVisible()).toBe(
-          true,
-        );
-        const rail = (await page.locator("#pane-rail").boundingBox())!;
-        const bottom = (await page
-          .locator("#pane-rail #settings-btn")
+        const list = (await page.locator("#sidebar").boundingBox())!;
+        const settings = (await page
+          .locator("#agent-list-foot #settings-btn")
           .boundingBox())!;
-        expect(rail.y + rail.height - (bottom.y + bottom.height)).toBeLessThan(
-          24,
-        );
+        const trash = (await page
+          .locator("#agent-list-foot #trash-btn")
+          .boundingBox())!;
+        expect(
+          list.y + list.height - (settings.y + settings.height),
+        ).toBeLessThan(24);
+        expect(trash.x).toBeGreaterThanOrEqual(settings.x + settings.width);
+        expect(Math.abs(trash.y - settings.y)).toBeLessThan(settings.height);
         await context.close();
         continue;
       }
@@ -790,11 +787,14 @@ export const tests: BrowserTest[] = [
     const dir = process.env.RECURSE_SCREENSHOT_DIR;
     if (dir) await page.screenshot({ path: `${dir}/left-rail-agents.png` });
     const settings = (await page
-      .locator("#pane-rail #settings-btn")
+      .locator("#agent-list-foot #settings-btn")
       .boundingBox())!;
-    const trash = (await page.locator("#pane-rail #trash-btn").boundingBox())!;
-    expect(settings.y).toBeGreaterThan(trash.y);
-    expect(rail.y + rail.height - (settings.y + settings.height)).toBeLessThan(
+    const trash = (await page
+      .locator("#agent-list-foot #trash-btn")
+      .boundingBox())!;
+    const list = (await sidebar.boundingBox())!;
+    expect(trash.x).toBeGreaterThanOrEqual(settings.x + settings.width);
+    expect(list.y + list.height - (settings.y + settings.height)).toBeLessThan(
       24,
     );
     await explorer.click();

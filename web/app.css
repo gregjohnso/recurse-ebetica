@@ -238,13 +238,20 @@ body.resizing { cursor: col-resize; user-select: none; }
   min-height: 44px; padding: 0; margin: 0; border: 0; background: transparent; color: var(--text);
   justify-content: center; }
 #pane-rail > :is(#trash-btn, #takeover-btn).on, #pane-rail > #share-link-btn:not([hidden]) { display: flex; }
-/* Settings is the rail's bottom button with Delete just above it; the panel
-   list keeps the top, with its divider only under a visible take-over control. */
-#pane-rail > #trash-btn { order: 1; }
-#pane-rail > #trash-btn.on { margin-top: auto; }
-#pane-rail:has(> #trash-btn.on) > #settings-btn { margin-top: 0; }
-#pane-rail > #settings-btn { order: 2; margin-top: auto; width: 44px; height: 44px; padding: 0;
-  border: 0; justify-content: center; }
+/* Desktop: Settings and Delete share the agent list's foot row. The panel list
+   keeps the rail's top, with its divider only under a visible take-over control. */
+#agent-list-foot { flex: none; display: flex; align-items: center;
+  border-top: 1px solid var(--frame-border); }
+#agent-list-foot:not(:has(> button)) { display: none; }
+#agent-list-foot > #settings-btn { flex: 1; min-width: 0; border-top: 0; }
+#agent-list-foot > #trash-btn { width: 44px; height: 44px; margin-right: var(--space-2); border: 0;
+  background: transparent; color: var(--muted); }
+#agent-list-foot > #trash-btn.on { display: flex; }
+#agent-list-foot > #trash-btn:not(.armed):hover { color: var(--danger); background: var(--panel-2); }
+#agent-list-foot > #trash-btn.armed { color: var(--danger); background: var(--panel-2); }
+#agent-list-foot > #trash-btn svg { width: 16px; height: 16px; }
+#agent-list-foot > #trash-btn > span { position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #pane-rail > #takeover-btn:not(.on) ~ #pane-rail-panels { margin-top: 0; padding-top: 0;
   border-top: 0; }
 #pane-rail > button:not(.armed):hover { background: var(--panel-2); color: var(--text); }

@@ -997,13 +997,17 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     $("#takeover-btn")!,
     $("#share-link-btn")!,
   ];
-  // Spec: Phone menu order: Delete, Take control, divider, Share.
-  const actionHost = mobile ? menuEl : railEl;
-  if (actions[0].parentElement !== actionHost) {
+  // Spec: Phone menu order: Delete, Take control, divider, Share. Desktop:
+  // Delete sits right of Settings at the agent list's foot.
+  const foot = $("#agent-list-foot")!;
+  if (actions[0].parentElement !== (mobile ? menuEl : foot)) {
     if (mobile) {
       $("#pane-menu-divider")!.before(actions[0], actions[1]);
       $("#pane-menu-divider")!.after(actions[2]);
-    } else railEl.prepend(...actions);
+    } else {
+      foot.append(actions[0]);
+      railEl.prepend(actions[1], actions[2]);
+    }
     for (const action of actions) {
       if (mobile) action.setAttribute("role", "menuitem");
       else action.removeAttribute("role");

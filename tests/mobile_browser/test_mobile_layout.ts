@@ -328,7 +328,8 @@ export const tests: BrowserTest[] = [
             .locator("#sidebar")
             .evaluate((element) => (element as any).inert),
         ).toBeFalse();
-        await page.locator("#settings-btn").focus();
+        const trashShown = await page.locator("#trash-btn").isVisible();
+        await page.locator(trashShown ? "#trash-btn" : "#settings-btn").focus();
         await page.keyboard.press("Tab");
         expect(
           await page.evaluate(
