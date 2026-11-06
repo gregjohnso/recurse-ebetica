@@ -1,31 +1,42 @@
 /* Desktop dock (dockview). dockview's stylesheet supplies tabs, groups,
-   sashes and drop overlays; this maps its variables to our tokens in an
-   editor's style: the dock area wears the chat card's frame, windows inside it
-   meet at 1px dividers, and each window has a tab strip as tall as an agent
-   row. */
+   sashes and drop overlays; this maps its variables to our tokens so each
+   window is a card like the chat's (background, --content-radius corners,
+   ring) with --content-inset gutters of shell background between cards. A
+   card's tab strip sits inside its top edge, a darker tone than the content;
+   the visible tab is the content's colour and flows into it. */
 #panes.docked { flex-direction: column; z-index: var(--z-raised); }
-#panes.docked.on { margin: var(--content-inset); }
+/* Card themes leave a --content-inset gutter of shell colour between windows;
+   flat themes (inset 0) keep dockview's 1px --pane-border separator. */
+#panes { --dock-gutter: var(--content-inset); }
+#dock .dv-split-view-container.dv-horizontal > .dv-view-container
+  > .dv-view:not(:first-child)::before {
+  width: max(0px, 1px - var(--content-inset)); }
+#dock .dv-split-view-container.dv-vertical > .dv-view-container
+  > .dv-view:not(:first-child)::before {
+  height: max(0px, 1px - var(--content-inset)); }
+#panes.docked.on { margin: calc(var(--content-inset) / 2); }
+/* Each window keeps half a gutter around it, inside its slot, so sizes and
+   sashes stay dockview's own. */
+#dock .dv-view:has(> .dv-groupview) { box-sizing: border-box;
+  padding: calc(var(--dock-gutter) / 2); }
 #panes.docked > .resize-grip { display: none; }
-#dock { flex: 1; min-height: 0; min-width: 0; border-radius: var(--content-radius);
-  box-shadow: var(--content-ring); overflow: hidden; background: var(--bg); }
+#dock { flex: 1; min-height: 0; min-width: 0; }
 #dock .dv-dockview { background: transparent; }
 #dock .dockview-theme-abyss-spaced {
+  background-color: transparent;
   color-scheme: inherit;
   font-family: var(--font-sans);
-  --dv-border-radius: 0px;
+  --dv-border-radius: var(--content-radius);
   --dv-spacing-padding: 0px;
   --dv-group-view-background-color: var(--bg);
-  /* Tabs: background tabs are flat in the strip's darker shade; the visible
-     tab is the window's own colour, with rounded top corners and flared feet
-     that flow into the window; only the focused window's is full strength. */
-  --dock-strip: var(--frame-bg);
+  --dock-strip: light-dark(var(--panel), color-mix(in srgb, var(--bg) 80%, var(--shadow)));
   --dv-tabs-and-actions-container-background-color: var(--dock-strip);
   --dv-tabs-and-actions-container-height: var(--row-height);
   --dv-tabs-and-actions-container-font-size: 13px;
   --dv-tab-font-size: 13px;
   --dv-tab-margin: 0;
   --dv-tab-border-radius: 0px;
-  --dv-tabs-container-scrollbar-color: var(--border);
+  --dv-scrollbar-background-color: var(--scrollbar);
   --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
   --dv-activegroup-hiddenpanel-tab-background-color: var(--dock-strip);
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
@@ -35,8 +46,8 @@
   --dv-inactivegroup-visiblepanel-tab-color: color-mix(in srgb, var(--text) 65%, var(--muted));
   --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
   --dv-tab-divider-color: transparent;
-  --dv-separator-border: var(--border);
-  --dv-paneview-header-border-color: var(--border);
+  --dv-separator-border: var(--pane-border);
+  --dv-paneview-header-border-color: transparent;
   --dv-paneview-active-outline-color: var(--accent);
   --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 22%, transparent);
   --dv-drag-over-border-color: var(--accent);
@@ -44,22 +55,20 @@
   --dv-icon-hover-background-color: color-mix(in srgb, var(--text) 12%, transparent);
   --dv-active-sash-color: var(--accent);
 }
-#dock .dv-groupview { overflow: hidden; }
-/* The strip's bottom border runs under background tabs; the visible tab
-   covers it so it merges with its window. Too many tabs scroll sideways. */
-#dock .dv-tabs-and-actions-container { padding: 0;
-  background-image: linear-gradient(var(--border), var(--border)); background-size: 100% 1px;
-  background-position: bottom; background-repeat: no-repeat; }
+#dock .dv-groupview { overflow: hidden; background: var(--bg);
+ box-shadow: var(--content-ring); }
+#dock .dv-content-container { background: var(--bg); }
+/* The tab strip's scrollbar shows only while the pointer is over it. */
+#dock .dv-scrollable:not(:hover) .dv-scrollbar { background-color: transparent; }
+/* Tabs: flat in the strip's tone, separated by tone and spacing alone; the
+   visible tab has rounded top corners and flared feet into its window. Too
+   many tabs scroll sideways. */
+#dock .dv-tabs-and-actions-container { padding: 0; }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
-#dock .dv-tabs-container { scrollbar-width: thin; }
-#dock .dv-tabs-container { padding: 0; }
+#dock .dv-tabs-container { padding: 0 var(--space-3); }
 #dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
-  padding: 0 var(--space-3) 0 var(--space-4); min-width: 80px; max-width: 220px; font-weight: 400;
-  background-image: linear-gradient(var(--border), var(--border)); background-size: 100% 1px;
-  background-position: bottom; background-repeat: no-repeat; }
-#dock .dv-tab.dv-inactive-tab + .dv-tab.dv-inactive-tab .dv-default-tab::before { content: "";
-  position: absolute; left: calc(-1 * var(--space-4)); top: 25%; bottom: 25%; width: 1px; background: var(--border); }
-#dock .dv-tab.dv-active-tab { z-index: var(--z-raised); background-image: none;
+  padding: 0 var(--space-3) 0 var(--space-4); min-width: 80px; max-width: 220px; font-weight: 400; }
+#dock .dv-tab.dv-active-tab { z-index: var(--z-raised);
   border-radius: var(--radius-md) var(--radius-md) 0 0; }
 #dock .dv-tab.dv-active-tab .dv-default-tab::before,
 #dock .dv-tab.dv-active-tab .dv-default-tab::after {

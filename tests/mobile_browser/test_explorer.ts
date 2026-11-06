@@ -150,8 +150,13 @@ export const tests: BrowserTest[] = [
         .filter({ has: page.locator(".dv-tab", { hasText: title }) })
         .boundingBox())!.width;
     expect(Math.abs((await widthOf("Explorer")) - 280)).toBeLessThanOrEqual(2);
+    const leftOf = async (title: string) =>
+      (await page
+        .locator(".dv-groupview")
+        .filter({ has: page.locator(".dv-tab", { hasText: title }) })
+        .boundingBox())!.x;
     const before = {
-      explorer: await widthOf("Explorer"),
+      explorer: (await leftOf("Chat")) - (await leftOf("Explorer")),
       chat: await widthOf("Chat"),
       readme: await widthOf("README.md"),
     };

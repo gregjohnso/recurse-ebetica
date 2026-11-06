@@ -71,8 +71,10 @@ function adjacent(
   gone: DOMRect,
   sizes: Map<DockGroup, DOMRect>,
   removed: DockGroup,
+  gap: number,
 ): [DockGroup[], DockGroup[], boolean] {
   const near = (a: number, b: number) => Math.abs(a - b) < 2;
+  const meets = (end: number, start: number) => near(start - end, gap);
   const rects = [...sizes].filter(([group]) => group !== removed);
   const touching = (test: (rect: DOMRect) => boolean) =>
     rects.filter(([, rect]) => test(rect)).map(([group]) => group);
@@ -80,14 +82,24 @@ function adjacent(
     near(rect.left, gone.left) && near(rect.right, gone.right);
   const row = (rect: DOMRect) =>
     rect.top < gone.bottom - 1 && rect.bottom > gone.top + 1;
-  const above = touching((r) => near(r.bottom, gone.top) && column(r));
-  const below = touching((r) => near(r.top, gone.bottom) && column(r));
+  const above = touching((r) => meets(r.bottom, gone.top) && column(r));
+  const below = touching((r) => meets(gone.bottom, r.top) && column(r));
   if (above.length || below.length) return [above, below, true];
   return [
-    touching((r) => near(r.right, gone.left) && row(r)),
-    touching((r) => near(r.left, gone.right) && row(r)),
+    touching((r) => meets(r.right, gone.left) && row(r)),
+    touching((r) => meets(gone.right, r.left) && row(r)),
     false,
   ];
+}
+
+/** The gutter between windows (style.css's --dock-gutter), in pixels. */
+function gutterPx(container: HTMLElement): number {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;width:var(--dock-gutter)";
+  container.append(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
 }
 
 /** Move `child` into `parent`, keeping its focus, caret and scroll offsets. */
@@ -175,6 +187,7 @@ export function createDockHost(
   const parking = document.createElement("div");
   parking.className = "dock-parking";
   container.after(parking);
+  const gutter = (): number => gutterPx(container);
   const api = createDockview(container, {
     theme: { ...themeAbyssSpaced, gap: 0 },
     disableFloatingGroups: true,
@@ -246,6 +259,17 @@ export function createDockHost(
   };
   api.onDidMovePanel(refocus);
   container.addEventListener("dragend", refocus);
+  const fit = (
+    targets: [DockGroup, number][],
+    axis: "width" | "height",
+  ): void => {
+    // Invariant: targets are card sizes; a slot also holds the gutter.
+    const slot = gutter();
+    for (let pass = 0; pass < 2; pass++)
+      for (const [group, target] of targets)
+        if (api.groups.includes(group))
+          group.api.setSize({ [axis]: target + slot });
+  };
   // Invariant: When a window closes, only its neighbour toward the chat (or
   // its only neighbour) takes the freed space; every other window keeps its
   // size. Sizes are recorded before any close a pointer or panes.ts starts.
@@ -270,7 +294,7 @@ export function createDockHost(
     const chat = api.groups.find((group) =>
       group.panels.some((panel) => kept.has(panel.id)),
     );
-    const neighbours = adjacent(gone, sizes, removed);
+    const neighbours = adjacent(gone, sizes, removed, gutter());
     const towardChat = chat && sizes.get(chat);
     const pick = (side: DockGroup[][]): DockGroup[] =>
       side.find((groups) => groups.length) ?? [];
@@ -285,17 +309,17 @@ export function createDockHost(
     const keep = [...sizes].filter(
       ([group]) => group !== removed && api.groups.includes(group),
     );
-    queueMicrotask(() => {
-      for (let pass = 0; pass < 2; pass++)
-        for (const [group, rect] of keep) {
-          const grow = growing.includes(group);
-          group.api.setSize(
-            vertical
-              ? { height: rect.height + (grow ? gone.height : 0) }
-              : { width: rect.width + (grow ? gone.width : 0) },
-          );
-        }
-    });
+    const axis = vertical ? "height" : "width";
+    const freed = gone[axis] + gutter();
+    queueMicrotask(() =>
+      fit(
+        keep.map(([group, rect]) => [
+          group,
+          rect[axis] + (growing.includes(group) ? freed : 0),
+        ]),
+        axis,
+      ),
+    );
   });
   api.onDidActivePanelChange(({ panel }) => {
     if (panel) recent = [...recent.filter((id) => id !== panel.id), panel.id];
@@ -346,15 +370,20 @@ export function createDockHost(
         !near && beside
           ? api.groups
               .filter((group) => group !== beside.group)
-              .map((group) => [group, group.api.width] as const)
+              .map(
+                (group) =>
+                  [group, group.element.getBoundingClientRect().width] as [
+                    DockGroup,
+                    number,
+                  ],
+              )
           : [];
+      const donor = beside?.group.element.getBoundingClientRect().width ?? 0;
+      const gap = gutter();
       const shared =
         !near && beside
           ? Math.round(
-              Math.min(
-                placement.width ?? beside.group.api.width / 2,
-                beside.group.api.width - 120,
-              ),
+              Math.min(placement.width ?? (donor - gap) / 2, donor - gap - 120),
             )
           : 0;
       api.addPanel({
@@ -362,16 +391,21 @@ export function createDockHost(
         component: "panel",
         title: spec.title,
         inactive: placement.background && !!position,
-        ...(shared ? { initialWidth: shared } : {}),
+        ...(shared ? { initialWidth: shared + gap } : {}),
         ...(position ? { position } : {}),
       });
       const added = !near && beside ? api.getPanel(spec.id)?.group : undefined;
-      if (added)
-        for (let pass = 0; pass < 2; pass++) {
-          for (const [group, width] of widths)
-            if (api.groups.includes(group)) group.api.setSize({ width });
-          added.api.setSize({ width: shared });
-        }
+      if (added) {
+        const targets: [DockGroup, number][] = [
+          [beside!.group, donor - shared - gap],
+          ...widths,
+          [added, shared],
+        ];
+        fit(targets, "width");
+        // Invariant: dockview lays a new window out again on the next frame;
+        // size once more after it.
+        requestAnimationFrame(() => fit(targets, "width"));
+      }
       place();
     },
     remove(id) {
@@ -382,7 +416,8 @@ export function createDockHost(
     has: (id) => !!api.getPanel(id),
     visible: (id) => !!api.getPanel(id)?.api.isVisible,
     ids: () => api.panels.map((panel) => panel.id),
-    width: (id) => api.getPanel(id)?.group.api.width,
+    width: (id) =>
+      api.getPanel(id)?.group.element.getBoundingClientRect().width,
     lastActive: (test) => recent.filter(test).at(-1),
     save: () => api.toJSON(),
     restore(layout) {

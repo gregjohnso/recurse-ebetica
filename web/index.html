@@ -254,6 +254,9 @@
     #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
     /* The rail's Agents button opens the agent list on desktop. */
     #menu-btn { display: none; }
+    /* The agent list is a card like the chat's and each docked window. */
+    #sidebar { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset);
+      border-radius: var(--content-radius); box-shadow: var(--content-ring); }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
