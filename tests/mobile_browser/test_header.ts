@@ -52,9 +52,8 @@ export const tests: BrowserTest[] = [
       expect(
         await actions.evaluateAll((els) => els.map((el) => el.id)),
       ).toEqual(["takeover-btn", "share-link-btn"]);
-      expect(
-        (await page.locator("#pane-rail").boundingBox())!.x,
-      ).toBeLessThanOrEqual(0);
+      const edge = (await page.locator("#pane-rail").boundingBox())!;
+      expect(edge.x + edge.width).toBeGreaterThanOrEqual(width);
       const first = page.locator("#pane-rail [data-pane]").first();
       const childTop = (await first.boundingBox())!.y;
       const takeoverTop = (await page.locator("#takeover-btn").boundingBox())!
@@ -776,10 +775,9 @@ export const tests: BrowserTest[] = [
     const agents = page.locator("#agents-btn");
     const sidebar = page.locator("#sidebar");
     const rail = (await page.locator("#pane-rail").boundingBox())!;
-    expect(rail.x).toBe(0);
-    expect((await sidebar.boundingBox())!.x).toBeGreaterThanOrEqual(
-      rail.x + rail.width,
-    );
+    expect(rail.x + rail.width).toBe(1280);
+    const listBox = (await sidebar.boundingBox())!;
+    expect(listBox.x + listBox.width).toBeLessThanOrEqual(rail.x);
     expect(
       await page.locator("#pane-rail-panels > *").first().getAttribute("id"),
     ).toBe("agents-btn");
