@@ -238,10 +238,12 @@ body.resizing { cursor: col-resize; user-select: none; }
   min-height: 44px; padding: 0; margin: 0; border: 0; background: transparent; color: var(--text);
   justify-content: center; }
 #pane-rail > :is(#trash-btn, #takeover-btn).on, #pane-rail > #share-link-btn:not([hidden]) { display: flex; }
-/* Delete sits alone at the rail's bottom; the panel list keeps the top, with
-   its divider only under a visible take-over control. */
-#pane-rail > #trash-btn { order: 2; }
-#pane-rail > #settings-btn { order: 1; margin-top: auto; width: 44px; height: 44px; padding: 0;
+/* Settings is the rail's bottom button with Delete just above it; the panel
+   list keeps the top, with its divider only under a visible take-over control. */
+#pane-rail > #trash-btn { order: 1; }
+#pane-rail > #trash-btn.on { margin-top: auto; }
+#pane-rail:has(> #trash-btn.on) > #settings-btn { margin-top: 0; }
+#pane-rail > #settings-btn { order: 2; margin-top: auto; width: 44px; height: 44px; padding: 0;
   border: 0; justify-content: center; }
 #pane-rail > #takeover-btn:not(.on) ~ #pane-rail-panels { margin-top: 0; padding-top: 0;
   border-top: 0; }
