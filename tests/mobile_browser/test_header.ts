@@ -789,7 +789,7 @@ export const tests: BrowserTest[] = [
     await pane.waitFor();
     expect(await sidebar.isVisible()).toBe(true);
     if (dir) await page.screenshot({ path: `${dir}/left-rail-explorer.png` });
-    expect(await page.locator("#main").isVisible()).toBe(false);
+    expect(await page.locator("#main").isVisible()).toBe(true);
     expect(
       await page.locator("#dock .dv-tab", { hasText: "Chat" }).count(),
     ).toBe(1);

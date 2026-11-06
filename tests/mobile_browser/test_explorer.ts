@@ -109,6 +109,19 @@ export const tests: BrowserTest[] = [
     await focused(page, "docs/guide.md");
     const groups = page.locator(".dv-groupview");
     const tabs = page.locator(".dv-tab");
+    expect(await dockLayout(page)).toEqual([["Chat"], ["Explorer"]]);
+    const chatGroup = (await groups.first().boundingBox())!;
+    await tabs.filter({ hasText: "Explorer" }).dragTo(page.locator("body"), {
+      targetPosition: {
+        x: chatGroup.x + chatGroup.width / 2,
+        y: chatGroup.y + chatGroup.height / 2,
+      },
+    });
+    await page.waitForFunction(
+      () =>
+        (globalThis as any).document.querySelectorAll(".dv-groupview")
+          .length === 1,
+    );
     expect(await dockLayout(page)).toEqual([["Chat", "Explorer"]]);
     await guide.press("Enter");
     const pane = page.locator('.pane-col[data-pane="explorer"]');

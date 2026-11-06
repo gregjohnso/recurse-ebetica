@@ -257,7 +257,8 @@ On a computer, the icon bar on the right edge holds **Chat** and a button for
 each panel; **Settings** and **Delete** sit at the bottom of the agent list.
 `H` hides the agent list, and the menu button brings it back. The chat and panels are tabbed windows: drag a tab
 onto another window to share it, or onto a window's edge to split it. A
-window opens as a new tab in the right-most window (skipping the Explorer's). A panel's button shows its tab, or closes it when it is
+window opens as a new tab in the right-most window, or beside the chat when
+the chat is the only window. A panel's button shows its tab, or closes it when it is
 already showing. If you
 close the chat, **Chat** or `i` reopens it with your draft intact. Each agent
 keeps its own arrangement, remembered in this browser across reloads.

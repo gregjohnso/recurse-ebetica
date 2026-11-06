@@ -1310,19 +1310,17 @@ function titleOf(id: string): string {
   return registry.find((p) => p.id === id)?.title || id;
 }
 
-/** A new dock panel opens as a tab in the right-most window, skipping one
- * holding the Explorer so a file never hides the tree; only drags split. */
+/** A new dock panel opens as a tab in the right-most window, or in a new
+ * window right of the chat when the chat is alone; else only drags split. */
 function dockPlacement(): DockPlacement {
+  const ids = dock?.ids() ?? [];
+  if (ids.length === 1 && ids[0] === CHAT)
+    return { background: nextBackground, rightOf: CHAT };
   return {
     background: nextBackground,
-    withPanel:
-      dock?.rightmost((id) => id !== EXPLORER) ??
-      dock?.rightmost(() => true) ??
-      dock?.ids()[0],
+    withPanel: dock?.rightmost() ?? ids[0],
   };
 }
-
-const EXPLORER = "explorer";
 
 /** A tab's icon: the pane's rail icon, the chat's, or a file's. */
 function dockIcon(id: string): string {

@@ -474,6 +474,7 @@ export async function splitDockTab(page: Page, title: string): Promise<void> {
   const owner = groups.filter({
     has: page.locator(".dv-tab", { hasText: title }),
   });
+  if ((await owner.locator(".dv-tab").count()) === 1) return;
   const box = (await owner.boundingBox())!;
   await tab.dragTo(page.locator("body"), {
     targetPosition: { x: box.x + box.width - 12, y: box.y + box.height / 2 },

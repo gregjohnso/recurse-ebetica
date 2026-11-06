@@ -25,6 +25,8 @@ export interface DockPlacement {
   background?: boolean;
   /** Join the group showing this panel, as a new tab. */
   withPanel?: string;
+  /** Open in a new window to the right of this panel's group instead. */
+  rightOf?: string;
 }
 
 export interface DockCallbacks {
@@ -46,8 +48,8 @@ export interface DockHost {
   ids(): string[];
   /** The most recently active panel that passes `test`. */
   lastActive(test: (id: string) => boolean): string | undefined;
-  /** Active panel of the right-most (then top-most) window passing `test`. */
-  rightmost(test: (id: string) => boolean): string | undefined;
+  /** The active panel of the right-most (then top-most) window. */
+  rightmost(): string | undefined;
   save(): DockLayout;
   restore(layout: DockLayout | null): void;
   dispose(): void;
@@ -326,13 +328,18 @@ export function createDockHost(
       }
       if (spec.tooltip) tooltips.set(spec.id, spec.tooltip);
       if (spec.keep) kept.add(spec.id);
+      const beside = placement.rightOf && api.getPanel(placement.rightOf);
       const near = placement.withPanel && api.getPanel(placement.withPanel);
       api.addPanel({
         id: spec.id,
         component: "panel",
         title: spec.title,
-        inactive: placement.background && !!near,
-        ...(near ? { position: { referenceGroup: near.group } } : {}),
+        inactive: placement.background && !!(near || beside),
+        ...(beside
+          ? { position: { referenceGroup: beside.group, direction: "right" } }
+          : near
+            ? { position: { referenceGroup: near.group } }
+            : {}),
       });
       const added = api.getPanel(spec.id);
       if (added && !added.api.isVisible) {
@@ -359,11 +366,11 @@ export function createDockHost(
     },
     ids: () => api.panels.map((panel) => panel.id),
     lastActive: (test) => recent.filter(test).at(-1),
-    rightmost(test) {
+    rightmost() {
       let best: { id: string; right: number; top: number } | undefined;
       for (const group of api.groups) {
         const id = group.activePanel?.id;
-        if (!id || !group.panels.every((panel) => test(panel.id))) continue;
+        if (!id) continue;
         const { right, top } = group.element.getBoundingClientRect();
         if (
           !best ||
