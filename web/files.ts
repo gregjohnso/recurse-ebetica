@@ -42,7 +42,13 @@ import {
   reanchor,
   syncSelectionDraft,
 } from "./artifacts/selection-comments.js";
-import { fetchPaneData, openPane, registerPane, syncPanes } from "./panes.js";
+import {
+  fetchPaneData,
+  openPane,
+  registerPane,
+  sideWindowOpen,
+  syncPanes,
+} from "./panes.js";
 import { panePowerbar, renderPowerbarControls } from "./panes/powerbar.js";
 import { renderDocumentMarkdown } from "./document-markdown.js";
 import { installBoxComments, touchDrewBox } from "./files/box-comments.js";
@@ -420,7 +426,9 @@ export async function showFileInPane(
     file = selectedFile(visibleFiles(value).values(), { id: attachmentId });
   }
   if (cid !== state.selectedId) return;
-  if (file && imageHref(cid, file)) return openImage(cid, file);
+  // Spec: With a side window up, an image opens in Files there, not popped out.
+  if (file && imageHref(cid, file) && !sideWindowOpen())
+    return openImage(cid, file);
   selections.set(cid, { id: attachmentId });
   if (paneEl?.isConnected && shownId === cid) {
     paneEl._filesHash = undefined;

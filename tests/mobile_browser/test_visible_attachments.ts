@@ -117,6 +117,16 @@ export const tests: BrowserTest[] = [
         .getByRole("button", { name: "Close image", exact: true })
         .click();
       await page.locator("dialog.image-popout").waitFor({ state: "hidden" });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      const filesButton = page.locator('#pane-rail [data-pane="files"]');
+      await filesButton.click();
+      await published.click();
+      await page
+        .locator('#dock .files-detail[aria-label="quadrants.png"] img')
+        .waitFor();
+      expect(await page.locator("dialog.image-popout").count()).toBe(0);
+      await filesButton.click();
+      await page.setViewportSize({ width: 390, height: 900 });
       await postFixture(base, "seed-model-selection-error", {
         agent: "filename-markdown",
         model: "fauxordinary/faux-1",

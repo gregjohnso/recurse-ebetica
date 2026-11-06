@@ -1458,6 +1458,11 @@ export function closeDockPanel(id: string): void {
   dockClosed(id);
 }
 
+/** Whether the desktop dock shows a window besides the chat's. */
+export function sideWindowOpen(): boolean {
+  return !!dock && !isMobile() && dock.ids().some((id) => id !== CHAT);
+}
+
 /** Open or focus dock-only panel `id`; false when the dock isn't showing. */
 export function openDockPanel(
   id: string,
