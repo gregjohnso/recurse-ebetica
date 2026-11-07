@@ -825,6 +825,58 @@ export const tests: BrowserTest[] = [
     await row.locator('[title="Tag: needs-review"]').waitFor();
     await context.close();
   },
+  // Feature: #0 dragging an agent into the gap between rows slots it in beside them.
+  async function test_sidebar_drag_between_rows(browser, base) {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+    });
+    const ids = await seedSections(context, base);
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await page.goto(`${base}#agent=${ids.grandchild}`);
+    const row = (id: string) => page.locator(`.agent[data-id="${id}"]`);
+    await row(ids.grandchild).waitFor();
+    const parentOf = async (id: string) =>
+      (
+        (await (await context.request.get(`${base}api/tree`)).json()) as any[]
+      ).find((node) => node.id === id).parent ?? null;
+    const drag = (target: string, fraction: number) =>
+      page.evaluate(
+        ([source, target, fraction]) => {
+          const doc = (globalThis as any).document;
+          const find = (id: string) =>
+            doc.querySelector(`#agent-list .agent[data-id="${id}"]`);
+          const from = find(source);
+          const dataTransfer = new (globalThis as any).DataTransfer();
+          const fire = (el: any, type: string) => {
+            const box = el.getBoundingClientRect();
+            el.dispatchEvent(
+              new (globalThis as any).DragEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: box.left + box.width / 2,
+                clientY: box.top + box.height * fraction,
+              }),
+            );
+          };
+          fire(from, "dragstart");
+          fire(find(target), "dragover");
+          fire(find(target), "drop");
+          fire(from, "dragend");
+        },
+        [ids.grandchild, target, fraction] as const,
+      );
+    await drag(ids.child, 0.9);
+    await browserExpect.poll(() => parentOf(ids.grandchild)).toBe(ids.fresh);
+    await drag(ids.fresh, 0.1);
+    await browserExpect.poll(() => parentOf(ids.grandchild)).toBeNull();
+    await browserExpect(row(ids.grandchild)).toHaveAttribute("aria-level", "1");
+    await drag(ids.fresh, 0.5);
+    await browserExpect.poll(() => parentOf(ids.grandchild)).toBe(ids.fresh);
+    expect(errors).toEqual([]);
+    await context.close();
+  },
 ];
 
 async function beforeTagAnswer(

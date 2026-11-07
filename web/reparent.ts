@@ -26,23 +26,24 @@ export function reparentValidity(
   return "ok";
 }
 
-// A target the source can actually be dropped onto and moved (excludes noop:
-// dropping onto the current parent is not an error, but highlights nothing).
-export function isValidDropTarget(
+export type DropZone = "into" | "before" | "after";
+
+/** New parent for a drop into (child) or before/after (sibling) a row. */
+export function dropParent(
   nodes: Record<string, TreeNode>,
-  sourceId: string,
-  targetId: string,
-): boolean {
-  return reparentValidity(nodes, sourceId, targetId) === "ok";
+  rowId: string,
+  zone: DropZone,
+): string | null {
+  return zone === "into" ? rowId : (nodes[rowId]?.parent ?? null);
 }
 
-// Whether a drop should be accepted at all (a no-op counts: releasing on the
-// current parent quietly does nothing rather than reporting an error).
-export function canDrop(
+/** Validity of moving `sourceId` under `parent` (null: the top level). */
+export function moveValidity(
   nodes: Record<string, TreeNode>,
   sourceId: string,
-  targetId: string,
-): boolean {
-  const reason = reparentValidity(nodes, sourceId, targetId);
-  return reason === "ok" || reason === "noop";
+  parent: string | null,
+): ReparentReason {
+  if (parent !== null) return reparentValidity(nodes, sourceId, parent);
+  if (!sourceId || !nodes[sourceId]) return "missing-source";
+  return nodes[sourceId].parent ? "ok" : "noop";
 }

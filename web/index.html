@@ -115,6 +115,9 @@
     background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .agent.drop-bad { border-color: var(--danger);
     background: color-mix(in srgb, var(--danger) 12%, transparent); cursor: no-drop; }
+  /* A drop in the gap above or below a row slots the agent in beside it. */
+  .agent.drop-before { border-top-color: var(--accent); }
+  .agent.drop-after { border-bottom-color: var(--accent); }
   .agent .row1 { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: nowrap; }
   /* A compact colored, shaped marker for each state — no spelled-out word, so
      it stays small on a phone. The shape (filled dot, hollow ring, square,

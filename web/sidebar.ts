@@ -93,7 +93,12 @@ import {
   resolveLAction,
   type TreeRelationship,
 } from "./tree_projection.js";
-import { canDrop, isValidDropTarget, reparentValidity } from "./reparent.js";
+import {
+  dropParent,
+  moveValidity,
+  type DropZone,
+  type ReparentReason,
+} from "./reparent.js";
 import type { TreeNode } from "./types.js";
 import type { Action, Section } from "./sidebar/arrangement.js";
 import { SIDEBAR_CHANGE, shownTags } from "./sidebar/actions.js";
@@ -1209,7 +1214,8 @@ export function killAgent(dying: string | null | undefined): void {
 }
 
 interface PendingReparent {
-  to: string;
+  /** The new parent; null is the top level. */
+  to: string | null;
 }
 const pendingReparents = new Map<string, PendingReparent>();
 
@@ -1222,11 +1228,11 @@ export function applyPendingReparentMasks(nodes: TreeNode[]): TreeNode[] {
       pendingReparents.delete(source);
       continue;
     }
-    if (node.parent === op.to) {
+    if ((node.parent ?? null) === op.to) {
       pendingReparents.delete(source);
       continue;
     }
-    if (!nodes.some((n) => n.id === op.to)) {
+    if (op.to !== null && !nodes.some((n) => n.id === op.to)) {
       pendingReparents.delete(source);
       continue;
     }
@@ -1235,20 +1241,28 @@ export function applyPendingReparentMasks(nodes: TreeNode[]): TreeNode[] {
   return nodes;
 }
 
-export function reparentAgent(source: string, target: string): void {
+/** Move `source` under `target`, or to the top level when `target` is null. */
+export function reparentAgent(source: string, target: string | null): void {
   // Invariant: Agents never move between backends or within a remote.
-  if (parseConversationId(source).label || parseConversationId(target).label)
+  if (
+    parseConversationId(source).label ||
+    (target && parseConversationId(target).label)
+  )
     return;
   const node = state.nodes[source];
-  if (!node || !canDrop(state.nodes, source, target)) return;
-  if (node.parent === target) return;
+  const reason = moveValidity(state.nodes, source, target);
+  if (!node || (reason !== "ok" && reason !== "noop")) return;
+  if ((node.parent ?? null) === target) return;
   const from = node.parent;
-  const targetTitle = state.nodes[target]?.title || target;
   const op: PendingReparent = { to: target };
   pendingReparents.set(source, op);
   node.parent = target;
   selectAgent(source);
-  announceMove(`Moved ${node.title} under ${targetTitle}`);
+  announceMove(
+    target
+      ? `Moved ${node.title} under ${state.nodes[target]?.title || target}`
+      : `Moved ${node.title} to the top level`,
+  );
   backendFor(source)
     .jpost(`/api/conversations/${source}/reparent`, {
       parent: target ? parseConversationId(target).cid : target,
@@ -1644,13 +1658,15 @@ listEl.addEventListener("touchcancel", () => {
   swipe = null;
 });
 
-// ---------------- pointer drag to re-parent (desktop mouse). A row is dragged
-// onto another agent to move it there. Delegated on the persistent list so it
-// survives every keyed re-render; highlights are imperative and re-render is
-// frozen (dragActive) for the brief gesture, then repainted on drop/end.
+// ---------------- pointer drag to re-parent (desktop mouse). A row dropped on
+// an agent moves under it; dropped in a gap between rows, it becomes their
+// sibling. Delegated on the persistent list to survive keyed re-renders;
+// re-render is frozen (dragActive) during the gesture and repainted after.
 function clearDropHighlight(): void {
-  for (const el of listEl.querySelectorAll(".agent.drop-ok, .agent.drop-bad"))
-    el.classList.remove("drop-ok", "drop-bad");
+  for (const el of listEl.querySelectorAll(
+    ".agent:is(.drop-ok, .drop-bad, .drop-before, .drop-after)",
+  ))
+    el.classList.remove("drop-ok", "drop-bad", "drop-before", "drop-after");
 }
 function endDrag(): void {
   clearDropHighlight();
@@ -1686,32 +1702,51 @@ listEl.addEventListener("dragstart", (e: DragEvent) => {
   row!.classList.add("drag-source");
 });
 
-listEl.addEventListener("dragover", (e: DragEvent) => {
-  if (!dragSourceId) return;
-  const id = rowOf(e)?.dataset.id;
-  if (id && isValidDropTarget(state.nodes, dragSourceId, id)) {
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-  }
-});
-
-listEl.addEventListener("dragenter", (e: DragEvent) => {
-  if (!dragSourceId) return;
+// The top and bottom thirds of a row are the gaps above and below it: a drop
+// there makes the source the row's sibling; the middle makes it a child.
+function dropAt(
+  e: DragEvent,
+): { row: HTMLElement; id: string; zone: DropZone } | null {
   const row = rowOf(e);
   const id = row?.dataset.id;
+  if (!row || !id || !state.nodes[id]) return null;
+  const box = row.getBoundingClientRect();
+  const y = (e.clientY - box.top) / box.height;
+  return { row, id, zone: y < 0.3 ? "before" : y > 0.7 ? "after" : "into" };
+}
+
+function dropValidity(
+  source: string,
+  at: { id: string; zone: DropZone },
+): ReparentReason {
+  if (at.id === source) return "noop";
+  return moveValidity(
+    state.nodes,
+    source,
+    dropParent(state.nodes, at.id, at.zone),
+  );
+}
+
+listEl.addEventListener("dragover", (e: DragEvent) => {
+  if (!dragSourceId) return;
+  const at = dropAt(e);
   clearDropHighlight();
-  if (!row || !id || id === dragSourceId) return;
-  const reason = reparentValidity(state.nodes, dragSourceId, id);
-  if (reason === "ok") row.classList.add("drop-ok");
-  else if (reason !== "noop") row.classList.add("drop-bad");
+  if (!at) return;
+  const reason = dropValidity(dragSourceId, at);
+  if (reason === "ok") {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    at.row.classList.add(at.zone === "into" ? "drop-ok" : `drop-${at.zone}`);
+  } else if (reason !== "noop") at.row.classList.add("drop-bad");
 });
 
 listEl.addEventListener("drop", (e: DragEvent) => {
   e.preventDefault();
   const source = dragSourceId;
-  const target = rowOf(e)?.dataset.id;
+  const at = dropAt(e);
   endDrag();
-  if (source && target) reparentAgent(source, target);
+  if (source && at && dropValidity(source, at) === "ok")
+    reparentAgent(source, dropParent(state.nodes, at.id, at.zone));
 });
 
 listEl.addEventListener("dragend", endDrag);
