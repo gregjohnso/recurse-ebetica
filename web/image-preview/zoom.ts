@@ -1,7 +1,7 @@
-// Image-local zoom for the Files gallery. The frame, including box marks,
-// transforms as one unit, so normalized comment coordinates remain unchanged.
-// Drag pans when zoomed; touch and pen hold before drawing a box, while
-// mouse comments require the platform modifier. Wheel and pinch zoom.
+// Image-local zoom for the Files gallery; the frame and its box marks transform
+// as one unit. Drag pans when zoomed. As on macOS, pinch (ctrl-wheel or Safari
+// gestures) and Cmd/Ctrl-wheel zoom; two-finger scrolling pans when zoomed.
+// See README.md for comment gestures.
 export function imageCommentHint(pointer?: string): string {
   if (pointer ? pointer !== "mouse" : matchMedia("(pointer: coarse)").matches)
     return "Hold to comment";
@@ -64,15 +64,44 @@ export function installImageZoom(image: HTMLImageElement): void {
   viewport.addEventListener(
     "wheel",
     (event) => {
+      const unit =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? frame.offsetHeight
+            : 1;
+      let dx = event.deltaX * unit,
+        dy = event.deltaY * unit;
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const step = Math.max(-0.5, Math.min(0.5, dy * 0.01));
+        zoom(scale * Math.exp(-step), event.clientX, event.clientY);
+        return;
+      }
+      // Spec: At fit, plain scrolling falls through to the page and gallery.
+      if (scale === 1) return;
       event.preventDefault();
-      zoom(
-        scale * Math.exp(-event.deltaY * 0.01),
-        event.clientX,
-        event.clientY,
-      );
+      if (event.shiftKey && !dx) [dx, dy] = [dy, 0];
+      x -= dx;
+      y -= dy;
+      paint();
     },
     { passive: false },
   );
+  // Spec: Safari pinch arrives as gesture events; touch pinch uses pointers.
+  let gestureStart = 1;
+  type Gesture = UIEvent & { scale: number; clientX: number; clientY: number };
+  viewport.addEventListener("gesturestart", (event) => {
+    event.preventDefault();
+    gestureStart = scale;
+  });
+  viewport.addEventListener("gesturechange", (event) => {
+    event.preventDefault();
+    if (pointers.size) return;
+    const gesture = event as Gesture;
+    zoom(gestureStart * gesture.scale, gesture.clientX, gesture.clientY);
+  });
+  viewport.addEventListener("gestureend", (event) => event.preventDefault());
   viewport.addEventListener("dblclick", (event) => {
     if (lastPointerTouch || (event.target as Element).closest("button")) return;
     event.preventDefault();

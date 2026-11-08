@@ -263,7 +263,10 @@ export const tests: BrowserTest[] = [
         fitted.x + fitted.width * 0.9,
         fitted.y + fitted.height * 0.1,
       );
+      await page.keyboard.down("Control");
       await page.mouse.wheel(0, -70);
+      await page.mouse.wheel(0, -70);
+      await page.keyboard.up("Control");
       await page.waitForFunction(
         "new DOMMatrix(getComputedStyle(document.querySelector('.files-image-frame')).transform).a > 2",
       );
@@ -290,6 +293,39 @@ export const tests: BrowserTest[] = [
         (fitted.y + fitted.height * 0.1 - frame.y) / frame.height,
       ).toBeCloseTo(0.1, 2);
       const zoomFrame = pane.locator(".files-image-frame");
+      const matrix = () =>
+        zoomFrame.evaluate((element: any) => {
+          const m = new (globalThis as any).DOMMatrix(
+            (globalThis as any).getComputedStyle(element).transform,
+          );
+          return { a: m.a, e: m.e, f: m.f };
+        });
+      const beforeScroll = await matrix();
+      await page.mouse.wheel(-20, 20);
+      await page.waitForFunction(
+        (f) =>
+          new (globalThis as any).DOMMatrix(
+            (globalThis as any).getComputedStyle(
+              (globalThis as any).document.querySelector(".files-image-frame"),
+            ).transform,
+          ).f !== f,
+        beforeScroll.f,
+      );
+      const scrolled = await matrix();
+      expect(scrolled.a).toBeCloseTo(beforeScroll.a, 3);
+      expect(scrolled.e).toBeCloseTo(beforeScroll.e + 20, 1);
+      expect(scrolled.f).toBeCloseTo(beforeScroll.f - 20, 1);
+      await page.mouse.wheel(20, -20);
+      await page.waitForFunction(
+        (f) =>
+          new (globalThis as any).DOMMatrix(
+            (globalThis as any).getComputedStyle(
+              (globalThis as any).document.querySelector(".files-image-frame"),
+            ).transform,
+          ).f >
+          f - 1,
+        beforeScroll.f,
+      );
       const beforePan = await zoomFrame.getAttribute("style");
       const panX = viewport.x + viewport.width / 2;
       const panY = viewport.y + viewport.height / 2;

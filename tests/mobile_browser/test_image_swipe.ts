@@ -50,6 +50,17 @@ export const tests: BrowserTest[] = [
     expect(
       await viewer.locator(".files-detail").getAttribute("aria-label"),
     ).toBe(firstName);
+    const stage = (await viewer.locator(".image-zoom-viewport").boundingBox())!;
+    await page.mouse.move(
+      stage.x + stage.width / 2,
+      stage.y + stage.height / 2,
+    );
+    for (const dx of [80, 40, 40]) await page.mouse.wheel(dx, 4);
+    await viewer.locator(".files-position", { hasText: "2 of 30" }).waitFor();
+    await previous.click();
+    expect(
+      await viewer.locator(".files-detail").getAttribute("aria-label"),
+    ).toBe(firstName);
     await viewer.locator("img[src]").evaluate((image: any) => image.decode());
     const pane = page.locator('.pane-col[data-pane="files"]');
     await viewer

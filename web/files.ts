@@ -538,6 +538,32 @@ function installSwipe(
     { passive: true },
   );
   element.addEventListener("touchcancel", () => (start = null));
+  // Spec: A sideways trackpad swipe steps once per gesture, momentum included.
+  let swept = 0;
+  let sweptAt = 0;
+  element.addEventListener(
+    "wheel",
+    (event) => {
+      const target = event.target as Element;
+      if (event.timeStamp - sweptAt > 250) swept = 0;
+      sweptAt = event.timeStamp;
+      if (
+        swept === Infinity ||
+        event.ctrlKey ||
+        event.metaKey ||
+        Math.abs(event.deltaX) <= Math.abs(event.deltaY) ||
+        target.closest('[data-zoomed="true"]') ||
+        !target.closest(".files-detail") ||
+        scrollsSideways(target)
+      )
+        return;
+      swept += event.deltaX;
+      if (Math.abs(swept) < 60) return;
+      step(swept > 0 ? 1 : -1);
+      swept = Infinity;
+    },
+    { passive: true },
+  );
   element.addEventListener(
     "touchend",
     (event) => {

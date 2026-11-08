@@ -6,8 +6,11 @@ When zoomed, dragging with one finger, a pen or a mouse pans. At fit, touch
 swipes navigate the gallery; a mouse or pen drag does nothing. Touch and pen
 hold, then drag to comment. Mouse comments use Command-drag on macOS and
 Ctrl-drag elsewhere. Double-tap and double-click toggle zoom; pinch zooms and
-pans. All wheel events zoom around the cursor, including trackpad scrolling:
-browser wheel events do not reliably identify the device. A tap and the compact
+pans. Wheel input follows macOS Preview: trackpad pinch (a ctrl-wheel in
+Chromium and Firefox, gesture events in Safari) and Command/Ctrl-wheel zoom
+around the cursor; plain two-finger or mouse-wheel scrolling pans a zoomed
+image, keeping the system's momentum. At fit, vertical scrolling reaches the
+page and a sideways swipe steps the gallery once per gesture. A tap and the compact
 comment bar explain commenting, updating for the pointer being used, including
 pen input. Arrow keys navigate and Escape closes the viewer;
 the Fit image button resets zoom. Download saves the original file with its
