@@ -26,7 +26,12 @@ import {
   embedded,
 } from "./state.js";
 import { $, listEl, titleEl, inputEl } from "./dom.js";
-import { MESSAGE_ICON, NEW_ICON, SAFETY_OFF_ICON } from "./icons.js";
+import {
+  MESSAGE_ICON,
+  NEEDS_INPUT_ICON,
+  NEW_ICON,
+  SAFETY_OFF_ICON,
+} from "./icons.js";
 import { relTime, kidsBadge } from "./util.js";
 import { isTakenOver } from "./active-agents.js";
 import { attachHoldTip } from "./hold-tip.js";
@@ -436,7 +441,13 @@ function rowT(
         aria-label=${agentState.description}
         title=${agentState.description}
       >
-        <span class="state-mark" aria-hidden="true"></span>
+        <span class="state-mark" aria-hidden="true"
+          >${
+            agentState.key === "needs-input"
+              ? unsafeHTML(NEEDS_INPUT_ICON)
+              : nothing
+          }</span
+        >
       </span>
       ${n.safety_off ? SAFETY_OFF_TAG : nothing}
       <span class="title">${n.title}</span>
