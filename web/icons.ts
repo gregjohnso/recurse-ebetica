@@ -127,7 +127,6 @@ export const FILE_DELETE_ICON = line(
 );
 
 // Sidebar status tags: taken over by the operator, safety review off.
-export const TAKEN_OVER_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" stroke-dasharray="3.2 2.4"/></svg>`;
 export const SAFETY_OFF_ICON = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>`;
 
 // Reply attachments: download, file.

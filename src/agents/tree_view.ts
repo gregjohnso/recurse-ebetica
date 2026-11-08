@@ -138,7 +138,10 @@ function markAncestors(
   }
 }
 
-/** Working/waiting overlays over base statuses; taken-over agents sit out. */
+/**
+ * Working/waiting overlays over base statuses. A taken-over agent's own turn
+ * never marks its ancestors, but it does show work running beneath it.
+ */
 export function applyOverlays(
   base: ReadonlyMap<string, string>,
   parents: ReadonlyMap<string, string | null>,
@@ -158,8 +161,7 @@ export function applyOverlays(
   const out = new Map(base);
   for (const cid of running) {
     const s = out.get(cid);
-    if (!takenOver.has(cid) && (s === "idle" || s === "waiting"))
-      out.set(cid, "working");
+    if (s === "idle" || s === "waiting") out.set(cid, "working");
   }
   const waiting = new Set<string>();
   markAncestors(

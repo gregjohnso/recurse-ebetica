@@ -26,12 +26,7 @@ import {
   embedded,
 } from "./state.js";
 import { $, listEl, titleEl, inputEl } from "./dom.js";
-import {
-  MESSAGE_ICON,
-  NEW_ICON,
-  SAFETY_OFF_ICON,
-  TAKEN_OVER_ICON,
-} from "./icons.js";
+import { MESSAGE_ICON, NEW_ICON, SAFETY_OFF_ICON } from "./icons.js";
 import { relTime, kidsBadge } from "./util.js";
 import { isTakenOver } from "./active-agents.js";
 import { attachHoldTip } from "./hold-tip.js";
@@ -313,12 +308,6 @@ function anchorHasChildren(anchor: string): boolean {
   );
 }
 
-const TAKEN_OVER_TAG = html`<span
-  class="takeover-tag"
-  aria-hidden="true"
-  title="Taken over by the operator"
-  >${unsafeHTML(TAKEN_OVER_ICON)}</span
->`;
 const SAFETY_OFF_TAG = html`<span
   class="safety-off-tag"
   role="img"
@@ -399,9 +388,6 @@ function rowT(
     state.pendingStops[n.id] === true,
     n.id !== state.selectedId && needsInput(n),
   );
-  // Invariant: Idle take-over already owns the yellow status ring. Other states
-  // keep their activity marker and get this independent tag instead.
-  const showTakeoverTag = takenOver && agentState.key !== "taken-over";
   const cls =
     "agent" +
     (n.id === state.selectedId ? " selected" : "") +
@@ -445,7 +431,7 @@ function rowT(
   >
     <div class="row1">
       <span
-        class="agent-state ${agentState.key}"
+        class="agent-state ${agentState.key}${takenOver ? " held" : ""}"
         role="img"
         aria-label=${agentState.description}
         title=${agentState.description}
@@ -469,7 +455,6 @@ function rowT(
           (name) =>
             html`<span class="badge" title=${`Tag: ${name}`}>${name}</span>`,
         )}
-      ${showTakeoverTag ? TAKEN_OVER_TAG : nothing}
       ${
         n.queued
           ? html`<span

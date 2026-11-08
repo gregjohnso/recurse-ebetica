@@ -116,12 +116,8 @@ async function openSidebar(
   return errors;
 }
 
-async function assertTakeoverTag(row: Locator): Promise<void> {
-  const marker = row.locator(".takeover-tag");
-  expect(await marker.count()).toBe(1);
-  expect(await marker.getAttribute("title")).toBe("Taken over by the operator");
-  expect(await marker.getAttribute("aria-hidden")).toBe("true");
-}
+const markColor = (mark: Locator) =>
+  mark.evaluate((el) => getComputedStyle(el).color as string);
 
 async function assertStatusRows(page: Page): Promise<void> {
   const heldRunningRow = page.locator('.agent[data-id="shot-held-running"]');
@@ -133,7 +129,6 @@ async function assertStatusRows(page: Page): Promise<void> {
   expect(await heldRunning.getAttribute("title")).toBe(
     "Running this agent's current turn, taken over by the operator",
   );
-  await assertTakeoverTag(heldRunningRow);
   expect(await heldRunningRow.locator(".kids").isVisible()).toBeTrue();
   expect(await heldRunningRow.locator(".queue-badge").isVisible()).toBeTrue();
 
@@ -146,7 +141,6 @@ async function assertStatusRows(page: Page): Promise<void> {
   expect(await heldWaiting.getAttribute("title")).toBe(
     "Waiting on background work, taken over by the operator",
   );
-  await assertTakeoverTag(heldWaitingRow);
 
   const heldRow = page.locator('.agent[data-id="shot-held-idle"]');
   const held = heldRow.locator(".agent-state");
@@ -155,13 +149,18 @@ async function assertStatusRows(page: Page): Promise<void> {
     "Taken over by the operator",
   );
   expect(await held.getAttribute("title")).toBe("Taken over by the operator");
-  expect(await heldRow.locator(".takeover-tag").count()).toBe(0);
+  const orange = await markColor(held);
+  for (const mark of [heldRunning, heldWaiting, held])
+    expect((await mark.getAttribute("class")) ?? "").toContain("held");
+  expect(await markColor(heldRunning)).toBe(orange);
+  expect(await markColor(heldWaiting)).toBe(orange);
 
   const idleRow = page.locator('.agent[data-id="shot-idle"]');
   const idle = idleRow.locator(".agent-state");
   expect((await idle.getAttribute("class")) ?? "").toContain("idle");
   expect(await idle.getAttribute("aria-label")).toBe("Idle");
-  expect(await idleRow.locator(".takeover-tag").count()).toBe(0);
+  expect((await idle.getAttribute("class")) ?? "").not.toContain("held");
+  expect(await markColor(idle)).not.toBe(orange);
   expect(await page.locator("#takeover-btn").count()).toBe(1);
   expect(await page.locator("#mute-btn").count()).toBe(0);
   expect(await page.locator("#pin-btn").count()).toBe(0);
