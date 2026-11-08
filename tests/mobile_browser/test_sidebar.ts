@@ -6,6 +6,7 @@ import { expect as browserExpect } from "playwright/test";
 import {
   captureErrors,
   gotoRoot,
+  postFixture,
   startNewAgent,
   type BrowserTest,
 } from "./common";
@@ -874,6 +875,43 @@ export const tests: BrowserTest[] = [
     await browserExpect(row(ids.grandchild)).toHaveAttribute("aria-level", "1");
     await drag(ids.fresh, 0.5);
     await browserExpect.poll(() => parentOf(ids.grandchild)).toBe(ids.fresh);
+    expect(errors).toEqual([]);
+    await context.close();
+  },
+
+  // Feature: #0 a finished turn the operator has not opened shows a yellow star.
+  async function test_sidebar_needs_input_star(browser, base) {
+    const { agent } = await postFixture(base, "seed-durable-clear");
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+    });
+    const tree = (await (
+      await context.request.get(`${base}api/tree`)
+    ).json()) as { id: string; parent: string | null }[];
+    const parent = tree.find((node) => node.id === agent)!.parent!;
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await page.goto(`${base}#agent=${agent}`);
+    const row = page.locator(`.agent[data-id="${agent}"]`);
+    const mark = row.locator(".agent-state");
+    await row.waitFor();
+    await page.locator(`.agent[data-id="${parent}"]`).click();
+    await browserExpect(mark).toHaveClass(/\bidle\b/);
+    const sent = await page.request.post(
+      `${base}api/conversations/${agent}/deliver`,
+      { data: { content: "Say hello.", client_message_id: "needs-input-1" } },
+    );
+    expect(sent.ok()).toBe(true);
+    await browserExpect(mark).toHaveClass(/\bneeds-input\b/);
+    expect(await mark.getAttribute("aria-label")).toBe(
+      "Finished a turn you have not looked at yet",
+    );
+    await row.click();
+    await browserExpect(mark).toHaveClass(/\bidle\b/);
+    await page.locator(`.agent[data-id="${parent}"]`).click();
+    await page.reload();
+    await row.waitFor();
+    await browserExpect(mark).toHaveClass(/\bidle\b/);
     expect(errors).toEqual([]);
     await context.close();
   },

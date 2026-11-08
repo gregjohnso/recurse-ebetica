@@ -40,6 +40,8 @@ import {
   queuedDescription,
   queuedLabel,
 } from "./agent-status.js";
+import { markSeen, needsInput } from "./needs-input.js";
+import "./spin-sync.js";
 import {
   abandonBackgroundWarming,
   refreshConv,
@@ -395,6 +397,7 @@ function rowT(
     n.restart_parked,
     takenOver,
     state.pendingStops[n.id] === true,
+    n.id !== state.selectedId && needsInput(n),
   );
   // Invariant: Idle take-over already owns the yellow status ring. Other states
   // keep their activity marker and get this independent tag instead.
@@ -505,6 +508,8 @@ export function renderSidebar(): void {
   // Invariant: Repainting during imperative rename/swipe would destroy input or
   // overwrite live gesture classes. Freeze until the interaction completes.
   if (renaming || (swipe && swipe.active) || dragActive) return;
+  const shown = state.nodes[state.selectedId];
+  if (shown) markSeen(shown);
   if (
     !state.nodes[state.cursorId] &&
     state.nodes[state.selectedId] &&
@@ -1750,3 +1755,9 @@ listEl.addEventListener("drop", (e: DragEvent) => {
 });
 
 listEl.addEventListener("dragend", endDrag);
+
+/** Returning to the page marks the open conversation's reply as seen. */
+function renderWhenShown(): void {
+  if (!document.hidden) renderSidebar();
+}
+document.addEventListener("visibilitychange", renderWhenShown);

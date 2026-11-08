@@ -131,12 +131,23 @@
     border: 1px solid currentColor; background: currentColor; }
   .agent .agent-state.running, .agent .agent-state.working {
     color: var(--running-strong); }
+  /* Running spins a green arc, as Pi's terminal spinner does; work further
+     down the subtree spins a thinner, fainter arc. spin-sync.ts keeps every
+     spinner in phase. */
   .agent .agent-state.running .state-mark, .agent .agent-state.working .state-mark {
-    animation: pulse 1.2s infinite; }
-  .agent .agent-state.working .state-mark { background: transparent; border-width: 2px; }
+    background: transparent; border-width: 2px; border-top-color: transparent;
+    animation: state-spin .8s linear infinite; }
+  .agent .agent-state.working .state-mark { border-width: 1.5px; opacity: .7; }
+  @keyframes state-spin { to { transform: rotate(360deg); } }
+  /* Needs input: a finished turn the operator has not seen, a yellow star. */
+  .agent .agent-state.needs-input { color: var(--warn); }
+  .agent .agent-state.needs-input .state-mark { width: 12px; height: 12px;
+    border: 0; border-radius: 0; /* radius-check: allow a status mark */
+    clip-path: polygon(50% 0, 62% 35%, 98% 35%, 69% 57%, 80% 92%, 50% 71%,
+      20% 92%, 31% 57%, 2% 35%, 38% 35%); }
   /* Waiting: the agent's own turn settled but background work continues —
      a hollow green ring with a centered dot, deliberately static while the
-     live-turn states pulse, so a parked branch never reads as active. */
+     live-turn states spin, so a parked branch never reads as active. */
   .agent .agent-state.waiting { color: var(--running-strong); }
   .agent .agent-state.waiting .state-mark { background:
     radial-gradient(circle, currentColor 1.5px, transparent 1.7px);
@@ -160,7 +171,8 @@
   @keyframes pulse { 50% { opacity: .6; } }
   @media (prefers-reduced-motion: reduce) {
     .agent .agent-state.running .state-mark,
-    .agent .agent-state.working .state-mark { animation: none; }
+    .agent .agent-state.working .state-mark,
+    .live-dot { animation: none; }
   }
   @media (forced-colors: active) {
     .agent .agent-state.running .state-mark,
@@ -327,11 +339,9 @@
     border-radius: 999px;
     display: none; white-space: nowrap; flex: none; }
   .chip.on { display: inline-block; }
-  /* the working indicator: a green dot before the title, matching the sidebar
-     status dot; only shown while a turn is running */
-  #conv-status { width: 8px; height: 8px; border-radius: 50%; flex: none;
-    background: var(--running); display: none; }
-  #conv-status.running { display: inline-block; animation: pulse 1.2s infinite; }
+  /* #conv-status keeps the running state as a class for scripts; the live
+     panel's spinner under the thread is the visible working indicator. */
+  #conv-status { display: none; }
   /* subagent count "N 👤" pill, mirroring the sidebar .kids badge */
   #chip-kids:not(.on), #chip-queued:not(.on), #chip-state:not(.on) { display: none; }
   #chip-kids.on, #chip-queued.on, #chip-state.on { display: inline-flex; }
@@ -945,13 +955,15 @@
   .live-panel-box { display: flex; flex-direction: column; align-items: stretch;
     gap: 0; width: 100%; min-width: 0; max-width: 100%; height: 34px;
     padding: 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg);
-    --live-dot: 7px;
+    --live-dot: 9px;
     background: var(--panel-2); overflow: hidden; }
   .live-panel-head { display: flex; align-items: center; gap: var(--space-3);
     min-width: 0; width: 100%; height: 32px; white-space: nowrap; }
   .live-dot { flex: none; width: var(--live-dot); height: var(--live-dot); border-radius: 50%;
-    background: var(--running); animation: pulse 1.6s infinite; }
-  .live-panel-box.is-overlay .live-dot { background: var(--warn); animation: none; }
+    box-sizing: border-box; border: 1.5px solid var(--running);
+    border-top-color: transparent; animation: state-spin .8s linear infinite; }
+  .live-panel-box.is-overlay .live-dot { border-color: var(--warn);
+    background: var(--warn); animation: none; }
   /* Panel words use the body font; only the argument fragment stays monospace
      (shared with the tool-call rows above). */
   .live-panel-box .live-label { display: flex; align-items: center; flex: 1 1 auto;

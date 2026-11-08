@@ -467,7 +467,8 @@ export const tests: BrowserTest[] = [
         return route.fulfill({ json: { ok: true } });
       });
       await gotoRoot(page, base);
-      await page.locator("#conv-status.running").waitFor();
+      await page.locator("#conv-status.running").waitFor({ state: "attached" });
+      expect(await page.locator("#conv-status").isVisible()).toBe(false);
       const shot = async (stage: string) => {
         const dir = process.env.RECURSE_SCREENSHOT_DIR;
         if (!dir) return;
@@ -478,8 +479,8 @@ export const tests: BrowserTest[] = [
       };
       const boxes = await Promise.all(
         (width === 412
-          ? ["#up-top", "#conv-status", "#conv-title"]
-          : ["#up-top", "#conv-status", "#conv-title", "#chip-kids"]
+          ? ["#up-top", "#conv-title"]
+          : ["#up-top", "#conv-title", "#chip-kids"]
         ).map((id) => page.locator(id).boundingBox()),
       );
       const header = (await page.locator("#topbar").boundingBox())!;

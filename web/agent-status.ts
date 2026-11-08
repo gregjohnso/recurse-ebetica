@@ -5,6 +5,7 @@ import type { TreeNode } from "./types.js";
 
 export type AgentStateKey =
   | "idle"
+  | "needs-input"
   | "running"
   | "working"
   | "waiting"
@@ -32,6 +33,10 @@ const STATES: Record<
   idle: {
     label: "Idle",
     description: "Idle",
+  },
+  "needs-input": {
+    label: "Needs input",
+    description: "Finished a turn you have not looked at yet",
   },
   running: {
     label: "Running",
@@ -81,11 +86,19 @@ export function presentAgentState(
   restartParked?: boolean,
   takenOver = false,
   stopPending = false,
+  unseenReply = false,
 ): AgentStatePresentation {
   let key =
-    typeof status === "string" && KNOWN.has(status)
-      ? (status as Exclude<AgentStateKey, "queued" | "taken-over">)
+    typeof status === "string" &&
+    KNOWN.has(status) &&
+    (status as string) !== "needs-input"
+      ? (status as Exclude<
+          AgentStateKey,
+          "queued" | "taken-over" | "needs-input"
+        >)
       : "unknown";
+  if (unseenReply && key === "idle")
+    return { key: "needs-input", ...STATES["needs-input"] };
   if (stopPending && (key === "running" || key === "interrupting"))
     key = "interrupting";
   if (takenOver && key === "idle")
