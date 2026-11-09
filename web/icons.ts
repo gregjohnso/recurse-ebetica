@@ -80,6 +80,9 @@ export const SETTINGS_CATEGORY_ICONS = {
   keyboard: outline(
     '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
   ),
+  status: outline(
+    '<circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M11 7h9M11 17h9"/>',
+  ),
 };
 export const CHEVRON_RIGHT_ICON = outline('<path d="m9 6 6 6-6 6"/>');
 export const PERSON_ICON =

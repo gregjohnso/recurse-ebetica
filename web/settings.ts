@@ -29,6 +29,7 @@ import { buildConnectedBackends } from "./settings/backends.js";
 import { buildNotificationsSection } from "./settings/notifications.js";
 import { buildUpdatesSection, showRelease } from "./settings/updates.js";
 import { buildShortcutsSection } from "./settings/shortcuts.js";
+import { buildStatusLegend } from "./settings/status-legend.js";
 import {
   categoryButton,
   categoryPage,
@@ -137,6 +138,7 @@ function renderSettings(label: string) {
         "models",
         "agents",
         "keyboard",
+        "status",
       ] as const);
   for (const cat of cats) {
     const btn = categoryButton(cat);
@@ -369,6 +371,7 @@ function mcpJsonError(text: string): string | null {
 }
 
 settingsSection("Keyboard shortcuts", "keyboard", buildShortcutsSection);
+settingsSection("Agent status", "status", buildStatusLegend);
 settingsSection("MCP servers", "agents", (body) => {
   const { api } = settingsClient();
   body.innerHTML = `

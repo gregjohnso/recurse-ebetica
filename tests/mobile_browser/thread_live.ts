@@ -893,7 +893,9 @@ export const liveTests: BrowserTest[] = [
         await page
           .locator('.agent[data-id="main"]')
           .evaluate((element) => (element as HTMLElement).click());
-        await page.locator("#conv-status.running").waitFor();
+        await page
+          .locator("#conv-status.running")
+          .waitFor({ state: "attached" });
         expect(await row.innerText()).toBe(reply);
         expect(await row.locator(".reveal-chunk").count()).toBe(0);
         await page.locator("#input").fill("status update please");

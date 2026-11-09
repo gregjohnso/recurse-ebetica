@@ -803,7 +803,7 @@ export const tests: BrowserTest[] = [
       await page.locator("#input").fill("Run until stopped");
       await page.locator("#send").click();
       await page.locator(".working.live-panel").waitFor();
-      await page.locator("#conv-status.running").waitFor();
+      await page.locator("#conv-status.running").waitFor({ state: "attached" });
       await runningTree;
       await browserExpect
         .poll(async () =>
@@ -840,7 +840,7 @@ export const tests: BrowserTest[] = [
         .not.toBe("running");
       await openSettingsPanel(page);
       const settingsNav = page.locator("#settings-nav button");
-      await browserExpect(settingsNav).toHaveCount(5);
+      await browserExpect(settingsNav).toHaveCount(7);
       await page.locator("#settings-backend").selectOption("Laptop");
       await browserExpect(settingsNav).toHaveText([
         "Authentication",
@@ -917,7 +917,7 @@ export const tests: BrowserTest[] = [
         })
         .waitFor();
       await page.locator("#settings-backend").selectOption("");
-      await browserExpect(settingsNav).toHaveCount(5);
+      await browserExpect(settingsNav).toHaveCount(7);
       await page.locator("#settings-close").click();
       await page.goto(`${base}#agent=Laptop/${writable.id}`);
       await page.locator("#input").waitFor();

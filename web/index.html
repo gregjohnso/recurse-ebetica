@@ -160,8 +160,8 @@
     border-width: 1.5px; background: transparent; }
   .agent .agent-state.held:is(.taken-over, .running, .working, .waiting) {
     color: color-mix(in oklch, var(--warn) 65%, var(--danger)); }
-  .agent .agent-state.stopping { color: var(--warn); }
-  .agent .agent-state.stopping .state-mark { border-radius: 1px; } /* radius-check: allow a status mark */
+  .agent .agent-state.interrupting { color: var(--warn); }
+  .agent .agent-state.interrupting .state-mark { border-radius: 1px; } /* radius-check: allow a status mark */
   .agent .agent-state.interrupted { color: var(--warn); }
   .agent .agent-state.interrupted .state-mark { background: transparent; border-width: 2px; }
   .agent .agent-state.error { color: var(--danger); }
@@ -211,6 +211,17 @@
 
   /* Settings > Keyboard shortcuts (web/settings/shortcuts.ts). */
  .shortcut-group + .shortcut-group { margin-top: var(--space-5); }
+ /* Settings > Agent status: sidebar marks beside their meaning. */
+ #status-legend .status-legend-row { display: grid; align-items: start;
+   grid-template-columns: 44px minmax(0, 1fr); column-gap: var(--space-3);
+   min-height: 0; padding: var(--space-2) 0; cursor: default; }
+ #status-legend .status-legend-row:hover { background: none; }
+ #status-legend .status-legend-mark { grid-row: span 2; display: flex;
+   justify-content: center; padding-top: var(--space-1); }
+ #status-legend .status-legend-name { color: var(--text); font-size: 0.8125rem;
+   font-weight: 600; }
+ #status-legend .status-legend-text { grid-column: 2; color: var(--muted);
+   font-size: 0.78125rem; }
  .shortcut-title { color: var(--text); font-size: 0.71875rem;
  font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: var(--space-2); }
  #shortcut-groups .keys { display: flex; flex-wrap: wrap; color: var(--muted); font-size: 0.78125rem;

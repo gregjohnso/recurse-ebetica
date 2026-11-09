@@ -235,6 +235,7 @@ export const tests: BrowserTest[] = [
       "Models",
       "MCPs",
       "Keyboard shortcuts",
+      "Agent status",
     ]);
     for (const button of await nav.all())
       expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -499,7 +500,7 @@ export const tests: BrowserTest[] = [
     );
     await visibleAndUncovered(page, ".update-now");
     await closeDetails(page);
-    expect(await page.locator("#settings-nav button").count()).toBe(6);
+    expect(await page.locator("#settings-nav button").count()).toBe(7);
     expect(await page.locator("#settings-modal .signout").count()).toBe(3);
     expect(
       await page
@@ -1120,6 +1121,28 @@ export const tests: BrowserTest[] = [
     await group.waitFor();
     expect(await group.locator("kbd").count()).toBeGreaterThan(0);
     expect(await page.locator("#key-mode").isVisible()).toBeTrue();
+    await page.locator('#settings-nav button[data-cat="status"]').click();
+    const legend = page.locator("#status-legend");
+    await legend.waitFor();
+    const row = (name: string) =>
+      legend.locator(".status-legend-row", { hasText: name }).first();
+    await browserExpect(
+      row("Background work").locator(".waiting"),
+    ).toBeVisible();
+    expect(await row("Needs input").locator(".needs-input svg").count()).toBe(
+      1,
+    );
+    expect(
+      await row("Working")
+        .locator(".state-mark")
+        .evaluate(
+          (el) => (globalThis as any).getComputedStyle(el).animationName,
+        ),
+    ).toBe("state-spin");
+    if (process.env.RECURSE_SCREENSHOT_DIR)
+      await legend.screenshot({
+        path: `${process.env.RECURSE_SCREENSHOT_DIR}/status-legend.png`,
+      });
     expect(errors).toEqual([]);
     await context.close();
   },

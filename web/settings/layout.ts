@@ -140,6 +140,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   models: "Models",
   agents: "MCPs",
   keyboard: "Keyboard shortcuts",
+  status: "Agent status",
 };
 
 const span = (className: string, html = "", text = "") => {
