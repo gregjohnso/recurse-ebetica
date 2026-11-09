@@ -9,8 +9,20 @@ import {
   type SerializedDockview,
   themeAbyssSpaced,
 } from "dockview";
+import { MAX_DOCK_SPOTS } from "./layout.js";
 
 export type DockLayout = SerializedDockview;
+
+export type DockSpot = {
+  /** The panel whose window a closed panel last sat beside or within. */
+  ref: string;
+  direction: "left" | "right" | "above" | "below" | "within";
+  /** Its tab position, for `within`. */
+  index?: number;
+  /** Its window's width (left/right) or height (above/below), in pixels. */
+  size?: number;
+};
+export type DockSpots = Record<string, DockSpot>;
 
 export interface DockPanelSpec {
   id: string;
@@ -51,7 +63,9 @@ export interface DockHost {
   /** The active panel of the right-most (then top-most) window. */
   rightmost(): string | undefined;
   save(): DockLayout;
-  restore(layout: DockLayout | null): void;
+  /** Where each panel closed this visit last sat, for reopening there. */
+  spots(): DockSpots;
+  restore(layout: DockLayout | null, spots?: DockSpots): void;
   dispose(): void;
 }
 
@@ -131,6 +145,43 @@ function adopt(parent: HTMLElement, child: HTMLElement): void {
   }
 }
 
+/** Where `panel` sits now, relative to a tab or window that would stay. */
+function spotOf(
+  panel: IDockviewPanel,
+  groups: readonly DockGroup[],
+  gap: number,
+): DockSpot | undefined {
+  const group = panel.group;
+  const tabs = group.panels;
+  if (tabs.length > 1) {
+    const index = tabs.indexOf(panel);
+    const ref = (tabs[index - 1] ?? tabs[index + 1])!;
+    return { ref: ref.id, direction: "within", index };
+  }
+  const box = group.element.getBoundingClientRect();
+  const near = (a: number, b: number) => Math.abs(a - b) < 2;
+  const overlap = (a0: number, a1: number, b0: number, b1: number) =>
+    Math.min(a1, b1) - Math.max(a0, b0);
+  let best: { spot: DockSpot; shared: number } | undefined;
+  for (const other of groups) {
+    const ref = other.activePanel?.id;
+    if (other === group || !ref) continue;
+    const r = other.element.getBoundingClientRect();
+    const across = overlap(r.top, r.bottom, box.top, box.bottom);
+    const along = overlap(r.left, r.right, box.left, box.right);
+    const sides: [boolean, DockSpot["direction"], number, number][] = [
+      [near(r.right + gap, box.left), "right", across, box.width],
+      [near(box.right + gap, r.left), "left", across, box.width],
+      [near(r.bottom + gap, box.top), "below", along, box.height],
+      [near(box.bottom + gap, r.top), "above", along, box.height],
+    ];
+    for (const [touches, direction, shared, size] of sides)
+      if (touches && shared > 1 && (!best || shared > best.shared))
+        best = { spot: { ref, direction, size: Math.round(size) }, shared };
+  }
+  return best?.spot;
+}
+
 let styles: Promise<void> | null = null;
 /** Load dockview's stylesheet; the dock is built once it applies. */
 export function loadDockStyles(): Promise<void> {
@@ -150,6 +201,16 @@ export function createDockHost(
   callbacks: DockCallbacks,
 ): DockHost {
   let quiet = 0;
+  // Invariant: Spots are noted for open panels as the layout changes, and
+  // kept for a panel once it closes, so reopening it returns it there.
+  let spots = new Map<string, DockSpot>();
+  const live = new Map<string, DockSpot>();
+  const remember = (id: string, spot: DockSpot): void => {
+    spots.delete(id);
+    spots.set(id, spot);
+    for (const old of spots.keys())
+      if (spots.size > MAX_DOCK_SPOTS) spots.delete(old);
+  };
   const tooltips = new Map<string, string>();
   const kept = new Set<string>();
   let recent: string[] = [];
@@ -220,7 +281,17 @@ export function createDockHost(
     place();
   };
   api.onDidAddPanel(label);
+  const note = (): void => {
+    const gap = gutter();
+    for (const panel of api.panels) {
+      const spot = spotOf(panel, api.groups, gap);
+      if (spot) live.set(panel.id, spot);
+    }
+  };
   api.onDidRemovePanel((panel) => {
+    const spot = live.get(panel.id);
+    live.delete(panel.id);
+    if (spot && !quiet) remember(panel.id, spot);
     tooltips.delete(panel.id);
     recent = recent.filter((id) => id !== panel.id);
     for (const [element, id] of pending)
@@ -310,7 +381,10 @@ export function createDockHost(
     if (panel) recent = [...recent.filter((id) => id !== panel.id), panel.id];
     callbacks.changed();
   });
-  api.onDidLayoutChange(() => callbacks.changed());
+  api.onDidLayoutChange(() => {
+    note();
+    callbacks.changed();
+  });
   const silently = (run: () => void): void => {
     quiet++;
     try {
@@ -328,18 +402,35 @@ export function createDockHost(
       }
       if (spec.tooltip) tooltips.set(spec.id, spec.tooltip);
       if (spec.keep) kept.add(spec.id);
+      const spot = spots.get(spec.id);
+      const back = spot && api.getPanel(spot.ref);
       const beside = placement.rightOf && api.getPanel(placement.rightOf);
       const near = placement.withPanel && api.getPanel(placement.withPanel);
+      const across = spot?.direction === "left" || spot?.direction === "right";
       api.addPanel({
         id: spec.id,
         component: "panel",
         title: spec.title,
-        inactive: placement.background && !!(near || beside),
-        ...(beside
-          ? { position: { referenceGroup: beside.group, direction: "right" } }
-          : near
-            ? { position: { referenceGroup: near.group } }
-            : {}),
+        inactive: placement.background && !!(back || near || beside),
+        ...(back
+          ? {
+              position: {
+                referencePanel: back,
+                ...(spot.direction === "within"
+                  ? { index: spot.index }
+                  : { direction: spot.direction }),
+              },
+              ...(spot.size
+                ? across
+                  ? { initialWidth: spot.size }
+                  : { initialHeight: spot.size }
+                : {}),
+            }
+          : beside
+            ? { position: { referenceGroup: beside.group, direction: "right" } }
+            : near
+              ? { position: { referenceGroup: near.group } }
+              : {}),
       });
       const added = api.getPanel(spec.id);
       if (added && !added.api.isVisible) {
@@ -357,7 +448,10 @@ export function createDockHost(
     remove(id) {
       record();
       const panel = api.getPanel(id);
-      if (panel) silently(() => api.removePanel(panel));
+      if (!panel) return;
+      const spot = spotOf(panel, api.groups, gutter()) ?? live.get(id);
+      silently(() => api.removePanel(panel));
+      if (spot) remember(id, spot);
     },
     has: (id) => !!api.getPanel(id),
     visible: (id) => {
@@ -382,7 +476,8 @@ export function createDockHost(
       return best?.id;
     },
     save: () => api.toJSON(),
-    restore(layout) {
+    spots: () => Object.fromEntries(spots),
+    restore(layout, saved = {}) {
       for (const id of kept) {
         const content = callbacks.element(id);
         if (content?.isConnected) adopt(parking, content);
@@ -398,6 +493,9 @@ export function createDockHost(
         }
       });
       for (const panel of api.panels) label(panel);
+      spots = new Map(Object.entries(saved));
+      live.clear();
+      note();
       place();
     },
     dispose() {

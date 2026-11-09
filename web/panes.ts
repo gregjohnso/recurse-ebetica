@@ -46,8 +46,13 @@ import {
 } from "./panes/view-state.js";
 import { PaneInstanceCache, validPaneCacheDef } from "./panes/cache.js";
 import type { PaneContext, PaneDef } from "./types.js";
-import type { DockHost, DockLayout, DockPlacement } from "./dock/host.js";
-import { validDockLayout } from "./dock/layout.js";
+import type {
+  DockHost,
+  DockLayout,
+  DockPlacement,
+  DockSpots,
+} from "./dock/host.js";
+import { validDockLayout, validDockSpots } from "./dock/layout.js";
 export { setPaneLoading } from "./panes/loading.js";
 
 for (const [id, icon] of [
@@ -88,6 +93,8 @@ let dock: DockHost | null = null;
 let dockLoading = false;
 /** The incoming conversation's layout, restored once it renders. */
 let pendingDockLayout: DockLayout | null | undefined;
+/** Where its closed windows last sat, restored with the layout. */
+let pendingDockSpots: DockSpots = {};
 interface DockOnlyPanel {
   element: HTMLElement;
   dispose(): void;
@@ -148,6 +155,7 @@ export function beginPaneVisit(
   for (const id of [...open]) closePane(id);
   clearDockOnly();
   pendingDockLayout = storedDockLayout(ownerId) ?? undefined;
+  pendingDockSpots = pendingDockLayout ? storedDockSpots(ownerId) : {};
   if (outgoingOwnerId) conversationUiState.flush(outgoingOwnerId);
   if (held) restoreAgentFocus();
 
@@ -1277,6 +1285,9 @@ function chatButton(): HTMLButtonElement {
 const DOCK_STATE_KEY = "dock";
 const DOCK_STATE_VERSION = 1;
 const DOCK_STATE_SLOT = 15;
+const DOCK_SPOTS_KEY = "dock-spots";
+const DOCK_SPOTS_VERSION = 1;
+const DOCK_SPOTS_SLOT = 14;
 const knownDockPanel = (id: string): boolean =>
   id === CHAT || registry.some((p) => p.id === id);
 
@@ -1293,6 +1304,19 @@ function storedDockLayout(ownerId: string): DockLayout | null {
   );
 }
 
+/** Where the conversation's closed windows last sat. */
+function storedDockSpots(ownerId: string): DockSpots {
+  return validDockSpots(
+    conversationUiState.paneState(
+      ownerId,
+      DOCK_SPOTS_KEY,
+      DOCK_SPOTS_VERSION,
+      "local",
+    ),
+    knownDockPanel,
+  );
+}
+
 /** Save the dock layout as `ownerId`'s, once any pending restore applied. */
 function saveDockLayout(ownerId: string): void {
   if (!dock || isMobile() || pendingDockLayout !== undefined) return;
@@ -1303,6 +1327,14 @@ function saveDockLayout(ownerId: string): void {
     "local",
     dock.save(),
     DOCK_STATE_SLOT,
+  );
+  conversationUiState.setPaneState(
+    ownerId,
+    DOCK_SPOTS_KEY,
+    DOCK_SPOTS_VERSION,
+    "local",
+    dock.spots(),
+    DOCK_SPOTS_SLOT,
   );
 }
 
@@ -1526,7 +1558,7 @@ function syncPanesNow(): void {
   ) {
     const saved = pendingDockLayout;
     pendingDockLayout = undefined;
-    dock.restore(saved);
+    dock.restore(saved, pendingDockSpots);
     showChat();
     layout();
   }

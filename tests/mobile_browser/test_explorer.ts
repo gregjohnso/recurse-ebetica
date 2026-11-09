@@ -186,10 +186,21 @@ export const tests: BrowserTest[] = [
     await panels.first().click();
     await docs.waitFor();
     expect(await dockLayout(page)).toEqual([
-      ["Chat", "guide.md", "README.md", "Explorer"],
+      ["Chat", "guide.md", "README.md"],
+      ["Explorer"],
     ]);
     const files = (await groups.first().boundingBox())!;
-    await edgeDrop(explorerTab, files.x + 12, files.y + files.height / 2);
+    await explorerTab.dragTo(page.locator("body"), {
+      targetPosition: { x: files.x + 12, y: files.y + files.height / 2 },
+    });
+    await page.waitForFunction(
+      (left) =>
+        [...(globalThis as any).document.querySelectorAll(".dv-groupview")]
+          .find((group: any) => group.textContent.includes("Explorer"))
+          ?.getBoundingClientRect().left <
+        left + 20,
+      files.x,
+    );
     const readmeBox = (await readmeDoc.boundingBox())!;
     const filesGroup = (await groups
       .filter({ has: tabs.filter({ hasText: "README.md" }) })
@@ -330,7 +341,7 @@ export const tests: BrowserTest[] = [
     expect((await delivered).postDataJSON().content).toMatch(
       /^Comments on file "\.gitignore" \(path: \/\S+\/\.gitignore\):\n\n- line 1, chars 0-5:\n> \*\.log\nWhy ignore logs\?$/,
     );
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       const storage = (globalThis as any).localStorage;
       for (const key of Object.keys(storage)) {
         const raw = String(storage.getItem(key));
@@ -341,10 +352,7 @@ export const tests: BrowserTest[] = [
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator(".dv-tab", { hasText: "Chat" }).waitFor();
     await page.locator(".dv-tab", { hasText: "Explorer" }).waitFor();
-    await page.locator(".dv-tab", { hasText: ".gitignore" }).waitFor();
-    expect(await dockLayout(page)).toEqual([
-      ["README.md", "Chat", "Explorer", ".gitignore"],
-    ]);
+    expect(await dockLayout(page)).toEqual([["Chat"], ["Explorer"]]);
     expect(errors).toEqual([]);
     await desktop.close();
 
@@ -369,6 +377,62 @@ export const tests: BrowserTest[] = [
     await phonePane.locator("h1", { hasText: "Explorer guide" }).waitFor();
     expect(phoneErrors).toEqual([]);
     await phone.close();
+  },
+
+  // Feature: #0 a closed window reopens where it was, by its tab or the rail
+  async function test_dock_reopens_where_closed(browser, base) {
+    const { cid } = await postFixture(base, "seed-explorer");
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await page.goto(`${base}#agent=${cid}`, { waitUntil: "domcontentloaded" });
+    const button = page.locator('#pane-rail-panels [data-pane="explorer"]');
+    await button.click();
+    const explorer = page.locator(".dv-tab", { hasText: "Explorer" });
+    await explorer.waitFor();
+    const left = (name: string) =>
+      page.evaluate(
+        (name) =>
+          [...(globalThis as any).document.querySelectorAll(".dv-groupview")]
+            .find((group: any) => group.textContent.includes(name))
+            .getBoundingClientRect().left,
+        name,
+      );
+    const chat = (await page.locator(".dv-groupview").first().boundingBox())!;
+    await explorer.dragTo(page.locator("body"), {
+      targetPosition: { x: chat.x + 12, y: chat.y + chat.height / 2 },
+    });
+    await page.waitForFunction(() => {
+      const groups = [
+        ...(globalThis as any).document.querySelectorAll(".dv-groupview"),
+      ];
+      const at = (name: string) =>
+        groups
+          .find((group: any) => group.textContent.includes(name))
+          ?.getBoundingClientRect().left;
+      return at("Explorer") < at("Chat");
+    });
+    const placed = await left("Explorer");
+    expect(placed).toBeLessThan(await left("Chat"));
+    await explorer.hover();
+    await explorer.locator(".dv-default-tab-action").click();
+    await explorer.waitFor({ state: "detached" });
+    await button.click();
+    await explorer.waitFor();
+    expect(await dockLayout(page)).toEqual([["Chat"], ["Explorer"]]);
+    expect(await left("Explorer")).toBeCloseTo(placed, 0);
+    await button.click();
+    await explorer.waitFor({ state: "detached" });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(".dv-tab", { hasText: "Chat" }).waitFor();
+    await button.click();
+    await explorer.waitFor();
+    expect(await left("Explorer")).toBeCloseTo(placed, 0);
+    expect(await left("Explorer")).toBeLessThan(await left("Chat"));
+    expect(errors).toEqual([]);
+    await context.close();
   },
 ];
 

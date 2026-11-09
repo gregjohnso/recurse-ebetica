@@ -2,7 +2,7 @@
 // untrusted browser data: only bounded, well-formed grids whose windows are
 // the chat, known panels or at most MAX_FILE_TABS `file:<path>` tabs pass;
 // anything else falls back to the default layout.
-import type { DockLayout } from "./host.js";
+import type { DockLayout, DockSpot, DockSpots } from "./host.js";
 
 /** Largest stored layout, in JSON characters. */
 export const MAX_DOCK_LAYOUT_CHARS = 32_000;
@@ -64,4 +64,37 @@ export function validDockLayout(
   } catch {
     return null;
   }
+}
+
+const SPOT_DIRECTIONS = new Set(["left", "right", "above", "below", "within"]);
+/** Most closed windows whose place is remembered, newest kept. */
+export const MAX_DOCK_SPOTS = 40;
+
+/** `value` as remembered panel spots, dropping any malformed entry. */
+export function validDockSpots(
+  value: unknown,
+  known: (id: string) => boolean,
+): DockSpots {
+  const spots: DockSpots = {};
+  if (!isObject(value)) return spots;
+  const allowed = (id: string) =>
+    id.startsWith("file:")
+      ? id.length > 5 && id.length - 5 <= MAX_FILE_PATH_CHARS
+      : known(id);
+  for (const [id, spot] of Object.entries(value).slice(-MAX_DOCK_SPOTS)) {
+    if (!allowed(id) || !isObject(spot)) continue;
+    const { ref, direction, index, size } = spot;
+    if (typeof ref !== "string" || !allowed(ref) || ref === id) continue;
+    if (typeof direction !== "string" || !SPOT_DIRECTIONS.has(direction))
+      continue;
+    const count = (n: unknown, max: number) =>
+      typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= max;
+    spots[id] = {
+      ref,
+      direction: direction as DockSpot["direction"],
+      ...(count(index, 100) ? { index: index as number } : {}),
+      ...(count(size, 10_000) ? { size: size as number } : {}),
+    };
+  }
+  return spots;
 }
