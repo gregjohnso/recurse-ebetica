@@ -190,7 +190,9 @@
   /* the person glyph marking a subagent count ("3 👤") */
   .pico { width: 9px; height: 9px; flex: none; }
   .message-icon { width: 10px; height: 10px; flex: none; }
-  .agent .time { flex: none; font-size: 0.65625rem; color: var(--text-faint); }
+  /* A fixed, right-aligned time column keeps the subagent counts in line. */
+  .agent .time { flex: none; min-width: 4.5ch; text-align: right;
+    font-variant-numeric: tabular-nums; font-size: 0.65625rem; color: var(--text-faint); }
   .agent .safety-off-tag { flex: none; display: inline-flex; align-items: center;
     color: var(--danger); }
   @media (prefers-reduced-motion: reduce) {
