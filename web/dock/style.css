@@ -65,6 +65,10 @@
 #dock .dv-horizontal > .dv-sash-container > .dv-sash::after { width: 1px; }
 #dock .dv-vertical > .dv-sash-container > .dv-sash::after { height: 1px; }
 #dock .dv-sash:not(.disabled):is(:hover, :active)::after { background: var(--accent); }
+/* Drop previews follow the pointer quickly. */
+#dock .dv-drop-target-container, #dock .dv-drop-target {
+  --dv-transition-duration: var(--motion-fast); }
+#dock .dv-tab--reorder-before::after, #dock .dv-tab--reorder-after::after { width: 1px; }
 #dock .dv-groupview { overflow: hidden; background: var(--bg);
  box-shadow: var(--content-ring); }
 #dock .dv-content-container { background: var(--bg); }

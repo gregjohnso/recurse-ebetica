@@ -243,7 +243,11 @@ export function createDockHost(
   container.after(parking);
   const gutter = (): number => gutterPx(container);
   const api = createDockview(container, {
-    theme: { ...themeAbyssSpaced, gap: 0 },
+    theme: {
+      ...themeAbyssSpaced,
+      gap: 0,
+      dndOverlayBorder: "1px solid var(--dv-drag-over-border-color)",
+    },
     disableFloatingGroups: true,
     defaultRenderer: "always",
     createComponent: () => {
