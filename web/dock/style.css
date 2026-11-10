@@ -51,8 +51,8 @@
   --dv-separator-border: var(--pane-border);
   --dv-paneview-header-border-color: transparent;
   --dv-paneview-active-outline-color: var(--accent);
-  --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 22%, transparent);
-  --dv-drag-over-border-color: var(--accent);
+  --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  --dv-drag-over-border-color: var(--accent-dim);
   --dv-edge-dock-indicator-color: var(--accent);
   --dv-icon-hover-background-color: color-mix(in srgb, var(--text) 12%, transparent);
   --dv-active-sash-color: var(--accent);
@@ -67,7 +67,7 @@
 #dock .dv-sash:not(.disabled):is(:hover, :active)::after { background: var(--accent); }
 /* Drop previews follow the pointer quickly. */
 #dock .dv-drop-target-container, #dock .dv-drop-target {
-  --dv-transition-duration: var(--motion-fast); }
+  --dv-transition-duration: calc(var(--motion-fast) / 3); }
 #dock .dv-tab--reorder-before::after, #dock .dv-tab--reorder-after::after { width: 1px; }
 #dock .dv-groupview { overflow: hidden; background: var(--bg);
  box-shadow: var(--content-ring); }
