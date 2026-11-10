@@ -70,12 +70,9 @@
 #dock .dv-content-container { background: var(--bg); }
 /* The tab strip's scrollbar shows only while the pointer is over it. */
 #dock .dv-scrollable:not(:hover) .dv-scrollbar { background-color: transparent; }
-/* Tabs, as in Notion: rounded pills on the window's colour above a hairline,
-   the visible one brighter. Too many tabs scroll sideways. */
-#dock .dv-tabs-and-actions-container { padding: 0; position: relative; }
-#dock .dv-tabs-and-actions-container::after { content: ""; position: absolute;
-  left: 0; right: 0; bottom: 0; height: 1px; background: var(--border);
-  pointer-events: none; }
+/* Tabs, as in Notion: rounded pills on the window's colour, the visible one
+   brighter. Too many tabs scroll sideways. */
+#dock .dv-tabs-and-actions-container { padding: 0; }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
 #dock .dv-tabs-container { padding: 0 var(--space-2); }
 /* Spec: A transparent border insets each pill inside its full-height tab. */
