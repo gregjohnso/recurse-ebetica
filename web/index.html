@@ -269,9 +269,12 @@
     #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
     /* Desktop shows the menu button only to bring back a hidden agent list. */
     body:has(#sidebar:not(.desktop-hidden)) #menu-btn { display: none; }
-    /* The agent list sits inset like the docked windows, with no outline. */
-    #sidebar { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset);
+    /* The agent list has no outline and meets the next window's left edge. */
+    #sidebar { margin: var(--content-inset) calc(-1 * var(--content-inset))
+        var(--content-inset) var(--content-inset);
       border-radius: var(--content-radius); border-right: 0; }
+    /* Equal space either side of the rows, scrollbar track included. */
+    #agent-list { scrollbar-gutter: stable both-edges; }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
