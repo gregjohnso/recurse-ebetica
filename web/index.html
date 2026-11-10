@@ -134,10 +134,11 @@
     color: var(--running-strong); }
   /* Running spins a green arc, as Pi's terminal spinner does; work further
      down the subtree spins a thinner, fainter arc. spin-sync.ts keeps every
-     spinner in phase. */
+     spinner in phase; will-change keeps the rotation off the main thread, so
+     page work cannot make it stutter. */
   .agent .agent-state.running .state-mark, .agent .agent-state.working .state-mark {
     background: transparent; border-width: 2px; border-top-color: transparent;
-    animation: state-spin .8s linear infinite; }
+    animation: state-spin .8s linear infinite; will-change: transform; }
   .agent .agent-state.working .state-mark { border-width: 1px; opacity: .75; }
   @keyframes state-spin { to { transform: rotate(360deg); } }
   /* Needs input: a finished turn the operator has not seen, a yellow
@@ -978,7 +979,8 @@
     min-width: 0; width: 100%; height: 32px; white-space: nowrap; }
   .live-dot { flex: none; width: var(--live-dot); height: var(--live-dot); border-radius: 50%;
     box-sizing: border-box; border: 1.5px solid var(--running);
-    border-top-color: transparent; animation: state-spin .8s linear infinite; }
+    border-top-color: transparent; animation: state-spin .8s linear infinite;
+    will-change: transform; }
   .live-panel-box.is-overlay .live-dot { border-color: var(--warn);
     background: var(--warn); animation: none; }
   /* Panel words use the body font; only the argument fragment stays monospace
