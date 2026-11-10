@@ -62,7 +62,9 @@ export function buildMaximumContextSection(body: HTMLElement): void {
   const { api, jpost } = settingsClient();
   body.innerHTML = `
     <form>
-      <div class="group"><div class="item context-window-controls">
+      <div class="group"><label class="item check"><span>Limit context window</span>
+        <input type="checkbox" class="switch context-window-limit" role="switch"></label>
+        <div class="item context-window-controls" hidden>
         <input type="range" aria-label="Maximum context window slider (tokens)"
           min="64000" max="1000000" step="1000" value="400000">
         <span class="control"><input id="maximum-context-window" type="number"
@@ -73,6 +75,8 @@ export function buildMaximumContextSection(body: HTMLElement): void {
     </form>`;
   const form = body.querySelector("form")!;
   const input = body.querySelector<HTMLInputElement>('input[type="number"]')!;
+  const limit = body.querySelector<HTMLInputElement>(".context-window-limit")!;
+  const controls = body.querySelector<HTMLElement>(".context-window-controls")!;
   const slider = body.querySelector<HTMLInputElement>('input[type="range"]')!;
   const button = body.querySelector<HTMLButtonElement>("button")!;
   const msg = body.querySelector<HTMLElement>(".msg")!;
@@ -80,11 +84,26 @@ export function buildMaximumContextSection(body: HTMLElement): void {
     msg.className = "msg " + cls;
     msg.textContent = text;
   };
+  let loaded = false;
   const detail = settingsDetail(body, "Maximum context window", () =>
-    input.value
-      ? `${Number(input.value).toLocaleString()} tokens`
-      : "Checking…",
+    !loaded
+      ? "Checking…"
+      : limit.checked
+        ? `${Number(input.value).toLocaleString()} tokens`
+        : "Each model's full window",
   );
+  // Invariant: Off saves null, so every model keeps its native window; on
+  // caps each model at the number below.
+  const showLimit = () => {
+    controls.hidden = !limit.checked;
+    input.required = limit.checked;
+    detail.refresh();
+  };
+  limit.addEventListener("change", () => {
+    if (limit.checked && !input.value) input.value = "400000";
+    syncSlider();
+    showLimit();
+  });
   const syncSlider = () => {
     if (!input.validity.valid) return;
     slider.step = input.valueAsNumber % 1000 === 0 ? "1000" : "1";
@@ -98,9 +117,12 @@ export function buildMaximumContextSection(body: HTMLElement): void {
   });
   api("/api/settings/maximum-context-window")
     .then((r) => r.json())
-    .then((state: { maximum_context_window: number }) => {
-      input.value = String(state.maximum_context_window);
+    .then((state: { maximum_context_window: number | null }) => {
+      loaded = true;
+      limit.checked = state.maximum_context_window !== null;
+      input.value = String(state.maximum_context_window ?? "");
       syncSlider();
+      showLimit();
     })
     .catch(() => show("err", "Couldn't load the maximum context window."));
   form.addEventListener("submit", async (event) => {
@@ -109,15 +131,19 @@ export function buildMaximumContextSection(body: HTMLElement): void {
     show("", "");
     try {
       const r = await jpost("/api/settings/maximum-context-window", {
-        maximum_context_window: Number(input.value),
+        maximum_context_window: limit.checked ? Number(input.value) : null,
       });
       if (!r.ok) {
         show("err", await errDetail(r, "Couldn't save."));
         return;
       }
-      const state = (await r.json()) as { maximum_context_window: number };
-      input.value = String(state.maximum_context_window);
+      const state = (await r.json()) as {
+        maximum_context_window: number | null;
+      };
+      limit.checked = state.maximum_context_window !== null;
+      input.value = String(state.maximum_context_window ?? "");
       syncSlider();
+      showLimit();
       show("ok", "Saved. Applies when an agent process next starts.");
     } catch {
       show("err", "Network error. Try again.");

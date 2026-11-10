@@ -582,12 +582,13 @@ export const tests: BrowserTest[] = [
       const slider = page.getByRole("slider", {
         name: "Maximum context window slider (tokens)",
       });
+      const limit = page.getByRole("switch", { name: "Limit context window" });
+      await browserExpect(limit).not.toBeChecked();
+      await browserExpect(maximum).toBeHidden();
+      await limit.check();
+      await browserExpect(maximum).toHaveValue("400000");
       expect(await slider.count()).toBe(1);
-      await page.waitForFunction(
-        "document.querySelector('#maximum-context-window').value !== ''",
-      );
-      const original = await maximum.inputValue();
-      expect(await slider.inputValue()).toBe(original);
+      expect(await slider.inputValue()).toBe("400000");
       for (const control of [slider, maximum]) {
         const bounds = (await control.boundingBox())!;
         expect(bounds.height).toBeGreaterThanOrEqual(width === 412 ? 44 : 36);
@@ -607,7 +608,9 @@ export const tests: BrowserTest[] = [
             (el as unknown as { validity: { valid: boolean } }).validity.valid,
         ),
       ).toBeTrue();
-      const card = maximum.locator("xpath=ancestor::form");
+      const card = page.locator("form", {
+        has: page.locator("#maximum-context-window"),
+      });
       await maximum.fill("63999");
       await card.getByRole("button", { name: "Save", exact: true }).click();
       expect(
@@ -630,11 +633,17 @@ export const tests: BrowserTest[] = [
         "document.querySelector('#maximum-context-window').value === '500123'",
       );
       expect(await slider.inputValue()).toBe("500123");
-      await maximum.fill(original);
+      await browserExpect(limit).toBeChecked();
+      await limit.uncheck();
+      await browserExpect(maximum).toBeHidden();
       await card.getByRole("button", { name: "Save", exact: true }).click();
       await page
         .getByText("Saved. Applies when an agent process next starts.")
         .waitFor();
+      const stored = await page.request.get(
+        base + "api/settings/maximum-context-window",
+      );
+      expect((await stored.json()).maximum_context_window).toBeNull();
       await showCategory(page, "account");
       await openDetail(page, /^Deleted agents' history /);
       const retention = page.getByRole("spinbutton", {

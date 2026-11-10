@@ -771,7 +771,7 @@ export async function buildInstance(options: InstanceOptions) {
             }),
           );
     },
-    maximumContextWindow: () => config.maximumContextWindow(),
+    maximumContextWindow: () => config.maximumContextWindow() ?? Infinity,
     customProviders: () => config.customModelProviders(),
     // Invariant: Only the variable the provider itself names as env_key.
     customProviderEnvValue: (provider) => {

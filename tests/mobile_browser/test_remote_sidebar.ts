@@ -885,7 +885,9 @@ export const tests: BrowserTest[] = [
         exact: true,
       });
       const windowInput = windowDetails.locator("#maximum-context-window");
-      await browserExpect(windowInput).not.toHaveValue("");
+      await windowDetails
+        .getByRole("switch", { name: "Limit context window" })
+        .check();
       await windowInput.fill("123456");
       const savedWindow = page.waitForResponse(
         (response) =>

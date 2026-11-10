@@ -127,6 +127,8 @@ test("Settings files are re-read once per window; own writes apply at once", asy
     expect(await config.setMaximumContextWindow(400_000)).toBe(400_000);
     expect(config.maximumContextWindow()).toBe(400_000);
     expect(statSync(contextPath).mode & 0o777).toBe(0o600);
+    expect(await config.setMaximumContextWindow(null)).toBeNull();
+    expect(config.maximumContextWindow()).toBeNull();
   } finally {
     await config?.close();
     rmSync(root, { recursive: true, force: true });

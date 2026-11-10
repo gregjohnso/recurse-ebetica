@@ -82,7 +82,6 @@ export interface StatePaths {
   THEMES_FILE: string;
   AVAILABLE_MODELS_FILE: string;
   PI_MODEL_LIST_FILE: string;
-  DEFAULT_MAXIMUM_CONTEXT_WINDOW: number;
   MINIMUM_CONTEXT_WINDOW: number;
   MAXIMUM_CONTEXT_WINDOW: number;
   CONV_DIR: string;
@@ -129,7 +128,6 @@ export interface StatePaths {
   PI_SAFETY_ENABLED: boolean;
 }
 
-export const DEFAULT_MAXIMUM_CONTEXT_WINDOW = 400_000;
 /** At most this many model ids are kept as the model menu's shown list. */
 const MAX_SHOWN_MODELS = 1000;
 export const MINIMUM_CONTEXT_WINDOW = 64_000;
@@ -637,7 +635,6 @@ function buildPaths(
     THEMES_FILE: path("config/themes.json"),
     AVAILABLE_MODELS_FILE: path("config/available-models.json"),
     PI_MODEL_LIST_FILE: path("config/pi-model-list.json"),
-    DEFAULT_MAXIMUM_CONTEXT_WINDOW,
     MINIMUM_CONTEXT_WINDOW,
     MAXIMUM_CONTEXT_WINDOW,
     CONV_DIR: path("conversations"),
@@ -1508,14 +1505,15 @@ export class Config {
     return models;
   }
 
-  maximumContextWindow(): number {
+  /** The Settings cap on every model's context window; null (the default,
+   * also for an unreadable value) leaves each model its native window. */
+  maximumContextWindow(): number | null {
     try {
       const data = this.settingsJson(this.paths.MAXIMUM_CONTEXT_WINDOW_FILE);
-      return this.validateMaximumContextWindow(
-        isObject(data) ? data.maximum_context_window : undefined,
-      );
+      const value = isObject(data) ? data.maximum_context_window : null;
+      return value == null ? null : this.validateMaximumContextWindow(value);
     } catch {
-      return DEFAULT_MAXIMUM_CONTEXT_WINDOW;
+      return null;
     }
   }
 
@@ -1533,8 +1531,9 @@ export class Config {
     return value;
   }
 
-  async setMaximumContextWindow(value: unknown): Promise<number> {
-    const checked = this.validateMaximumContextWindow(value);
+  async setMaximumContextWindow(value: unknown): Promise<number | null> {
+    const checked =
+      value === null ? null : this.validateMaximumContextWindow(value);
     await this.writePrivateJson(this.paths.MAXIMUM_CONTEXT_WINDOW_FILE, {
       maximum_context_window: checked,
     });
@@ -1580,7 +1579,7 @@ export class Config {
     const capacity = this.modelContextWindow(modelId);
     return capacity === null
       ? null
-      : Math.min(capacity, this.maximumContextWindow());
+      : Math.min(capacity, this.maximumContextWindow() ?? Infinity);
   }
 
   providerOf(modelId: string): string {

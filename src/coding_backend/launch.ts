@@ -91,11 +91,12 @@ export async function buildEnv(
     if (resolved !== null) env[name] = resolved;
   }
   env.PI_BG_SHELL_STATE_DIR = paths.PI_BG_SHELL_STATE_DIR;
-  env.RECURSE_MAX_CONTEXT_WINDOW = String(
+  const maximumContextWindow =
     o.maximumContextWindow == null
       ? config.maximumContextWindow()
-      : config.validateMaximumContextWindow(o.maximumContextWindow),
-  );
+      : config.validateMaximumContextWindow(o.maximumContextWindow);
+  if (maximumContextWindow === null) delete env.RECURSE_MAX_CONTEXT_WINDOW;
+  else env.RECURSE_MAX_CONTEXT_WINDOW = String(maximumContextWindow);
   env.RECURSE_INTERRUPT_SOCKET = paths.INTERRUPT_SOCKET;
   env.PI_OFFLINE = "1";
   delete env.PI_FFF_MULTIGREP;
