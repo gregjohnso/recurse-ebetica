@@ -271,13 +271,14 @@
     #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
     /* Desktop shows the menu button only to bring back a hidden agent list. */
     body:has(#sidebar:not(.desktop-hidden)) #menu-btn { display: none; }
-    /* The agent list has no outline. It sits 4px from the page's left edge
+    /* The agent list has no outline. It sits 2px from the page's left edge
        and from the next window (the dock adds an inset of its own), and its
-       rows are padded 8px on both sides, scrollbar track included. */
+       rows are padded 4px on both sides, scrollbar track included. */
     #sidebar { margin: var(--content-inset)
-        calc(var(--space-2) - var(--content-inset)) var(--content-inset) var(--space-2);
+        calc(var(--space-1) - var(--content-inset)) var(--content-inset) var(--space-1);
       border-radius: var(--content-radius); border-right: 0; }
-    #agent-list { scrollbar-gutter: stable both-edges; }
+    #agent-list { scrollbar-gutter: stable both-edges; padding-inline: var(--space-2); }
+    #agent-list .agent { padding-right: var(--space-2); }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
