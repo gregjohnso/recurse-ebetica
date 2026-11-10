@@ -269,9 +269,9 @@
     #sidebar:not(.desktop-hidden) ~ :is(#main, #panes) #new-top { display: none; }
     /* Desktop shows the menu button only to bring back a hidden agent list. */
     body:has(#sidebar:not(.desktop-hidden)) #menu-btn { display: none; }
-    /* The agent list is a card like the chat's and each docked window. */
+    /* The agent list sits inset like the docked windows, with no outline. */
     #sidebar { margin: var(--content-inset) 0 var(--content-inset) var(--content-inset);
-      border-radius: var(--content-radius); box-shadow: var(--content-ring); }
+      border-radius: var(--content-radius); border-right: 0; }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
