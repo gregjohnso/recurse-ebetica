@@ -55,6 +55,14 @@
   --dv-icon-hover-background-color: color-mix(in srgb, var(--text) 12%, transparent);
   --dv-active-sash-color: var(--accent);
 }
+/* A divider highlights as a 1px line centred in its wider drag area, like
+   the agent list's resize line. */
+#dock .dv-sash:not(.disabled):is(:hover, :active) { background-color: transparent; }
+#dock .dv-sash::after { content: ""; position: absolute; inset: 0; margin: auto;
+  background: transparent; transition: background var(--motion-fast); }
+#dock .dv-horizontal > .dv-sash-container > .dv-sash::after { width: 1px; }
+#dock .dv-vertical > .dv-sash-container > .dv-sash::after { height: 1px; }
+#dock .dv-sash:not(.disabled):is(:hover, :active)::after { background: var(--accent); }
 #dock .dv-groupview { overflow: hidden; background: var(--bg);
  box-shadow: var(--content-ring); }
 #dock .dv-content-container { background: var(--bg); }

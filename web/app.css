@@ -169,7 +169,7 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
 .resize-grip.sb { right: calc(-4px - var(--space-2)); }
 .resize-grip.pn { left: -4px; }    /* panes: over the border facing the chat */
 .resize-grip::after { content: ""; position: absolute; top: 0; bottom: 0;
-  left: 50%; width: 2px; transform: translateX(-50%);
+  left: 50%; width: 1px; transform: translateX(-50%);
   background: transparent; transition: background var(--motion-fast); }
 .resize-grip:hover::after, body.resizing .resize-grip::after { background: var(--accent); }
 body.resizing { cursor: col-resize; user-select: none; }
