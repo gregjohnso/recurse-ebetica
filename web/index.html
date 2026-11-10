@@ -39,7 +39,11 @@
     width: 400px; flex: none; background: var(--frame-bg);
     border-right: 1px solid var(--frame-border);
     display: flex; flex-direction: column; position: relative;
+    -webkit-user-select: none; user-select: none;
   }
+  /* A chat selection dragged across the list never selects agent names;
+     the rename field still edits. */
+  #sidebar :is(input, textarea) { -webkit-user-select: text; user-select: text; }
   #brand { display: none; align-items: center; gap: var(--space-3);
     padding: var(--space-5) var(--space-5) var(--space-3);
     font-weight: 600; font-size: 0.84375rem; color: var(--text); }

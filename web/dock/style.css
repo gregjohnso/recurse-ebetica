@@ -22,6 +22,10 @@
 #panes.docked > .resize-grip { display: none; }
 #dock { flex: 1; min-height: 0; min-width: 0; }
 #dock .dv-dockview { background: transparent; }
+/* A drag-selection stays inside window content: the frame, tabs and gutters
+   are never selected (Safari paints selected gutters as solid strips). */
+#dock .dv-dockview { -webkit-user-select: none; user-select: none; }
+#dock .dv-content-container { -webkit-user-select: text; user-select: text; }
 #dock .dockview-theme-abyss-spaced {
   background-color: transparent;
   color-scheme: inherit;
