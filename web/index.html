@@ -273,8 +273,10 @@
     #sidebar { margin: var(--content-inset) calc(-1 * var(--content-inset))
         var(--content-inset) var(--content-inset);
       border-radius: var(--content-radius); border-right: 0; }
-    /* Equal space either side of the rows, scrollbar track included. */
-    #agent-list { scrollbar-gutter: stable both-edges; }
+    /* Rows sit as far from the next window as from the page's left edge,
+       scrollbar track included. */
+    #agent-list { scrollbar-gutter: stable both-edges;
+      padding-right: calc(var(--space-3) + var(--content-inset)); }
   }
   #key-mode { display: inline-flex; align-items: center; min-height: 22px;
     color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
