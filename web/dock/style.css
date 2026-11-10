@@ -26,6 +26,9 @@
    are never selected (Safari paints selected gutters as solid strips). */
 #dock .dv-dockview { -webkit-user-select: none; user-select: none; }
 #dock .dv-content-container { -webkit-user-select: text; user-select: text; }
+#dock.dock-scoped :is(.dv-render-overlay, .dv-content-container, #conv-cwd):not(.dock-select-scope,
+    :has(.dock-select-scope)) {
+  -webkit-user-select: none; user-select: none; }
 #dock .dockview-theme-abyss-spaced {
   background-color: transparent;
   color-scheme: inherit;
@@ -69,6 +72,7 @@
 #dock .dv-horizontal > .dv-sash-container > .dv-sash::after { width: 1px; }
 #dock .dv-vertical > .dv-sash-container > .dv-sash::after { height: 1px; }
 #dock .dv-sash:not(.disabled):is(:hover, :active)::after { background: var(--accent); }
+body.pointer-held #dock .dv-sash:not(.disabled):hover::after { background: transparent; }
 /* Drop previews follow the pointer quickly. */
 #dock .dv-drop-target-container, #dock .dv-drop-target {
   --dv-transition-duration: calc(var(--motion-fast) / 3); }

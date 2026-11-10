@@ -327,6 +327,32 @@ export function createDockHost(
   };
   api.onDidMovePanel(refocus);
   container.addEventListener("dragend", refocus);
+  // Invariant: A drag-selection stays in the window (or the copyable path)
+  // where the press began; divider highlights wait for the release.
+  let scope: Element | null = null;
+  container.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.button !== 0) return;
+      const next = (event.target as Element).closest?.(
+        "#conv-cwd, .dv-render-overlay, .dv-content-container",
+      );
+      if (!next) return;
+      scope?.classList.remove("dock-select-scope");
+      scope = next;
+      scope.classList.add("dock-select-scope");
+      container.classList.add("dock-scoped");
+      document.body.classList.add("pointer-held");
+      const release = new AbortController();
+      const end = () => {
+        document.body.classList.remove("pointer-held");
+        release.abort();
+      };
+      for (const type of ["pointerup", "pointercancel"])
+        window.addEventListener(type, end, { signal: release.signal });
+    },
+    true,
+  );
   const fit = (
     targets: [DockGroup, number][],
     axis: "width" | "height",

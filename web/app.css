@@ -172,6 +172,8 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
   left: 50%; width: 1px; transform: translateX(-50%);
   background: transparent; transition: background var(--motion-fast); }
 .resize-grip:hover::after, body.resizing .resize-grip::after { background: var(--accent); }
+/* A text selection dragged across the grip does not light it. */
+body.pointer-held .resize-grip:hover::after { background: transparent; }
 body.resizing { cursor: col-resize; user-select: none; }
 @media (max-width: 700px) { .resize-grip { display: none; } }
 .pane-col { flex: 1; min-width: 0; display: flex; flex-direction: column;
