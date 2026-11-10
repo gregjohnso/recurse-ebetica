@@ -165,7 +165,8 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
    full-bleed overlays sized by the stylesheet. */
 .resize-grip { position: absolute; top: 0; height: 100%; width: 9px; z-index: calc(var(--z-chrome) + 1);
   cursor: col-resize; }
-.resize-grip.sb { right: -4px; }   /* sidebar: sits over its right border */
+/* Sidebar: over the next window's left edge, across the inset gap. */
+.resize-grip.sb { right: calc(-4px - var(--content-inset)); }
 .resize-grip.pn { left: -4px; }    /* panes: over the border facing the chat */
 .resize-grip::after { content: ""; position: absolute; top: 0; bottom: 0;
   left: 50%; width: 2px; transform: translateX(-50%);
