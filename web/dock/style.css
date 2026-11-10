@@ -68,26 +68,20 @@
 #dock .dv-content-container { background: var(--bg); }
 /* The tab strip's scrollbar shows only while the pointer is over it. */
 #dock .dv-scrollable:not(:hover) .dv-scrollbar { background-color: transparent; }
-/* Tabs: flat in the strip's tone, separated by tone and spacing alone; the
-   visible tab has rounded top corners and flared feet into its window. Too
-   many tabs scroll sideways. */
-#dock .dv-tabs-and-actions-container { padding: 0; }
+/* Tabs, as in VS Code: flat in the strip's tone above a hairline; the visible
+   tab takes its window's colour, with rounded top corners, and covers the
+   hairline. Too many tabs scroll sideways. */
+#dock .dv-tabs-and-actions-container { padding: 0; position: relative; }
+#dock .dv-tabs-and-actions-container::after { content: ""; position: absolute;
+  left: 0; right: 0; bottom: 0; height: 1px; background: var(--border);
+  pointer-events: none; }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
 #dock .dv-tabs-container { padding: 0 var(--space-3); }
 #dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
   padding: 0 var(--space-3) 0 var(--space-4); min-width: 80px; max-width: 220px; font-weight: 400; }
 #dock .dv-tab.dv-active-tab { z-index: var(--z-raised);
-  border-radius: var(--radius-md) var(--radius-md) 0 0; }
-#dock .dv-tab.dv-active-tab .dv-default-tab::before,
-#dock .dv-tab.dv-active-tab .dv-default-tab::after {
-  content: ""; position: absolute; bottom: 0; width: var(--radius-md); height: var(--radius-md);
-  pointer-events: none; }
-#dock .dv-tab.dv-active-tab .dv-default-tab::before { left: calc(-1 * var(--space-4) - var(--radius-md));
-  background: radial-gradient(circle at 0 0, transparent calc(var(--radius-md) - 0.5px),
-    var(--bg) var(--radius-md)); }
-#dock .dv-tab.dv-active-tab .dv-default-tab::after { right: calc(-1 * var(--space-3) - var(--radius-md));
-  background: radial-gradient(circle at 100% 0, transparent calc(var(--radius-md) - 0.5px),
-    var(--bg) var(--radius-md)); }
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid var(--border); border-bottom: 0; }
 #dock .dv-default-tab { gap: 0; min-width: 0; }
 #dock .dv-default-tab-content { min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; padding: 0; margin: 0 var(--space-2); }
