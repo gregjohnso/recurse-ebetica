@@ -673,6 +673,19 @@ describe("owner scoping", () => {
     const original = await fetch(`${large}/preview`);
     expect(original.headers.get("content-type")).toBe("image/jpeg");
     expect(new Uint8Array(await original.arrayBuffer())).toEqual(photo);
+    const figure = await new Image(noise(1600, 1600)).png().bytes();
+    expect(figure.byteLength).toBeGreaterThan(7 * 1024 * 1024);
+    await publish("figure.png", figure);
+    const listed = await listPage(
+      collectionSnapshot(app.records.get("owner-b")!, app.temp.config)!,
+      { config: app.temp.config, boundSessionFile: () => null },
+      null,
+      null,
+      50,
+    );
+    expect(
+      listed.files.find((file) => file.name === "figure.png")?.preview,
+    ).toBe("image");
     const icon = await new Image(noise(32, 20)).png().bytes();
     const tiny = await publish("icon.png", icon);
     const passed = await fetch(`${tiny}/thumbnail`);

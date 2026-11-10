@@ -73,7 +73,7 @@ export const MAX_REFS_PER_MESSAGE = 50_000;
 export const MAX_REFERENCE_LINE_BYTES = 4 * 1024 * 1024;
 export const MAX_TEXT_FILE_BYTES = 256 * 1024;
 export const MAX_TEXT_PREVIEW_BYTES = 64 * 1024;
-export const MAX_IMAGE_PREVIEW_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 const UPLOAD_ID_RE = base.FILE_ID_REGEX;
 const PUBLISHED_ID_RE = base.ID_REGEX;
