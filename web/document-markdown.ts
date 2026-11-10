@@ -108,6 +108,8 @@ export async function revealArtifactImage(
 
 export interface DocumentMarkdownOptions {
   resolveRelative: (path: string, image: boolean) => string | null;
+  /** Open a shown image (its relative path) in the image viewer. */
+  onImageOpen?: (path: string) => void;
   signal: AbortSignal;
   title: string;
 }
@@ -146,6 +148,12 @@ function markdownFragment(
       const frame = imagePlaceholder(image);
       image.replaceWith(frame);
       frame.appendChild(image);
+      const open = options.onImageOpen;
+      if (open)
+        frame.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          open(source!);
+        });
       void revealArtifactImage(frame, image, resolved, options.signal).then(
         (loaded) => {
           if (loaded || options.signal.aborted || !frame.parentNode) return;

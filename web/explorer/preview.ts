@@ -16,6 +16,7 @@ import {
   MESSAGE_ICON,
 } from "../icons.js";
 import { mountPdf, releasePdfs } from "../pdf-view.js";
+import { viewImage } from "../files.js";
 import {
   absolutePath,
   baseName,
@@ -207,19 +208,28 @@ function markdown(
   element._markdownAbort?.abort();
   const controller = new AbortController();
   element._markdownAbort = controller;
+  const resolve = (relative: string): string | null => {
+    let path: string;
+    try {
+      path = decodeURIComponent(
+        new URL(relative, `https://files.invalid/${shown.path}`).pathname,
+      ).slice(1);
+    } catch {
+      return null;
+    }
+    return path || null;
+  };
   renderDocumentMarkdown(body, shown.text ?? "", {
     title: baseName(shown.path),
     signal: controller.signal,
     resolveRelative: (relative) => {
-      let path: string;
-      try {
-        path = decodeURIComponent(
-          new URL(relative, `https://files.invalid/${shown.path}`).pathname,
-        ).slice(1);
-      } catch {
-        return null;
-      }
+      const path = resolve(relative);
       return path ? treeUrl(shown.cid, "/raw", path) : null;
+    },
+    onImageOpen: (relative) => {
+      const path = resolve(relative);
+      if (path)
+        viewImage(shown.cid, baseName(path), treeUrl(shown.cid, "/raw", path));
     },
   });
   // Spec: Relative links to tree files open in this preview, not a download.

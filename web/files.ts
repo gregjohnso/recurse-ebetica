@@ -292,21 +292,23 @@ function renderImage(): void {
           () => drawOn(detailImage(), closeImage),
           "files-draw",
         )}
-        ${iconButton("Open in Files", unsafeHTML(FILES_ICON), () => {
-          const open = () => {
-            selections.set(cid, { key: file.key });
-            if (paneEl) paneEl._filesHash = undefined;
-            repaint();
-            openPane(PANE_ID);
-          };
-          if (history.state?.imagePopout) {
-            window.addEventListener("popstate", open, { once: true });
-            closeImage();
-          } else {
-            closeImage();
-            open();
-          }
-        })}
+        ${!allFiles(entry(cid)).some((listed) => listed.key === file.key)
+          ? nothing
+          : iconButton("Open in Files", unsafeHTML(FILES_ICON), () => {
+              const open = () => {
+                selections.set(cid, { key: file.key });
+                if (paneEl) paneEl._filesHash = undefined;
+                repaint();
+                openPane(PANE_ID);
+              };
+              if (history.state?.imagePopout) {
+                window.addEventListener("popstate", open, { once: true });
+                closeImage();
+              } else {
+                closeImage();
+                open();
+              }
+            })}
         ${iconButton("Close image", unsafeHTML(CLOSE_ICON), closeImage)}
       </header>
       <article
@@ -826,6 +828,8 @@ function badge(ctx: PaneContext): string | number | null {
 }
 
 function downloadHref(cid: string, file: SessionFile): string | null {
+  const url = urlImages.get(file);
+  if (url) return url;
   if (!file.id || file.unavailable) return null;
   return backendFor(cid).url(
     `/api/conversations/${encodeURIComponent(cid)}/attachments/${encodeURIComponent(file.id)}`,
@@ -864,7 +868,28 @@ async function downloadImage(cid: string, file: SessionFile): Promise<void> {
   link.remove();
 }
 
+/** Viewer-only images by URL (Explorer files): no stored copy or comments. */
+const urlImages = new WeakMap<SessionFile, string>();
+
+/** Open the image at `url` (from conversation `cid`) in the image viewer. */
+export function viewImage(cid: string, name: string, url: string): void {
+  const file: SessionFile = {
+    key: `url:${url}`,
+    storage: "published",
+    name,
+    size: 0,
+    media_type: "image/*",
+    preview: "image",
+    references: 0,
+    sources: [],
+  };
+  urlImages.set(file, url);
+  openImage(cid, file);
+}
+
 function imageHref(cid: string, file: SessionFile): string | null {
+  const url = urlImages.get(file);
+  if (url) return url;
   const base = downloadHref(cid, file);
   if (!base || file.preview !== "image") return null;
   // Invariant: The bytes route forces octet-stream + nosniff (never renders);
@@ -1153,9 +1178,48 @@ function markdownPreview(
   body.className = "files-markdown artifact-doc report-doc";
   const controller = new AbortController();
   if (paneEl) paneEl._markdownAbort = controller;
+  const sibling = (path: string): SessionFile | undefined => {
+    let name: string;
+    try {
+      name = decodeURIComponent(
+        new URL(
+          path,
+          new URL(file.name, "https://files.invalid/"),
+        ).pathname.slice(1),
+      );
+    } catch {
+      return undefined;
+    }
+    return versionGroups(allFiles(entry(cid))).find(
+      (group) => group[0]!.name === name,
+    )?.[0];
+  };
   renderDocumentMarkdown(body, text, {
     title: file.name,
     signal: controller.signal,
+    onImageOpen: (path) => {
+      if (relatedFiles === undefined) {
+        const found = sibling(path);
+        if (found) openImage(cid, found);
+        return;
+      }
+      const id = Object.hasOwn(relatedFiles, path) ? relatedFiles[path] : null;
+      if (!id) return;
+      openImage(
+        cid,
+        allFiles(entry(cid)).find((listed) => listed.id === id) ?? {
+          key: `published:${id}`,
+          storage: "published",
+          id,
+          name: path.split("/").pop() || path,
+          size: 0,
+          media_type: "image/*",
+          preview: "image",
+          references: 0,
+          sources: [],
+        },
+      );
+    },
     resolveRelative: (path, image) => {
       if (relatedFiles !== undefined) {
         const id = Object.hasOwn(relatedFiles, path)
@@ -1167,25 +1231,11 @@ function markdownPreview(
         );
         return image ? `${url}/thumbnail` : url;
       }
-      let name: string;
-      try {
-        name = decodeURIComponent(
-          new URL(
-            path,
-            new URL(file.name, "https://files.invalid/"),
-          ).pathname.slice(1),
-        );
-      } catch {
-        return null;
-      }
-      const sibling = versionGroups(allFiles(entry(cid))).find(
-        (group) => group[0]!.name === name,
-      )?.[0];
-      return sibling
+      const found = sibling(path);
+      return found
         ? image
-          ? (imageHref(cid, sibling)?.replace(/\/preview$/, "/thumbnail") ??
-            null)
-          : downloadHref(cid, sibling)
+          ? (imageHref(cid, found)?.replace(/\/preview$/, "/thumbnail") ?? null)
+          : downloadHref(cid, found)
         : null;
     },
   });

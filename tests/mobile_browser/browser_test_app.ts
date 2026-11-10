@@ -910,6 +910,8 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
       join(cwd, "docs", "guide.md"),
       "# Explorer guide\n\n- Lists folders lazily\n- Previews Markdown\n",
     );
+    await writeFile(join(cwd, "docs", "plot.md"), "![Plot](plot.png)\n");
+    await writeFile(join(cwd, "docs", "plot.png"), PNG_1X1);
     await writeFile(
       join(cwd, "docs", "page.html"),
       '<h1 id="t">Static page</h1><script>document.getElementById("t").textContent = "Rendered page";</script>\n',

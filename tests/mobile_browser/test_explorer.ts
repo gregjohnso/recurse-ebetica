@@ -62,6 +62,23 @@ export const tests: BrowserTest[] = [
       .waitFor();
     await tab.getByRole("button", { name: "Preview" }).click();
     await frame.waitFor();
+    await page.locator(".dv-tab", { hasText: "Explorer" }).click();
+    await tree.locator('[data-path="docs/plot.md"]').click();
+    const figure = page.locator(
+      '.dock-panel .files-markdown img[alt="Plot"]:not([hidden])',
+    );
+    await figure.waitFor();
+    await figure.dblclick();
+    const viewer = page.locator("dialog.image-popout");
+    const shown = viewer.locator(".files-detail img.files-image");
+    await shown.waitFor();
+    expect(await viewer.locator(".files-name").innerText()).toBe("plot.png");
+    expect(await shown.getAttribute("src")).toContain("/tree/raw");
+    expect(
+      await viewer.getByRole("button", { name: "Open in Files" }).count(),
+    ).toBe(0);
+    await page.keyboard.press("Escape");
+    await viewer.waitFor({ state: "detached" });
     expect(
       errors.filter((error) => !error.includes("directive 'navigate-to'")),
     ).toEqual([]);

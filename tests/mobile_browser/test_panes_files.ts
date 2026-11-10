@@ -1114,6 +1114,20 @@ export const tests: BrowserTest[] = [
         expect(await nested.evaluate((image: any) => image.naturalWidth)).toBe(
           1,
         );
+        if (width === 1280) {
+          await image.dblclick();
+          const viewer = page.locator("dialog.image-popout");
+          const shown = viewer.locator(".files-detail img.files-image");
+          await shown.waitFor();
+          expect(await viewer.locator(".files-name").innerText()).toBe(
+            "diagram.svg",
+          );
+          expect(await shown.getAttribute("src")).toMatch(
+            /\/attachments\/[^/]+\/preview$/,
+          );
+          await page.keyboard.press("Escape");
+          await viewer.waitFor({ state: "detached" });
+        }
         for (const [label, content] of [
           ["Metrics", "captured,1"],
           ["Alignment report", "Captured alignment report"],
