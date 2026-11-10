@@ -244,9 +244,13 @@ body.resizing { cursor: col-resize; user-select: none; }
   padding: var(--space-1) var(--space-3);
   border-top: 1px solid var(--frame-border); }
 #agent-list-foot:not(:has(> button)) { display: none; }
-#agent-list-foot > #settings-btn { width: 44px; height: 44px; padding: 0; border: 0;
-  justify-content: center; }
-#agent-list-foot > #settings-btn:hover { background: var(--panel-2); }
+#agent-list-foot > :is(#new-side, #settings-btn) { width: 44px; height: 44px; padding: 0;
+  border: 0; justify-content: center; }
+#agent-list-foot > #new-side { display: flex; align-items: center; background: none;
+  color: var(--muted); cursor: pointer; }
+#agent-list-foot > #new-side:hover { color: var(--accent); }
+#agent-list-foot > #new-side[hidden] { display: none; }
+#agent-list-foot > :is(#new-side, #settings-btn):hover { background: var(--panel-2); }
 #agent-list-foot > #trash-btn { width: 44px; height: 44px; border: 0;
   background: transparent; color: var(--muted); }
 #agent-list-foot > #trash-btn.on { display: flex; }

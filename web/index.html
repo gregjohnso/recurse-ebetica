@@ -40,9 +40,6 @@
     border-right: 1px solid var(--frame-border);
     display: flex; flex-direction: column; position: relative;
   }
-  /* Desktop keeps the New button; phones use the full-screen list header. */
-  #sidebar-head { display: flex; flex: none; align-items: center; height: 48px;
-    padding: 0 var(--space-3); }
   #brand { display: none; align-items: center; gap: var(--space-3);
     padding: var(--space-5) var(--space-5) var(--space-3);
     font-weight: 600; font-size: 0.84375rem; color: var(--text); }
@@ -102,7 +99,7 @@
     background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
   #agent-list .agent.cursor:not(.dismiss-armed, .armed, .drop-ok, .drop-bad, .drag-source) { border-color: transparent;
     outline-width: 1px; outline-offset: -1px; }
-  #sidebar-head { display: none; }
+  #new-side { display: none; }
   .backend-heading strong { font-size: 0.9375rem; }
   #agent-list .agent .agent-state { width: 12px; min-width: 12px; height: 12px; }
   #agent-list .agent .kids { padding-block: 0; }
@@ -1686,11 +1683,6 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
 <body data-version="__VERSION__">
 
 <aside id="sidebar" tabindex="-1">
-  <div id="sidebar-head">
-    <button class="top-act" id="new-side" title="New top-level agent" data-key-hint="tt">
-      <span class="lbl">New</span>
-    </button>
-  </div>
   <div id="brand"><img src="/static/brand/mark.svg" width="24" height="24" alt=""><span id="brand-name">__APP__</span>
     <div id="agent-list-actions">
       <button id="new-list" class="icon-btn lg" title="New top-level agent" aria-label="New top-level agent"></button>
@@ -1699,6 +1691,8 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   <div id="sidebar-script-notice" hidden></div>
   <nav id="agent-list" aria-label="Agent tree" role="tree"></nav>
   <div id="agent-list-foot">
+    <button id="new-side" title="New top-level agent" aria-label="New top-level agent"
+      data-key-hint="tt"></button>
     <button id="settings-btn" title="Settings">
       <svg data-icon="SETTINGS_ICON"></svg>
       <span>Settings</span>

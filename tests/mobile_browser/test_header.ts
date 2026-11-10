@@ -513,12 +513,9 @@ export const tests: BrowserTest[] = [
       }
       await shot("closed");
       if (width === 1280) {
-        const sidebarHeader = await page.locator("#sidebar-head").boundingBox();
-        const newSide = (await page.locator("#new-side").boundingBox())!;
         const chatTab = (await page
           .locator(".dv-tab", { hasText: "Chat" })
           .boundingBox())!;
-        expect(newSide.y).toBeLessThan(chatTab.y + chatTab.height + 2);
         expect(header.y).toBeGreaterThanOrEqual(chatTab.y + chatTab.height - 1);
         expect(await page.locator("#new-top").isVisible()).toBe(false);
         expect(await page.locator("#menu-btn").isVisible()).toBe(false);
@@ -529,9 +526,6 @@ export const tests: BrowserTest[] = [
         expect((await page.locator("#topbar").boundingBox())!.height).toBe(48);
         await shot("sidebar-collapsed");
         await page.locator("#menu-btn").click();
-        expect(await page.locator("#sidebar-head").boundingBox()).toEqual(
-          sidebarHeader,
-        );
         expect(await page.locator("#menu-btn").isVisible()).toBe(false);
         expect(await page.locator("#pane-fab").isVisible()).toBe(false);
         const list = (await page.locator("#sidebar").boundingBox())!;
@@ -544,8 +538,16 @@ export const tests: BrowserTest[] = [
         expect(
           list.y + list.height - (settings.y + settings.height),
         ).toBeLessThan(24);
+        const plus = (await page
+          .locator("#agent-list-foot > #new-side:first-child")
+          .boundingBox())!;
+        expect(settings.x).toBeGreaterThanOrEqual(plus.x + plus.width);
         expect(trash.x).toBeGreaterThanOrEqual(settings.x + settings.width);
         expect(Math.abs(trash.y - settings.y)).toBeLessThan(settings.height);
+        expect(Math.abs(plus.y - settings.y)).toBeLessThan(settings.height);
+        expect(await page.locator("#new-side").textContent()).toBe("");
+        await page.locator("#new-side").click();
+        await page.locator("#input").waitFor();
         await context.close();
         continue;
       }
