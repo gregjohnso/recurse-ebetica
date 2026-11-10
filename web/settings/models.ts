@@ -1,6 +1,5 @@
-// Model settings keep prompt caching, context limits and the
-// effort ladder on the selected backend. Picker edits save together
-// without changing its default.
+// Model settings keep prompt caching, context limits and which models
+// the composer's model menu lists on the selected backend.
 import { settingsClient } from "./target.js";
 import { settingsDetail } from "./layout.js";
 import {
@@ -8,14 +7,10 @@ import {
   type ModelListUpdateStatus,
 } from "../models/list-status.js";
 import {
-  clampReasoning,
   indexModels,
-  reasoningChoices,
-  THINKING_ORDER,
+  searchModels,
   type FinderModel,
-  type IndexedModel,
 } from "../models/finder.js";
-import { createModelBox, type ModelBox } from "../models/finder-ui.js";
 
 async function errDetail(r: Response, fallback: string): Promise<string> {
   try {
@@ -132,227 +127,141 @@ export function buildMaximumContextSection(body: HTMLElement): void {
   });
 }
 
-interface LadderModelOption {
-  id: string;
-  label: string;
-}
-interface LadderState {
-  default_level: number;
-  levels: Record<string, { model: string; reasoning: string }>;
-  reachability: Record<
-    string,
-    { reachable: boolean; model: string; reasoning: string; reason: string }
-  >;
-  models: LadderModelOption[];
-  reasoning: string[];
-}
 interface ModelListState {
   models: FinderModel[];
   reasoning: string[];
+  /** Ids the composer's model menu lists; null lists every model. */
+  shown: string[] | null;
 }
-interface LadderRow {
-  level: number;
-  box: ModelBox;
-  reasoning: HTMLSelectElement;
-  /** The user picked a model or reasoning here since the last load. */
-  edited: boolean;
-  detail: ReturnType<typeof settingsDetail>;
-}
-export function buildLadderSection(body: HTMLElement): void {
+
+export function buildModelMenuSection(body: HTMLElement): void {
   const { api, jpost } = settingsClient();
   body.innerHTML = `
-    <form>
-      <div class="model-list-update">
-        <button type="button" class="settings-row model-list-update-button">
-          <span class="settings-row-label">Update model list</span>
-          <span class="settings-row-value model-list-status" role="status"></span>
-        </button>
-      </div>
-      <div class="efforts group"></div>
-      <div class="actions"><p class="msg"></p>
-        <button type="submit" class="primary">Save</button></div>
-    </form>`;
-  const form = body.querySelector("form")!;
-  const list = body.querySelector<HTMLElement>(".efforts")!;
-  const button = body.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    <div class="model-list-update">
+      <button type="button" class="settings-row model-list-update-button">
+        <span class="settings-row-label">Update model list</span>
+        <span class="settings-row-value model-list-status" role="status"></span>
+      </button>
+    </div>
+    <div class="shown-models-tools">
+      <input type="search" class="text-field" placeholder="Filter models"
+        aria-label="Filter models">
+      <button type="button" class="ghost" data-show="true">Show all</button>
+      <button type="button" class="ghost" data-show="false">Hide all</button>
+    </div>
+    <div class="group shown-models" role="group"
+      aria-label="Models in the model menu"></div>
+    <p class="msg"></p>`;
+  const filter = body.querySelector<HTMLInputElement>("input[type=search]")!;
+  const list = body.querySelector<HTMLElement>(".shown-models")!;
   const msg = body.querySelector<HTMLElement>(".msg")!;
   const listStatus = body.querySelector<HTMLElement>(".model-list-status")!;
   const updateButton = body.querySelector<HTMLButtonElement>(
     ".model-list-update-button",
   )!;
-  settingsDetail(body, "Effort ladder", () => "Levels 1–5");
+  let models: FinderModel[] = [];
+  let shown = new Set<string>();
+  const detail = settingsDetail(body, "Model menu", () =>
+    models.length ? `${shown.size} of ${models.length} shown` : "Checking…",
+  );
   const show = (cls: string, text: string) => {
     msg.className = "msg " + cls;
     msg.textContent = text;
   };
-  let defaultLevel = 3;
-  let rows: LadderRow[] = [];
-  let known = new Map<string, FinderModel>();
-  let ladderLabels = new Map<string, string>();
-  let allLevels: string[] = [...THINKING_ORDER];
-  const nameOf = (id: string) =>
-    known.get(id)?.label ?? ladderLabels.get(id) ?? id;
-  // Invariant: A value Pi does not offer for this model stays selectable,
-  // marked, so an untouched row saves what it already stores.
-  const fillReasoning = (
-    select: HTMLSelectElement,
-    model: string,
-    selected: string,
-  ) => {
-    const choices = reasoningChoices(
-      known.get(model)?.reasoning_levels,
-      allLevels,
-    );
-    select.textContent = "";
-    for (const level of choices) {
-      const option = document.createElement("option");
-      option.value = level;
-      option.textContent = level;
-      select.append(option);
-    }
-    if (!choices.includes(selected)) {
-      const option = document.createElement("option");
-      option.value = selected;
-      option.textContent = `${selected} (not offered for this model)`;
-      select.append(option);
-    }
-    select.value = selected;
-  };
-  const render = (
-    ladder: LadderState,
-    index: readonly IndexedModel[],
-    unsaved: Map<number, { model: string; reasoning: string }>,
-  ) => {
-    // Invariant: The rows edit models and reasoning only; the instance default
-    // level rides the save untouched so it is never reset as a side effect.
-    defaultLevel = ladder.default_level;
-    for (const row of rows) row.detail.close();
+  const render = () => {
     list.textContent = "";
-    rows = [];
-    for (let level = 1; level <= 5; level++) {
-      const entry = ladder.levels[String(level)];
-      if (!entry) continue;
-      // Invariant: Keep an unsaved edit across a reload after a list update; a
-      // row the user did not touch takes the reloaded value.
-      const kept = unsaved.get(level);
-      const keep =
-        kept !== undefined &&
-        (known.has(kept.model) || kept.model === entry.model);
-      const model = keep ? kept.model : entry.model;
-      const info = ladder.reachability[String(level)];
-      const row = document.createElement("div");
-      row.className = "row effort";
-      const reasoning = document.createElement("select");
-      reasoning.dataset.level = String(level);
-      reasoning.setAttribute("aria-label", `Reasoning for level ${level}`);
-      const box = createModelBox({
-        label: `Model for level ${level}`,
-        index,
-        value: model,
-        nameOf,
-        onPick: (picked) => {
-          ladderRow.edited = true;
-          fillReasoning(
-            reasoning,
-            picked.id,
-            clampReasoning(
-              reasoningChoices(picked.reasoning_levels, allLevels),
-              reasoning.value,
-            ),
-          );
-          detail.refresh();
-        },
-      });
-      box.input.autofocus = true;
-      fillReasoning(reasoning, model, keep ? kept.reasoning : entry.reasoning);
-      row.append(box.element, reasoning);
-      if (level === 1) {
-        const note = document.createElement("p");
-        note.className = "hint effort-note";
-        note.textContent =
-          "Used for safety review and conversation names; choose an inexpensive model such as Luna or Haiku.";
-        row.append(note);
+    const query = filter.value.trim();
+    const rows = query
+      ? searchModels(indexModels(models), query, models.length).models
+      : models;
+    if (!rows.length)
+      list.textContent = models.length
+        ? "No matching models"
+        : "No models available. Sign in from Settings.";
+    let route = "";
+    for (const model of rows) {
+      if (!query && model.route !== route) {
+        route = model.route;
+        const heading = document.createElement("p");
+        heading.className = "shown-models-route";
+        heading.textContent = route;
+        list.append(heading);
       }
-      if (info && !info.reachable) {
-        const note = document.createElement("p");
-        note.className = "hint";
-        note.textContent = info.reason;
-        row.append(note);
-      }
-      list.appendChild(row);
-      const detail = settingsDetail(
-        row,
-        `Level ${level}`,
-        () => `${nameOf(box.value())} · ${reasoning.value}`,
-      );
-      const ladderRow: LadderRow = {
-        level,
-        box,
-        reasoning,
-        edited: keep,
-        detail,
-      };
-      reasoning.addEventListener("change", () => {
-        ladderRow.edited = true;
-        detail.refresh();
+      const row = document.createElement("label");
+      row.className = "item check";
+      row.title = model.id;
+      const name = document.createElement("span");
+      name.textContent = model.label || model.id;
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.dataset.model = model.id;
+      box.checked = shown.has(model.id);
+      row.append(box, name);
+      list.append(row);
+    }
+    detail.refresh();
+  };
+  // Invariant: Every change saves the whole list; a failed save reloads the
+  // stored list so the boxes never show an unsaved state.
+  const save = async (next: Set<string>) => {
+    const before = shown;
+    shown = next;
+    render();
+    try {
+      const r = await jpost("/api/settings/shown-models", {
+        shown: models.every((m) => next.has(m.id))
+          ? null
+          : models.filter((m) => next.has(m.id)).map((m) => m.id),
       });
-      rows.push(ladderRow);
+      if (!r.ok) throw new Error(await errDetail(r, "Couldn't save."));
+      show("", "");
+      window.dispatchEvent(new Event("recurse-model-menu-changed"));
+    } catch (error) {
+      shown = before;
+      render();
+      show("err", error instanceof Error ? error.message : "Couldn't save.");
     }
   };
+  list.addEventListener("change", (event) => {
+    const box = event.target as HTMLInputElement;
+    const id = box.dataset.model;
+    if (!id) return;
+    const next = new Set(shown);
+    if (box.checked) next.add(id);
+    else next.delete(id);
+    void save(next);
+  });
+  for (const button of body.querySelectorAll<HTMLButtonElement>(
+    "button[data-show]",
+  ))
+    button.addEventListener("click", () => {
+      const next = new Set(shown);
+      for (const box of list.querySelectorAll<HTMLInputElement>(
+        "input[data-model]",
+      ))
+        if (button.dataset.show === "true") next.add(box.dataset.model!);
+        else next.delete(box.dataset.model!);
+      void save(next);
+    });
+  filter.addEventListener("input", render);
   // Invariant: Only the newest load renders, so an older reply cannot replace
   // it.
   let loads = 0;
-  const loadLadder = async () => {
-    const load = ++loads;
+  const load = async () => {
+    const current = ++loads;
     try {
-      const [ladderResponse, listResponse] = await Promise.all([
-        api("/api/settings/effort-levels"),
-        api("/api/settings/model-list").catch(() => null),
-      ]);
-      const ladder = (await ladderResponse.json()) as LadderState;
-      let listed: ModelListState | null = null;
-      if (listResponse?.ok)
-        listed = (await listResponse.json()) as ModelListState;
-      if (load !== loads) return;
-      if (!listed)
-        show(
-          "err",
-          "Couldn't load the model list. Only the ladder's own models are offered.",
-        );
-      ladderLabels = new Map(ladder.models.map((m) => [m.id, m.label]));
-      allLevels = listed?.reasoning ?? ladder.reasoning;
-      const models: FinderModel[] =
-        listed?.models ??
-        ladder.models.map((m) => ({
-          id: m.id,
-          label: m.label,
-          route: "",
-          context_window: null,
-          reasoning_levels: null,
-        }));
-      known = new Map(models.map((m) => [m.id, m]));
-      const unsaved = new Map(
-        rows
-          .filter((row) => row.edited)
-          .map((row) => [
-            row.level,
-            { model: row.box.value(), reasoning: row.reasoning.value },
-          ]),
-      );
-      const focused = rows.find(
-        (row) => row.box.input === document.activeElement,
-      )?.level;
-      render(ladder, indexModels(models), unsaved);
-      const focusedRow = rows.find((row) => row.level === focused);
-      if (focusedRow) {
-        focusedRow.detail.open();
-        focusedRow.box.input.focus();
-      }
+      const r = await api("/api/settings/model-list");
+      if (!r.ok) throw new Error();
+      const state = (await r.json()) as ModelListState;
+      if (current !== loads) return;
+      models = state.models;
+      shown = new Set(state.shown ?? models.map((m) => m.id));
+      render();
     } catch {
-      show("err", "Couldn't load the effort ladder.");
+      show("err", "Couldn't load the model list.");
     }
   };
-  void loadLadder();
+  void load();
   const showListStatus = (status: ModelListUpdateStatus) => {
     listStatus.textContent = modelListStatusText(status);
     listStatus.classList.toggle("err", Boolean(status.error));
@@ -366,7 +275,7 @@ export function buildLadderSection(body: HTMLElement): void {
       status = await (await api("/api/settings/model-list-update")).json();
       showListStatus(status);
     }
-    if (!status.updating) await loadLadder();
+    if (!status.updating) await load();
   };
   api("/api/settings/model-list-update")
     .then((r) => r.json())
@@ -390,33 +299,6 @@ export function buildLadderSection(body: HTMLElement): void {
     } catch {
       listStatus.textContent = "Network error. Try again.";
       updateButton.disabled = false;
-    }
-  });
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    button.disabled = true;
-    show("", "");
-    const levels: Record<string, { model: string; reasoning: string }> = {};
-    for (const row of rows)
-      levels[String(row.level)] = {
-        model: row.box.value(),
-        reasoning: row.reasoning.value,
-      };
-    try {
-      const r = await jpost("/api/settings/effort-levels", {
-        levels,
-        default_level: defaultLevel,
-      });
-      if (!r.ok) {
-        show("err", await errDetail(r, "Couldn't save."));
-        return;
-      }
-      window.dispatchEvent(new Event("recurse-ladder-changed"));
-      show("ok", "Saved. Applies to new turns.");
-    } catch {
-      show("err", "Network error. Try again.");
-    } finally {
-      button.disabled = false;
     }
   });
 }

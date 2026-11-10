@@ -665,14 +665,6 @@ document.addEventListener(
     // through to Normal mode.
     if (eventElement?.closest?.("#explorer") && handleExplorerKey(event))
       return;
-    // Invariant: An open Settings model box owns its list keys, Escape
-    // included; a closed one leaves Escape to close Settings.
-    if (
-      eventElement
-        ?.closest?.(".model-box")
-        ?.querySelector?.('[aria-expanded="true"]')
-    )
-      return;
     const paneElement = eventElement?.closest?.(".pane-col");
     // Invariant: Focused pane content keeps Pane shortcuts even when
     // fullscreen. A nested menu retains its dialog keys; Escape from ordinary

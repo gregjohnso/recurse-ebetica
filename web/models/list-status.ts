@@ -1,4 +1,4 @@
-// The status line beside Settings > Effort ladder > Update model list.
+// The status line beside Settings > Model menu > Update model list.
 // Pure: the Settings section fetches /api/settings/model-list-update and
 // renders this text.
 

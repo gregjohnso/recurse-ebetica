@@ -429,7 +429,7 @@ describe("DurableHost", () => {
     );
     try {
       await expect(host.send("c1", "hi", "r1")).rejects.toThrow(
-        "Model meta/muse-spark-1.3-contributor is unavailable. Pick another effort level in the model picker, or fix its model in Settings > Effort ladder.",
+        "Model meta/muse-spark-1.3-contributor is unavailable. Pick another model in the model menu.",
       );
     } finally {
       await host.close();

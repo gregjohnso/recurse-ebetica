@@ -187,6 +187,8 @@ function reachabilityFor(level: EffortLevel): LadderReachability | null {
 }
 
 let catalog: FinderModel[] | null = null;
+/** Settings > Model menu's checked ids; null lists every model. */
+let shownIds: Set<string> | null = null;
 let catalogLevels: string[] | null = null;
 let listed: Map<string, LadderModel> | null = null;
 let catalogRequested = false;
@@ -199,13 +201,49 @@ function loadCatalog(): void {
     .api("/api/settings/model-list")
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null)
-    .then((body: { models?: FinderModel[]; reasoning?: string[] } | null) => {
-      if (label !== ladderLabel) return;
-      catalog = body?.models ?? [];
-      catalogLevels = body?.reasoning ?? null;
-      listed = new Map(catalog.map((m) => [m.id, m as LadderModel]));
-      render();
-    });
+    .then(
+      (
+        body: {
+          models?: FinderModel[];
+          reasoning?: string[];
+          shown?: string[] | null;
+        } | null,
+      ) => {
+        if (label !== ladderLabel) return;
+        catalog = body?.models ?? [];
+        shownIds = body?.shown ? new Set(body.shown) : null;
+        catalogLevels = body?.reasoning ?? null;
+        listed = new Map(catalog.map((m) => [m.id, m as LadderModel]));
+        render();
+      },
+    );
+}
+let menuCache: {
+  catalog: FinderModel[];
+  shown: Set<string> | null;
+  current: string | null;
+  models: FinderModel[];
+} | null = null;
+/** The menu's models: the shown ones plus `current`, so the selection stays
+ * listed. Same inputs reuse the array, so polls don't repaint. */
+function menuModels(current: string | null): FinderModel[] | null {
+  if (!catalog) return null;
+  if (
+    menuCache?.catalog !== catalog ||
+    menuCache.shown !== shownIds ||
+    menuCache.current !== current
+  ) {
+    const shown = shownIds;
+    menuCache = {
+      catalog,
+      shown,
+      current,
+      models: shown
+        ? catalog.filter((m) => shown.has(m.id) || m.id === current)
+        : catalog,
+    };
+  }
+  return menuCache.models;
 }
 function knownModel(id: string): LadderModel | null {
   const model = listed?.get(id) ?? ladder?.models.find((m) => m.id === id);
@@ -451,10 +489,11 @@ function paintSlider(disabled: boolean): void {
     }
   }
   syncPreview();
+  const choice = currentChoice();
   picker.paint({
-    models: catalog,
+    models: menuModels(choice.model),
     levels: catalogLevels ?? ladder?.reasoning ?? THINKING_ORDER,
-    ...currentChoice(),
+    ...choice,
     disabled: disabled || (mode === "draft" && !!state.draft?.creator),
   });
 }
@@ -863,11 +902,9 @@ window.addEventListener("recurse-auth-changed", () => {
   render();
   void fetchLadder();
 });
-window.addEventListener("recurse-ladder-changed", () => {
-  ladder = null;
-  loadFailed = false;
-  render();
-  void fetchLadder();
+window.addEventListener("recurse-model-menu-changed", () => {
+  catalogRequested = false;
+  if (catalog) loadCatalog();
 });
 // Revalidates every 10s; skips hidden tabs and active/focused previews.
 const LADDER_REFRESH_MS = 10_000;

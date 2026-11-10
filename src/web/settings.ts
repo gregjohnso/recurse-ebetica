@@ -544,12 +544,21 @@ export function registerSettingsRoutes(
     });
   });
 
+  // Invariant: `shown` (null = every model) limits only the composer's model
+  // menu; Settings lists every model so hidden ones can be shown again.
   router.get("/api/settings/model-list", async (ex) =>
     conditionalJson(ex.request, {
       models: settingsModelList(config),
       reasoning: [...THINKING_LEVELS],
+      shown: config.shownModels(),
     }),
   );
+  router.post("/api/settings/shown-models", async (ex) => {
+    const body = await jsonDictBody(ex);
+    return json({
+      shown: await mutate(() => config.setShownModels(field(body, "shown"))),
+    });
+  });
 
   router.get("/api/settings/effort-levels", async (ex) => {
     // Invariant: Content-derived validator: reachability flips on login without

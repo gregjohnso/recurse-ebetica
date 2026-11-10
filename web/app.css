@@ -725,7 +725,6 @@ button.settings-row:hover:not(:disabled) { background-color: color-mix(in srgb, 
 }
 .settings-section button:is(.primary, .secondary, .ghost) { min-height: 44px; border-radius: 999px;
   font-size: 0.875rem; font-weight: 400; }
-.settings-section .row.effort .settings-detail-content { display: grid; gap: var(--space-3); }
 
 /* Cards keep one rounded outer edge; nested rows share its inset and
    symmetric hairlines without adding another rounded surface. */
@@ -794,26 +793,17 @@ button.settings-row:hover:not(:disabled) { background-color: color-mix(in srgb, 
   accent-color: var(--accent); }
 .settings-section .context-window-controls input[type="number"] { width: 110px; text-align: right; }
 #deleted-agent-history { width: 76px; text-align: right; }
-.settings-section .row.effort { display: block; }
-.settings-section .row.effort > .hint:not(.effort-note) { color: var(--warn); }
-.settings-section .row.effort select { width: 100%; min-width: 0; }
-/* The model box lists results inline below its field (never floating, so a
-   phone keyboard cannot cover the list). */
-.settings-section .model-box { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.settings-section .model-box-input { width: 100%; box-sizing: border-box; }
-.settings-section .model-box-list { max-height: 400px; overflow-y: auto; border: 1px solid var(--border);
-  border-radius: 8px; background: var(--panel-2); }
-.settings-section .model-box-list[hidden] { display: none; }
-.settings-section .model-box-option { display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1px var(--space-3); padding: var(--space-3) var(--space-4); cursor: pointer; }
-.settings-section .model-box-option.active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.settings-section .model-box-name { color: var(--text); font-size: 0.84375rem; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
-.settings-section :is(.model-box-route, .model-box-context) { color: var(--muted); font-size: 0.71875rem;
-  justify-self: end; white-space: nowrap; }
-.settings-section .model-box-id { min-width: 0; color: var(--muted); font: 0.71875rem var(--font-mono);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.settings-section .model-box-note { padding: var(--space-3) var(--space-4); color: var(--muted); font-size: 0.78125rem; }
+/* The model menu's shown models: compact checkbox rows grouped by route. */
+.settings-section .shown-models-tools { display: flex; align-items: center; gap: var(--space-3);
+  margin-block: var(--space-4) var(--space-3); }
+.settings-section .shown-models-tools > input { flex: 1; min-width: 0; }
+.settings-section .shown-models { max-height: 420px; overflow-y: auto; scrollbar-gutter: stable; }
+.settings-section .shown-models > * { min-height: 36px; padding-block: var(--space-2); }
+.settings-section .shown-models > .shown-models-route { min-height: 0; padding-block: var(--space-4) var(--space-1);
+  color: var(--muted); font-size: 0.71875rem; }
+.settings-section .shown-models > .item.check { justify-content: flex-start; gap: var(--space-4); }
+.settings-section .shown-models input[type="checkbox"] { flex: none; width: 16px; height: 16px; margin: 0;
+  accent-color: var(--accent); }
 
 /* Remotes keep 44px controls at every width. */
 .remotes-settings :is(button:is(.primary, .ghost, .secondary), input) { min-height: 44px; min-width: 44px; }
@@ -892,8 +882,6 @@ button.settings-row:hover:not(:disabled) { background-color: color-mix(in srgb, 
   .settings-section .item.field { flex-direction: column; align-items: stretch; gap: var(--space-2); }
   .settings-section .item.field > input { flex: none; }
   .settings-section .actions > button { min-width: 88px; }
-  .settings-section .model-box-list { max-height: 300px; }
-  .settings-section .model-box-option { min-height: 44px; align-content: center; }
   .settings-section .context-window-controls input[type="number"] { width: 104px; }
   .remote-entry > .row { flex-wrap: wrap; }
   .remote-buttons { width: 100%; flex-wrap: wrap; }

@@ -12,7 +12,7 @@ import {
   type BrowserTest,
   openSettingsPanel,
 } from "./common";
-import type { Locator, Page } from "playwright";
+import type { Page } from "playwright";
 import { expect as browserExpect } from "playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -25,27 +25,6 @@ const LIST_OPUS = {
   route: "Claude",
   context_window: 1_000_000,
   reasoning_levels: ["low", "medium", "high", "xhigh", "max"],
-};
-const LIST_SONNET = {
-  id: "anthropic/claude-sonnet-5",
-  label: "Claude Sonnet 5",
-  route: "Claude",
-  context_window: 1_000_000,
-  reasoning_levels: null,
-};
-const LIST_SOL = {
-  id: "openai-codex/gpt-6-sol",
-  label: "GPT-6 Sol",
-  route: "ChatGPT subscription",
-  context_window: 272_000,
-  reasoning_levels: ["off", "low", "medium", "high", "xhigh"],
-};
-const LIST_FRESH = {
-  id: "openrouter/vendor/fresh",
-  label: "Fresh",
-  route: "OpenRouter",
-  context_window: 128_000,
-  reasoning_levels: ["off"] as string[] | null,
 };
 const ALL_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
@@ -85,50 +64,15 @@ async function routeLadder(
     ),
     reasoning: ALL_LEVELS,
   };
-  let ladderReads = 0;
-  let listReads = 0;
-  const saved: {
-    default_level: number;
-    levels: Record<string, LadderEntry>;
-  }[] = [];
-  await page.route(`${base}api/settings/effort-levels`, (route) => {
-    if (route.request().method() === "POST")
-      saved.push(route.request().postDataJSON());
-    else ladderReads++;
-    return route.fulfill({ json: ladder });
-  });
-  await page.route(`${base}api/settings/model-list`, (route) => {
-    listReads++;
-    return route.fulfill({
-      json: { models: options.list, reasoning: ALL_LEVELS },
-    });
-  });
-  return {
-    saved,
-    levels,
-    ladderReads: () => ladderReads,
-    listReads: () => listReads,
-  };
+  await page.route(`${base}api/settings/effort-levels`, (route) =>
+    route.fulfill({ json: ladder }),
+  );
+  await page.route(`${base}api/settings/model-list`, (route) =>
+    route.fulfill({
+      json: { models: options.list, reasoning: ALL_LEVELS, shown: null },
+    }),
+  );
 }
-
-async function listCapacity(listbox: Locator): Promise<number> {
-  return listbox.evaluate((el) => {
-    const max = parseFloat((globalThis as any).getComputedStyle(el).maxHeight);
-    const row = (el as any).querySelector("[role=option]").offsetHeight;
-    return Math.floor(max / row);
-  });
-}
-
-async function openLadder(page: Page, base: string): Promise<void> {
-  await gotoRoot(page, base);
-  await page.locator(".agent").first().waitFor();
-  await openSettingsPanel(page);
-  await page.locator('#settings-nav button[data-cat="models"]').click();
-  await openDetail(page, /^Effort ladder /);
-}
-
-const LEVEL_ONE_HELP =
-  "Used for safety review and conversation names; choose an inexpensive model such as Luna or Haiku.";
 
 async function openDetail(page: Page, name: RegExp): Promise<void> {
   if (page.viewportSize()!.width <= 700)
@@ -144,47 +88,11 @@ async function closeDetails(page: Page): Promise<void> {
       .click();
 }
 
-async function closeLevel(page: Page): Promise<void> {
-  const current = page.locator(
-    'dialog.settings-sheet[open][aria-label^="Level "]',
-  );
-  if (await current.count())
-    await current.getByRole("button", { name: /^Close / }).click();
-}
-
-async function openLevel(page: Page, level: number): Promise<void> {
-  await closeLevel(page);
-  await openDetail(page, new RegExp(`^Level ${level} `));
-  if (page.viewportSize()!.width > 700)
-    await page
-      .getByRole("combobox", { name: `Model for level ${level}`, exact: true })
-      .focus();
-}
-
-async function expectLevelOneHelp(page: Page): Promise<void> {
-  await openLevel(page, 1);
-  const sheet = page.getByRole("region", { name: "Level 1", exact: true });
-  await browserExpect(
-    sheet.getByText(LEVEL_ONE_HELP, { exact: true }),
-  ).toBeVisible();
-  await closeLevel(page);
-}
-
 async function showCategory(page: Page, cat: string): Promise<void> {
   await closeDetails(page);
   const back = page.locator(".settings-cat:not([hidden]) .settings-back");
   if (await back.isVisible()) await back.click();
   await page.locator(`#settings-nav button[data-cat="${cat}"]`).click();
-}
-
-async function saveLadder(page: Page, tap = false): Promise<void> {
-  await closeLevel(page);
-  const save = page
-    .getByRole("region", { name: "Effort ladder", exact: true })
-    .getByRole("button", { name: "Save", exact: true });
-  if (tap) await save.tap();
-  else await save.click();
-  await page.getByText("Saved. Applies to new turns.").waitFor();
 }
 
 export const tests: BrowserTest[] = [
@@ -764,7 +672,8 @@ export const tests: BrowserTest[] = [
       await context.close();
     }
   },
-  async function test_settings_model_list_update_keeps_unsaved_ladder_picks(
+  // Feature: #0 Settings checkboxes choose which models the composer's model menu lists.
+  async function test_model_menu_checkboxes_limit_the_composer_menu(
     browser,
     base,
   ) {
@@ -773,286 +682,88 @@ export const tests: BrowserTest[] = [
     });
     const page = await context.newPage();
     const errors = captureErrors(page);
-    const entry = { model: "anthropic/claude-opus-5-5", reasoning: "high" };
-    const routes = await routeLadder(page, base, {
-      levels: [entry, entry, entry, entry, entry],
-      list: [LIST_OPUS, { ...LIST_FRESH, reasoning_levels: null }],
-    });
-    const idle = { updating: false, updated_at: null, count: 449, error: null };
-    let status: object = idle;
-    let posts = 0;
-    await page.route(`${base}api/settings/model-list-update`, (route) => {
-      if (route.request().method() === "POST") {
-        posts++;
-        status = {
-          updating: false,
-          updated_at: null,
-          count: 449,
-          error:
-            "openrouter: Unable to connect. Is the computer able to access the url?",
-        };
-        return route.fulfill({
-          status: 202,
-          json: { ...idle, updating: true },
-        });
-      }
-      return route.fulfill({ json: status });
-    });
-    await openLadder(page, base);
-    const line = page.locator(".model-list-status");
-    await page.getByText("449 models in Pi's list.").waitFor();
-    const readsBefore = routes.ladderReads();
-    await openLevel(page, 2);
-    const box = page.getByRole("combobox", { name: "Model for level 2" });
-    await box.click();
-    await box.fill("fresh");
-    await box.press("Enter");
-    expect(await box.inputValue()).toBe("Fresh");
-    const sonnet = { model: "anthropic/claude-sonnet-5", reasoning: "low" };
-    routes.levels["3"] = sonnet;
-    const refreshedList = page.waitForResponse(
-      `${base}api/settings/model-list`,
+    const status = {
+      updating: false,
+      updated_at: null,
+      count: 449,
+      error: "openrouter: Unable to connect.",
+    };
+    await page.route(`${base}api/settings/model-list-update`, (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({ status: 202, json: { ...status, updating: true } })
+        : route.fulfill({ json: status }),
     );
-    await closeLevel(page);
-    await page.getByRole("button", { name: /^Update model list/ }).click();
-    await page
-      .getByText(
-        "Could not update: openrouter: Unable to connect. Is the computer able to access the url? Using Pi's current list.",
-      )
-      .waitFor();
-    expect(await line.getAttribute("class")).toContain("err");
-    expect(posts).toBe(1);
-    await (await refreshedList).finished();
-    await page.waitForFunction(
-      () =>
-        (
-          (globalThis as any).document.querySelector(
-            'input[aria-label="Model for level 3"]',
-          ) as { value: string }
-        ).value === "anthropic/claude-sonnet-5",
-    );
-    expect(routes.listReads()).toBe(2);
-    expect(routes.ladderReads()).toBeGreaterThan(readsBefore);
-    await browserExpect(
-      page.locator('input[aria-label="Model for level 2"]'),
-    ).toHaveValue("Fresh");
-    await browserExpect(
-      page.getByRole("button", { name: /^Update model list/ }),
-    ).toBeEnabled();
-    await saveLadder(page);
-    expect(routes.saved).toHaveLength(1);
-    const levels = routes.saved[0]!.levels;
-    expect(levels["2"]).toEqual({
-      model: "openrouter/vendor/fresh",
-      reasoning: "high",
-    });
-    expect(levels["1"]).toEqual(entry);
-    expect(levels["3"]).toEqual(sonnet);
-    expect(errors).toEqual([]);
-    await context.close();
-  },
-  async function test_settings_model_box_keyboard_picks_and_restores(
-    browser,
-    base,
-  ) {
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-    });
-    const page = await context.newPage();
-    const errors = captureErrors(page);
-    const opus = { model: "anthropic/claude-opus-5-5", reasoning: "high" };
-    const gone = { model: "anthropic/claude-gone", reasoning: "minimal" };
-    const offOpus = { model: "anthropic/claude-opus-5-5", reasoning: "off" };
-    const listRequests: string[] = [];
-    page.on("request", (request) => {
-      if (request.url().endsWith("/api/settings/model-list"))
-        listRequests.push(request.url());
-    });
-    const routes = await routeLadder(page, base, {
-      levels: [gone, offOpus, opus, opus, opus],
-      list: [LIST_OPUS, LIST_SONNET, LIST_SOL, LIST_FRESH],
-    });
-    await gotoRoot(page, base);
-    await page.locator(".agent").first().waitFor();
-    expect(listRequests).toEqual([]);
-    await page.locator("#settings-btn").click();
-    await page.locator('#settings-nav button[data-cat="models"]').click();
-    await openDetail(page, /^Effort ladder /);
-    const box = (level: number) =>
-      page.locator(`input[aria-label="Model for level ${level}"]`);
-    const reasoning = (level: number) =>
-      page.getByLabel(`Reasoning for level ${level}`);
-    await expectLevelOneHelp(page);
-    await openLevel(page, 1);
-    expect(routes.listReads()).toBe(1);
-    expect(await box(1).getAttribute("placeholder")).toBe(
-      "anthropic/claude-gone",
-    );
-    await browserExpect(box(1)).toHaveAttribute("aria-expanded", "true");
-    await page
-      .getByText(
-        "level 1 model anthropic/claude-gone is not in Pi's model list",
-      )
-      .waitFor();
-    const levelTexts = (level: number) =>
-      reasoning(level)
-        .locator("option")
-        .evaluateAll((options) => options.map((o) => o.textContent));
-    expect(await levelTexts(2)).toEqual([
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-      "off (not offered for this model)",
-    ]);
-    expect(await reasoning(2).inputValue()).toBe("off");
-    await openLevel(page, 3);
-    await box(3).click();
-    expect(await box(3).getAttribute("aria-expanded")).toBe("true");
-    const listbox = page.getByRole("listbox", { name: "Model for level 3" });
-    expect(await listbox.getByRole("option").count()).toBe(4);
-    expect(await listCapacity(listbox)).toBeGreaterThanOrEqual(6);
-    const activeId = await box(3).getAttribute("aria-activedescendant");
-    expect(
-      await page.locator(`[id="${activeId}"]`).getAttribute("data-id"),
-    ).toBe("anthropic/claude-opus-5-5");
-    const first = listbox.getByRole("option").first();
-    expect(await first.innerText()).toContain("Claude Opus 5.5");
-    expect(await first.innerText()).toContain("anthropic/claude-opus-5-5");
-    expect(await first.innerText()).toContain("Claude");
-    expect(await first.innerText()).toContain("1M");
-    await box(3).fill("gpt");
-    expect(
-      await listbox
-        .getByRole("option")
-        .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-id"))),
-    ).toEqual(["openai-codex/gpt-6-sol"]);
-    await box(3).press("ArrowDown");
-    await box(3).press("Escape");
-    expect(await box(3).inputValue()).toBe("Claude Opus 5.5");
-    expect(await box(3).getAttribute("aria-expanded")).toBe("false");
-    expect(await page.locator("#settings-overlay.on").count()).toBe(1);
-    await box(3).fill("sol");
-    await box(3).press("Tab");
-    expect(await box(3).inputValue()).toBe("Claude Opus 5.5");
-    expect(await listbox.isVisible()).toBeFalse();
-    await box(3).click();
-    await box(3).fill("frsh");
-    await box(3).press("Enter");
-    expect(await box(3).inputValue()).toBe("Fresh");
-    expect(await levelTexts(3)).toEqual(["off"]);
-    expect(await reasoning(3).inputValue()).toBe("off");
-    await openLevel(page, 4);
-    await box(4).click();
-    await box(4).fill("claude");
-    await box(4).press("ArrowDown");
-    await box(4).press("Enter");
-    expect(await box(4).inputValue()).toBe("Claude Sonnet 5");
-    expect(await levelTexts(4)).toHaveLength(7);
-    expect(await reasoning(4).inputValue()).toBe("high");
-    await openLevel(page, 5);
-    await box(5).click();
-    await box(5).fill("gpt");
-    await box(5).press("Enter");
-    expect(await reasoning(5).inputValue()).toBe("high");
-    await saveLadder(page);
-    expect(routes.saved).toEqual([
-      {
-        default_level: 3,
-        levels: {
-          "1": gone,
-          "2": offOpus,
-          "3": { model: "openrouter/vendor/fresh", reasoning: "off" },
-          "4": { model: "anthropic/claude-sonnet-5", reasoning: "high" },
-          "5": { model: "openai-codex/gpt-6-sol", reasoning: "high" },
+    await page.route(`${base}api/settings/model-list`, async (route) => {
+      const real = await (await route.fetch()).json();
+      return route.fulfill({
+        json: {
+          ...real,
+          models: [
+            LIST_OPUS,
+            {
+              ...LIST_OPUS,
+              id: "anthropic/claude-mythos-5-2",
+              label: "Mythos",
+            },
+            { ...LIST_OPUS, id: "openai-codex/gpt-6-sol", route: "ChatGPT" },
+          ],
         },
-      },
-    ]);
-    await openLevel(page, 1);
-    await box(1).click();
-    await box(1).press("Escape");
-    expect(await page.locator("#settings-overlay.on").count()).toBe(1);
-    await browserExpect(
-      page.getByRole("region", { name: "Level 1", exact: true }),
-    ).toBeVisible();
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(
-      "!document.querySelector('#settings-overlay')?.classList.contains('on')",
-    );
-    expect(errors).toEqual([]);
-    await context.close();
-  },
-  async function test_mobile_model_box_lists_inline_and_picks_on_tap(
-    browser,
-    base,
-  ) {
-    const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-      isMobile: true,
-      hasTouch: true,
+      });
     });
-    const page = await context.newPage();
-    const errors = captureErrors(page);
-    const opus = { model: "anthropic/claude-opus-5-5", reasoning: "high" };
-    const routes = await routeLadder(page, base, {
-      levels: [opus, opus, opus, opus, opus],
-      list: [LIST_OPUS, LIST_SONNET, LIST_SOL, LIST_FRESH],
-    });
-    await routeArtifacts(page, base);
     await gotoRoot(page, base);
     await page.locator(".agent").first().waitFor();
     await openSettingsPanel(page);
-    await page.locator("#settings-overlay.on").waitFor();
-    await page.locator('#settings-nav button[data-cat="models"]').tap();
-    await page.getByRole("button", { name: /^Effort ladder / }).tap();
-    await expectLevelOneHelp(page);
-    await openLevel(page, 2);
-    const sheet = page.getByRole("region", { name: "Level 2", exact: true });
-    const box = sheet.getByRole("combobox", { name: "Model for level 2" });
-    await box.waitFor();
-    const select = page.getByLabel("Reasoning for level 2");
-    for (const control of [box, select]) {
-      const bounds = (await control.boundingBox())!;
-      expect(bounds.height).toBeGreaterThanOrEqual(44);
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
-    }
-    expect(await box.evaluate(fontSize)).toBe("16px");
-    expect(await box.getAttribute("autocapitalize")).toBe("off");
-    expect(await box.getAttribute("autocorrect")).toBe("off");
-    await box.tap();
-    await page.keyboard.type("fre");
-    const listbox = page.getByRole("listbox", { name: "Model for level 2" });
-    const option = listbox.locator('[data-id="openrouter/vendor/fresh"]');
-    await option.waitFor();
-    const [listBox, optionBox] = await Promise.all([
-      listbox.boundingBox(),
-      option.boundingBox(),
-    ]);
-    expect(
-      await listbox.evaluate(
-        (el) => (globalThis as any).getComputedStyle(el).position,
-      ),
-    ).toBe("static");
-    const scrolledInputBox = await box.boundingBox();
-    expect(listBox!.y).toBeGreaterThanOrEqual(
-      scrolledInputBox!.y + scrolledInputBox!.height,
-    );
-    expect(optionBox!.height).toBeGreaterThanOrEqual(44);
-    expect(await listCapacity(listbox)).toBeGreaterThanOrEqual(4);
-    await visibleAndUncovered(
-      page,
-      '.model-box-option[data-id="openrouter/vendor/fresh"]:visible',
-    );
-    await option.tap();
-    expect(await box.inputValue()).toBe("Fresh");
-    expect(await select.inputValue()).toBe("off");
-    await saveLadder(page, true);
-    expect(routes.saved[0]!.levels["2"]).toEqual({
-      model: "openrouter/vendor/fresh",
-      reasoning: "off",
+    await page.locator('#settings-nav button[data-cat="models"]').click();
+    const section = page.getByRole("region", {
+      name: "Model menu",
+      exact: true,
     });
-    expect(routes.saved[0]!.levels["1"]).toEqual(opus);
+    const boxes = section.locator(".shown-models input[type=checkbox]");
+    await boxes.first().waitFor();
+    const ids = await boxes.evaluateAll((els) =>
+      els.map((el) => (el as any).dataset.model as string),
+    );
+    expect(ids.length).toBeGreaterThan(1);
+    expect(
+      await boxes.evaluateAll((els) => els.every((el: any) => el.checked)),
+    ).toBeTrue();
+    await section
+      .getByRole("button", { name: "Hide all", exact: true })
+      .click();
+    await browserExpect(section.locator(".shown-models :checked")).toHaveCount(
+      0,
+    );
+    const kept = ids[ids.length - 1]!;
+    await section.locator(`input[data-model="${kept}"]`).check();
+    const shown = async () =>
+      (await (await page.request.get(base + "api/settings/model-list")).json())
+        .shown;
+    await browserExpect.poll(shown).toEqual([kept]);
+    await section
+      .getByRole("searchbox", { name: "Filter models" })
+      .fill("zzzz");
+    await section.getByText("No matching models", { exact: true }).waitFor();
+    await page.getByRole("button", { name: /^Update model list/ }).click();
+    await page
+      .getByText(
+        "Could not update: openrouter: Unable to connect. Using Pi's current list.",
+      )
+      .waitFor();
+    await page.keyboard.press("Escape");
+    await page.locator("#model-trigger").click();
+    const options = page.locator(".model-picker-option");
+    await browserExpect(options.first()).toBeVisible();
+    const listed = await options.evaluateAll((els) =>
+      els.map((el) => (el as any).dataset.model as string),
+    );
+    const current = await page
+      .locator('.model-picker-option[aria-selected="true"]')
+      .evaluateAll((els) => els.map((el) => (el as any).dataset.model));
+    expect(new Set(listed)).toEqual(new Set([kept, ...current]));
+    await page.request.post(base + "api/settings/shown-models", {
+      data: { shown: null },
+    });
+    expect(await shown()).toBeNull();
     expect(errors).toEqual([]);
     await context.close();
   },

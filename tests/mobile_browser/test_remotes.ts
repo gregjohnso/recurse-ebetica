@@ -266,36 +266,23 @@ export const tests: BrowserTest[] = [
       expect(layout.titleGap).toBe(4);
       expect(layout.actionGap).toBe(8);
       await page.locator('#settings-nav button[data-cat="models"]').click();
-      const ladder = page.getByRole("region", {
-        name: "Effort ladder",
+      const modelMenu = page.getByRole("region", {
+        name: "Model menu",
         exact: true,
       });
-      await browserExpect(ladder.locator(".model-box-input")).toHaveCount(5);
-      const ladderLayout = await ladder.evaluate((content) => {
-        const heading = content.parentElement!.querySelector(
-          ".settings-detail-summary .settings-row-label",
-        )!;
-        const update = content.querySelector(".model-list-update-button")!;
-        const level = content.querySelector(
-          ".effort .settings-detail-summary .settings-row-label",
-        )!;
-        const input = content.querySelector(".model-box-input")!;
-        const row = level.parentElement!;
-        return {
-          left: [heading, update, level, input].map(
-            (el) => el.getBoundingClientRect().left,
-          ),
-          rowGap:
-            row.getBoundingClientRect().top -
-            update.getBoundingClientRect().bottom,
-          editorGap:
-            input.getBoundingClientRect().top -
-            row.getBoundingClientRect().bottom,
-        };
-      });
-      expect(new Set(ladderLayout.left).size).toBe(1);
-      expect(ladderLayout.rowGap).toBe(0);
-      expect(ladderLayout.editorGap).toBe(0);
+      await browserExpect(
+        modelMenu.getByRole("searchbox", { name: "Filter models" }),
+      ).toBeVisible();
+      const menuLeft = await modelMenu.evaluate((content) =>
+        [
+          content.parentElement!.querySelector(
+            ".settings-detail-summary .settings-row-label",
+          )!,
+          content.querySelector(".model-list-update-button")!,
+          content.querySelector(".shown-models-tools input")!,
+        ].map((el) => el.getBoundingClientRect().left),
+      );
+      expect(new Set(menuLeft).size).toBe(1);
       await page.locator('#settings-nav button[data-cat="agents"]').click();
       await browserExpect(
         page.getByText("No MCP servers configured.", { exact: true }),

@@ -74,6 +74,7 @@ export interface StatePaths {
   AGENTS_MD: string;
   TOOLS_DIR: string | null;
   MAXIMUM_CONTEXT_WINDOW_FILE: string;
+  SHOWN_MODELS_FILE: string;
   DELETED_AGENT_HISTORY_FILE: string;
   DEFAULT_EFFORTS_FILE: string;
   MODEL_PROVIDERS_FILE: string;
@@ -129,6 +130,8 @@ export interface StatePaths {
 }
 
 export const DEFAULT_MAXIMUM_CONTEXT_WINDOW = 400_000;
+/** At most this many model ids are kept as the model menu's shown list. */
+const MAX_SHOWN_MODELS = 1000;
 export const MINIMUM_CONTEXT_WINDOW = 64_000;
 export const MAXIMUM_CONTEXT_WINDOW = 1_000_000;
 export const EFFORT_MIN_LEVEL = 1;
@@ -626,6 +629,7 @@ function buildPaths(
     AGENTS_MD: join(path("repo"), "AGENTS.md"),
     TOOLS_DIR: toolsDir,
     MAXIMUM_CONTEXT_WINDOW_FILE: path("config/maximum-context-window.json"),
+    SHOWN_MODELS_FILE: path("config/shown-models.json"),
     DELETED_AGENT_HISTORY_FILE: path("config/deleted-agent-history.json"),
     DEFAULT_EFFORTS_FILE: path("config/default-efforts.json"),
     MODEL_PROVIDERS_FILE: path("config/model-providers.json"),
@@ -1214,7 +1218,7 @@ export class Config {
     if (ids === null || ids.has(canonical)) return null;
     return level === null
       ? `Model ${canonical} is not in Pi's model list. Choose an effort level for this conversation.`
-      : `Model ${canonical} is not in Pi's model list. Choose another model for level ${level} in Settings > Effort ladder.`;
+      : `Model ${canonical} is not in Pi's model list. Ask an agent to set level ${level} to another model.`;
   }
 
   suggestedEffort(model: string): Thinking {
@@ -1482,6 +1486,26 @@ export class Config {
       { enabled: value },
     );
     return value;
+  }
+
+  /** Model ids the composer's model menu lists; null lists every model. */
+  shownModels(): string[] | null {
+    const data = this.settingsJson(this.paths.SHOWN_MODELS_FILE);
+    if (!isObject(data) || !Array.isArray(data.models)) return null;
+    return data.models.filter((id): id is string => typeof id === "string");
+  }
+
+  async setShownModels(value: unknown): Promise<string[] | null> {
+    if (
+      value !== null &&
+      (!Array.isArray(value) ||
+        value.length > MAX_SHOWN_MODELS ||
+        value.some((id) => typeof id !== "string" || !id || id.length > 200))
+    )
+      throw valueError("Shown models must be null or a list of model ids");
+    const models = value === null ? null : [...new Set(value as string[])];
+    await this.writePrivateJson(this.paths.SHOWN_MODELS_FILE, { models });
+    return models;
   }
 
   maximumContextWindow(): number {

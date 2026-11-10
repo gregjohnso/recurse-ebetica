@@ -17,7 +17,7 @@ import {
 import {
   buildPromptCacheSection,
   buildMaximumContextSection,
-  buildLadderSection,
+  buildModelMenuSection,
 } from "./settings/models.js";
 import { clearSkillsCache } from "./skills.js";
 import { installFocusTrap, restoreFocus } from "./focus_trap.js";
@@ -356,7 +356,7 @@ settingsSection("Deleted agents' history", "account", (body) => {
 
 settingsSection("Prompt cache", "models", buildPromptCacheSection);
 settingsSection("Maximum context window", "models", buildMaximumContextSection);
-settingsSection("Effort ladder", "models", buildLadderSection);
+settingsSection("Model menu", "models", buildModelMenuSection);
 
 // ---- section: MCP servers ----
 // Checked before Save so a paste slip shows under the box; the server still

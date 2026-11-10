@@ -258,7 +258,7 @@ const modelSelectionError: BrowserTest = async (browser, base) => {
         .fill("Keep this message while I choose a model");
       await page.locator("#input").press("Enter");
       await page.locator("#send-status.error").waitFor();
-      const detail = `${model ? `Model ${model} is unavailable.` : "No model is selected for this conversation."} Pick another effort level in the model picker, or fix its model in Settings > Effort ladder.`;
+      const detail = `${model ? `Model ${model} is unavailable.` : "No model is selected for this conversation."} Pick another model in the model menu.`;
       expect(await page.locator("#send-status").textContent()).toBe(
         `${detail} — Retry now`,
       );

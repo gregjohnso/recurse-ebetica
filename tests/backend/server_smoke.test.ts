@@ -506,8 +506,7 @@ test("first messages report malformed and unavailable stored models", async () =
       const error = JSON.parse(result.body).detail as string;
       if (models[index]) expect(error).toContain(models[index]!);
       else expect(error).toContain("No model");
-      expect(error).toContain("effort level");
-      expect(error).toContain("Settings > Effort ladder");
+      expect(error).toContain("Pick another model in the model menu.");
       expect(error).not.toContain("durable");
     }
     const repaired = await api(`/api/conversations/${agents[0]}/model`, {

@@ -6,7 +6,7 @@ import type { Models } from "@earendil-works/pi-ai";
 export class ModelSelectionError extends Error {
   constructor(model: string) {
     super(
-      `${model ? `Model ${model} is unavailable.` : "No model is selected for this conversation."} Pick another effort level in the model picker, or fix its model in Settings > Effort ladder.`,
+      `${model ? `Model ${model} is unavailable.` : "No model is selected for this conversation."} Pick another model in the model menu.`,
     );
     this.name = "ModelSelectionError";
   }

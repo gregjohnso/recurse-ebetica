@@ -1,5 +1,5 @@
 // Searches Settings models from logged-in/custom routes in server route order.
-// finder-ui.ts owns DOM; model version/reasoning rules remain pure.
+// Model version and reasoning rules stay pure; callers own the DOM.
 import {
   lexical,
   normalizeSearchText,
