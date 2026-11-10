@@ -30,17 +30,19 @@
   --dv-spacing-padding: 0px;
   --dv-group-view-background-color: var(--bg);
   --dock-strip: light-dark(var(--panel), color-mix(in srgb, var(--bg) 80%, var(--shadow)));
-  --dv-tabs-and-actions-container-background-color: var(--dock-strip);
+  --dv-tabs-and-actions-container-background-color: var(--bg);
   --dv-tabs-and-actions-container-height: var(--row-height);
   --dv-tabs-and-actions-container-font-size: 13px;
   --dv-tab-font-size: 13px;
   --dv-tab-margin: 0;
   --dv-tab-border-radius: 0px;
   --dv-scrollbar-background-color: var(--scrollbar);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--dock-strip);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--dock-strip);
+  --dock-tab: color-mix(in srgb, var(--text) 6%, transparent);
+  --dock-tab-shown: color-mix(in srgb, var(--text) 15%, transparent);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--dock-tab-shown);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--dock-tab);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--dock-tab-shown);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--dock-tab);
   --dv-activegroup-visiblepanel-tab-color: var(--text);
   --dv-activegroup-hiddenpanel-tab-color: var(--muted);
   --dv-inactivegroup-visiblepanel-tab-color: color-mix(in srgb, var(--text) 65%, var(--muted));
@@ -68,28 +70,28 @@
 #dock .dv-content-container { background: var(--bg); }
 /* The tab strip's scrollbar shows only while the pointer is over it. */
 #dock .dv-scrollable:not(:hover) .dv-scrollbar { background-color: transparent; }
-/* Tabs, as in VS Code: flat in the strip's tone above a hairline; the visible
-   tab takes its window's colour, with rounded top corners, and covers the
-   hairline. Too many tabs scroll sideways. */
+/* Tabs, as in Notion: rounded pills on the window's colour above a hairline,
+   the visible one brighter. Too many tabs scroll sideways. */
 #dock .dv-tabs-and-actions-container { padding: 0; position: relative; }
 #dock .dv-tabs-and-actions-container::after { content: ""; position: absolute;
   left: 0; right: 0; bottom: 0; height: 1px; background: var(--border);
   pointer-events: none; }
 #dock .dv-tabs-overflow-dropdown-default, #dock .dv-tabs-overflow-dropdown-root { display: none; }
-#dock .dv-tabs-container { padding: 0 var(--space-3); }
+#dock .dv-tabs-container { padding: 0 var(--space-2); }
+/* Spec: A transparent border insets each pill inside its full-height tab. */
 #dock .dv-tab { position: relative; height: var(--row-height); box-sizing: border-box;
-  padding: 0 var(--space-3) 0 var(--space-4); min-width: 80px; max-width: 220px; font-weight: 400; }
-#dock .dv-tab.dv-active-tab { z-index: var(--z-raised);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  border: 1px solid var(--border); border-bottom: 0; }
+  border: solid transparent; border-width: var(--space-2) var(--space-1);
+  background-clip: padding-box; border-radius: var(--radius-lg);
+  padding: 0 var(--space-2) 0 var(--space-3); min-width: 80px; max-width: 220px;
+  font-weight: 400; transition: background-color var(--motion-fast); }
+#dock .dv-tab.dv-inactive-tab:hover {
+  background-color: color-mix(in srgb, var(--text) 10%, transparent); }
 #dock .dv-default-tab { gap: 0; min-width: 0; }
 #dock .dv-default-tab-content { min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; padding: 0; margin: 0 var(--space-2); }
 /* A tab opened out of sight (an automatic open) shows in the accent until
    it is first shown. */
 #dock .dv-tab.dock-new .dv-default-tab-content { color: var(--accent); font-weight: 600; }
-#dock .dv-tab.dv-inactive-tab:hover {
-  background: color-mix(in srgb, var(--dock-strip) 70%, var(--bg)); }
 #dock .dock-tab-icon { display: inline-flex; flex: none; width: 16px; height: 16px;
   align-items: center; justify-content: center; }
 #dock .dock-tab-icon svg { width: 16px; height: 16px; }
