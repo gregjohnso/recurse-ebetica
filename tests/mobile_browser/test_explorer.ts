@@ -68,6 +68,20 @@ export const tests: BrowserTest[] = [
       '.dock-panel .files-markdown img[alt="Plot"]:not([hidden])',
     );
     await figure.waitFor();
+    const wide = page.locator(
+      '.dock-panel .files-markdown img[alt="Wide"]:not([hidden])',
+    );
+    await wide.waitFor();
+    const share = await wide.evaluate((image) => {
+      const column = image.closest(".files-markdown")!;
+      const style = (globalThis as any).getComputedStyle(column);
+      const inner =
+        column.clientWidth -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight);
+      return image.getBoundingClientRect().width / inner;
+    });
+    expect(share).toBeCloseTo(0.5, 2);
     await figure.dblclick();
     const viewer = page.locator("dialog.image-popout");
     const shown = viewer.locator(".files-detail img.files-image");

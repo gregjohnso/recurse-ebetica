@@ -38,6 +38,20 @@ function removeUrlSurfaces(root: ParentNode): void {
   }
 }
 
+/** An `<img width>`: pixels ("600", "600px") or a share of the column
+ * ("75%"); null when absent or unreadable. */
+function requestedImageWidth(
+  image: HTMLImageElement,
+): { px: number } | { percent: number } | null {
+  const value = image.getAttribute("width")?.trim() ?? "";
+  const match = /^(\d+(?:\.\d+)?)(px|%)?$/i.exec(value);
+  const amount = match ? Number(match[1]) : 0;
+  if (!(amount > 0)) return null;
+  return match![2] === "%"
+    ? { percent: Math.min(amount, 100) }
+    : { px: amount };
+}
+
 export function imagePlaceholder(
   image: HTMLImageElement,
   standalone = false,
@@ -49,11 +63,13 @@ export function imagePlaceholder(
     frame.setAttribute("role", "img");
     frame.setAttribute("aria-label", image.alt);
   }
-  const width = Number(image.getAttribute("width"));
+  const width = requestedImageWidth(image);
   const height = Number(image.getAttribute("height"));
-  if (width > 0 && height > 0) {
-    frame.style.aspectRatio = `${width} / ${height}`;
-    frame.style.width = `${width}px`;
+  if (width && "percent" in width) {
+    frame.style.width = `${width.percent}%`;
+  } else if (width && height > 0) {
+    frame.style.aspectRatio = `${width.px} / ${height}`;
+    frame.style.width = `${width.px}px`;
   } else {
     frame.style.width = "min(100%, 640px)";
   }
@@ -85,16 +101,21 @@ export async function revealArtifactImage(
       return loadDecodedArtifactImage(image, original, signal);
     });
     if (signal.aborted || !frame.parentNode) return false;
-    const width = Number(image.getAttribute("width"));
+    const width = requestedImageWidth(image);
     const height = Number(image.getAttribute("height"));
     const requestedWidth =
-      width > 0
-        ? width
+      width && "px" in width
+        ? width.px
         : height > 0
           ? (height * dimensions.width) / dimensions.height
           : dimensions.width;
     frame.style.aspectRatio = `${dimensions.width} / ${dimensions.height}`;
-    frame.style.width = `${Math.min(requestedWidth, dimensions.width)}px`;
+    // Invariant: A percentage is of the document column, never wider than
+    // the image itself.
+    frame.style.width =
+      width && "percent" in width
+        ? `min(${width.percent}%, ${dimensions.width}px)`
+        : `${Math.min(requestedWidth, dimensions.width)}px`;
     image.hidden = false;
     frame.querySelector(".artifact-image-placeholder")?.remove();
     frame.removeAttribute("aria-busy");
