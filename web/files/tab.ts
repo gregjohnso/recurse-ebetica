@@ -1,8 +1,8 @@
 // Files dock tabs: on desktop a file clicked in the Files list opens in its own
 // dock tab, keyed by the file's stable key so a saved layout restores it. A
-// tab shows the detail view (./detail.ts) under its own header; while the
-// listing reloads it keeps the last listed copy, and a file no longer listed
-// says so with a way to close the tab.
+// tab shows the detail view (./detail.ts) under an Explorer file tab's compact
+// header and inset; while the listing reloads it keeps the last listed copy,
+// and a file no longer listed says so with a way to close the tab.
 import { html, nothing, render } from "lit";
 import { mountPdf, releasePdfs } from "../pdf-view.js";
 import {
@@ -15,10 +15,10 @@ import { commentMount } from "../artifacts/artifact-state.js";
 import { installBoxComments } from "./box-comments.js";
 import {
   detailBody,
-  detailHeader,
   filesStore,
   syncComments,
   syncDraw,
+  tabHeader,
   type DetailHost,
 } from "./detail.js";
 import { versionGroups, type SessionFile } from "./model.js";
@@ -123,28 +123,30 @@ function detail(
   deleteFailed: boolean,
 ) {
   const store = filesStore();
-  return html`${detailHeader(tab.cid, file, versions, {
-    pick: (key) => {
-      tab.key = key;
-      paint(tab);
-    },
-    deleted: () => closeDockPanel(tab.id),
-  })}
-  ${deleteFailed
-    ? html`<div class="files-error" role="alert">
-        Couldn’t delete ${file.name}.
-        <button
-          class="btn sm"
-          type="button"
-          @click=${async () => {
-            if (await store.deleteFile(tab.cid, file)) closeDockPanel(tab.id);
-          }}
-        >
-          Retry
-        </button>
-      </div>`
-    : nothing}
-  ${detailBody(tab.cid, file, tab.element)}`;
+  return html`<div class="explorer-preview">
+    ${tabHeader(tab.cid, file, versions, {
+      pick: (key) => {
+        tab.key = key;
+        paint(tab);
+      },
+      deleted: () => closeDockPanel(tab.id),
+    })}
+    ${deleteFailed
+      ? html`<div class="files-error" role="alert">
+          Couldn’t delete ${file.name}.
+          <button
+            class="btn sm"
+            type="button"
+            @click=${async () => {
+              if (await store.deleteFile(tab.cid, file)) closeDockPanel(tab.id);
+            }}
+          >
+            Retry
+          </button>
+        </div>`
+      : nothing}
+    ${detailBody(tab.cid, file, tab.element)}
+  </div>`;
 }
 
 function missing(tab: FileTab, complete: boolean, error: string | null) {
@@ -172,7 +174,7 @@ function missing(tab: FileTab, complete: boolean, error: string | null) {
 registerDockPanelKind(FILES_TAB, (id, cid) => {
   if (!cid || cid === DRAFT) return null;
   const element: DetailHost = document.createElement("div");
-  element.className = "files-tab";
+  element.className = "files-tab explorer-preview-host";
   const tab: FileTab = {
     id,
     cid,

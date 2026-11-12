@@ -567,8 +567,10 @@ export const tests: BrowserTest[] = [
     await detail.locator(".files-preview-placeholder").waitFor();
     await firstPreview;
     expect(heldPreviews).toHaveLength(1);
-    const head = (await detail.locator(".files-detail-head").boundingBox())!;
-    expect(head.height).toBeLessThanOrEqual(56);
+    const head = (await detail
+      .locator(".explorer-preview-meta")
+      .boundingBox())!;
+    expect(head.height).toBe(32);
     for (const name of ["Jump to message", "Delete"])
       expect(await detail.getByRole("button", { name }).count()).toBe(1);
     expect(
@@ -1128,7 +1130,9 @@ export const tests: BrowserTest[] = [
         const pane = page.locator('.pane-col[data-pane="files"]');
         const detail =
           width === 1280
-            ? page.locator(".files-tab", { hasText: "report.md" })
+            ? page.locator(".files-tab", {
+                has: page.locator('.files-detail[aria-label="report.md"]'),
+              })
             : pane;
         await detail.locator(".files-markdown h1").waitFor({ timeout: 15_000 });
         expect(await detail.locator(".files-markdown h1").innerText()).toBe(
@@ -1730,7 +1734,9 @@ export const tests: BrowserTest[] = [
       await page
         .getByRole("button", { name: "Open large.bin in Files" })
         .click();
-      const tab = page.locator(".files-tab", { hasText: "large.bin" });
+      const tab = page.locator(".files-tab", {
+        has: page.locator('.files-detail[aria-label="large.bin"]'),
+      });
       expect(await source(tab.getByRole("link", { name: "Download" }))).toEqual(
         ["http", "large.bin"],
       );
@@ -1739,6 +1745,7 @@ export const tests: BrowserTest[] = [
       await context.close();
     }
   },
+  // Feature: #0 a Files tab uses the Explorer tab's compact header, with no name heading.
   async function test_a_republished_file_keeps_its_versions(browser, base) {
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
@@ -1758,6 +1765,32 @@ export const tests: BrowserTest[] = [
       const heading = tab.locator(".files-detail .files-markdown h1");
       await heading.waitFor({ timeout: 15_000 });
       expect(await heading.innerText()).toBe("Draft 1");
+      expect(
+        await tab.getByRole("heading", { name: "report.md" }).count(),
+      ).toBe(0);
+      expect(await tab.locator(".files-detail-head, .files-name").count()).toBe(
+        0,
+      );
+      const row = tab.locator(".explorer-preview-meta");
+      expect(await renderedText(row)).toContain("Version 1 of 3");
+      const [host, meta, bar, doc] = await Promise.all(
+        [tab, row, tab.locator(".explorer-preview-bar"), heading].map(
+          async (target) => (await target.boundingBox())!,
+        ),
+      );
+      expect(meta.height).toBe(32);
+      expect(bar.height).toBe(32);
+      expect(bar.y).toBe(meta.y);
+      expect(bar.x).toBeGreaterThan(meta.x + meta.width - 1);
+      expect(meta.y - host.y).toBe(8);
+      expect(meta.x - host.x).toBe(16);
+      expect(doc.y - (meta.y + meta.height)).toBeLessThan(40);
+      for (const name of ["File options", "Jump to message", "Download"]) {
+        const button = (await tab
+          .getByLabel(name, { exact: true })
+          .boundingBox())!;
+        expect([button.width, button.height]).toEqual([32, 32]);
+      }
       await tab.getByLabel("File options", { exact: true }).click();
       const menu = tab.getByRole("combobox", { name: "Version" });
       const options = await menu

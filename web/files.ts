@@ -39,6 +39,7 @@ import {
 import { panePowerbar, renderPowerbarControls } from "./panes/powerbar.js";
 import { installBoxComments, touchDrewBox } from "./files/box-comments.js";
 import {
+  detailBar,
   detailBody,
   detailHeader,
   downloadHref,
@@ -1159,7 +1160,7 @@ function renderPane(element: FilesEl, id: string): void {
             id,
             shown,
             element,
-            fileNav(id, index, groups.length),
+            detailBar(shown, fileNav(id, index, groups.length)),
           )}`
         : value.error
           ? html`${backButton(id)}${errorBanner}`

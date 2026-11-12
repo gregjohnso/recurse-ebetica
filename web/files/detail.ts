@@ -1,7 +1,7 @@
-// One Files entry's detail view: a header (name, versions, Draw, Jump to
-// message, Download, Delete) over its preview and selection comments. The
-// Files pane (../files.ts) shows it instead of its list and dock tabs
-// (./tab.ts) show one each; both read files through the store files.ts gives.
+// One Files entry's detail view: a header (versions, Draw, Jump to message,
+// Download, Delete) over its preview and selection comments. The Files pane
+// (../files.ts) shows it instead of its list, dock tabs (./tab.ts) one each in
+// an Explorer tab's compact row; both read files through files.ts's store.
 import { html, nothing, type TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
@@ -382,15 +382,17 @@ export function metaLine(file: SessionFile, extra: string[]): string {
     .join(" · ");
 }
 
+/** An icon button; `size` is `lg` or an Explorer tab's `explorer-action`. */
 export function iconButton(
   label: string,
   glyph: unknown,
   onClick: (event: Event) => void,
   extraClass = "",
   disabled = false,
+  size = "lg",
 ): TemplateResult {
   return html`<button
-    class=${`icon-btn lg ${extraClass}`}
+    class=${`icon-btn ${size} ${extraClass}`}
     type="button"
     aria-label=${label}
     title=${label}
@@ -430,6 +432,71 @@ export interface HeaderActions {
   deleted?(): void;
 }
 
+// The version menu behind a File options button; none for a single version.
+function versionOptions(
+  file: SessionFile,
+  versions: SessionFile[],
+  pick: (key: string) => void,
+) {
+  if (versions.length < 2) return nothing;
+  return html`<details class="pane-powerbar-overflow">
+    <summary aria-label="File options" title="File options">
+      ${unsafeHTML(MORE_ICON)}
+    </summary>
+    <div class="menu form pane-powerbar-menu">
+      ${versionMenu(file, versions, pick)}
+    </div>
+  </details>`;
+}
+
+// Draw, Jump to message, Download and Delete, as `size` icon buttons.
+function fileActions(
+  cid: string,
+  file: SessionFile,
+  actions: HeaderActions,
+  size: string,
+) {
+  const href = downloadHref(cid, file);
+  const unavailable = unavailableLabel(file);
+  const jump =
+    file.sources.some((source) => source.offset !== null) ||
+    (!file.sources.length && file.id && !unavailable);
+  const button = (
+    label: string,
+    glyph: unknown,
+    onClick: (event: Event) => void,
+    extraClass = "",
+  ) => iconButton(label, glyph, onClick, extraClass, false, size);
+  const draw = imageHref(cid, file) && !unavailable;
+  return html` <span class="files-jump-status" role="status"></span>
+    ${draw
+      ? button(
+          "Draw",
+          DRAW_ICON,
+          (event) => drawOn(drawImage(event.currentTarget as Element)),
+          "files-draw",
+        )
+      : nothing}
+    ${jump
+      ? button("Jump to message", JUMP_ICON, (event) =>
+          jumpToSource(cid, file, event),
+        )
+      : nothing}
+    ${href
+      ? html`<a
+            class=${`icon-btn ${size}`}
+            href=${href}
+            download=${file.name}
+            data-bytes=${file.size}
+            aria-label="Download"
+            title="Download"
+            >${DOWNLOAD_ICON}</a
+          >${button("Delete", TRASH_ICON, async () => {
+            if (await store?.deleteFile(cid, file)) actions.deleted?.();
+          })}`
+      : nothing}`;
+}
+
 /** The detail header: the name and versions, then file actions. */
 export function detailHeader(
   cid: string,
@@ -437,76 +504,64 @@ export function detailHeader(
   versions: SessionFile[],
   actions: HeaderActions,
 ): TemplateResult {
-  const href = downloadHref(cid, file);
-  const unavailable = unavailableLabel(file);
-  const jump =
-    file.sources.some((source) => source.offset !== null) ||
-    (!file.sources.length && file.id && !unavailable);
   return html`<header class="files-detail-head">
     ${actions.back ?? nothing}
     <div class="files-detail-title">
       <h3 class="files-name" title=${file.name}>${file.name}</h3>
-      ${versions.length > 1
-        ? html`<details class="pane-powerbar-overflow">
-            <summary aria-label="File options" title="File options">
-              ${unsafeHTML(MORE_ICON)}
-            </summary>
-            <div class="menu form pane-powerbar-menu">
-              ${versionMenu(file, versions, actions.pick)}
-            </div>
-          </details>`
-        : nothing}
+      ${versionOptions(file, versions, actions.pick)}
     </div>
-    <div class="files-actions">
-      <span class="files-jump-status" role="status"></span>
-      ${imageHref(cid, file) && !unavailable
-        ? iconButton(
-            "Draw",
-            DRAW_ICON,
-            (event) => drawOn(drawImage(event.currentTarget as Element)),
-            "files-draw",
-          )
-        : nothing}
-      ${jump
-        ? iconButton("Jump to message", JUMP_ICON, (event) =>
-            jumpToSource(cid, file, event),
-          )
-        : nothing}
-      ${href
-        ? html`<a
-              class="icon-btn lg"
-              href=${href}
-              download=${file.name}
-              data-bytes=${file.size}
-              aria-label="Download"
-              title="Download"
-              >${DOWNLOAD_ICON}</a
-            >${iconButton("Delete", TRASH_ICON, async () => {
-              if (await store?.deleteFile(cid, file)) actions.deleted?.();
-            })}`
-        : nothing}
-    </div>
+    <div class="files-actions">${fileActions(cid, file, actions, "lg")}</div>
   </header>`;
 }
 
-/** The detail body: `nav` and metadata over the preview, then comments. */
+const references = (file: SessionFile): string =>
+  file.references > 1 ? `${file.references} references` : "";
+
+/** A dock tab's header, an Explorer tab's compact row: the metadata line
+ * with the version menu and file actions at its end. The tab names the file. */
+export function tabHeader(
+  cid: string,
+  file: SessionFile,
+  versions: SessionFile[],
+  actions: HeaderActions,
+): TemplateResult {
+  const index = versions.indexOf(file);
+  const version =
+    versions.length > 1
+      ? `Version ${versions.length - index} of ${versions.length}`
+      : "";
+  const meta = metaLine(file, [references(file), version]);
+  return html`<div class="explorer-preview-bar">
+      ${versionOptions(file, versions, actions.pick)}
+      ${fileActions(cid, file, actions, "explorer-action")}
+    </div>
+    <div class="explorer-preview-meta" title=${meta}>
+      <span class="files-meta">${meta}</span>
+    </div>`;
+}
+
+/** The pane's bar over a detail view: `nav`, then the file's metadata. */
+export function detailBar(file: SessionFile, nav: unknown): TemplateResult {
+  return html`<div class="files-detail-bar">
+    ${nav}
+    <span class="files-meta">${metaLine(file, [references(file)])}</span>
+  </div>`;
+}
+
+/** The detail body: `bar` over the preview, then comments. */
 export function detailBody(
   cid: string,
   file: SessionFile,
   host: DetailHost,
-  nav: unknown = nothing,
+  bar: unknown = nothing,
 ): TemplateResult {
   const unavailable = unavailableLabel(file);
-  const references = file.references > 1 ? `${file.references} references` : "";
   return html`<article
       class="files-detail"
       data-file-key=${file.key}
       aria-label=${file.name}
     >
-      <div class="files-detail-bar">
-        ${nav}
-        <span class="files-meta">${metaLine(file, [references])}</span>
-      </div>
+      ${bar}
       ${unavailable
         ? html`<div class="files-unavailable" role="status">
             ${unavailable}

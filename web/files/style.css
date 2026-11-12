@@ -97,7 +97,8 @@
 .files-detail-bar > .files-meta { flex: 1; padding-block: var(--space-1); }
 .files-nav { flex: none; display: flex; align-items: center; margin-inline-start: calc(-1 * var(--space-2)); }
 .files-position { color: var(--text); font-size: 0.71875rem; white-space: nowrap; }
-.files-detail-head [aria-disabled="true"], .files-nav [aria-disabled="true"] { opacity: .4; cursor: default; }
+.files-detail-head [aria-disabled="true"], .files-nav [aria-disabled="true"],
+.files-tab [aria-disabled="true"] { opacity: .4; cursor: default; }
 #messages img[src$="/preview"] { cursor: pointer; }
 .agent-attachment-preview, #attachments .preview, .files-thumb, .files-open,
 #messages img[src$="/preview"] { -webkit-tap-highlight-color: transparent; }
@@ -138,12 +139,8 @@ video.files-media { background: var(--media-backdrop); }
 .pane-body[data-pane="files"] .report-comments { margin-inline: var(--space-4); }
 .pane-body[data-pane="files"] .report-sendbar { bottom: 0; margin: var(--space-3) calc(-1 * var(--space-1)) 0;
   padding-inline: var(--space-4); }
-/* A dock tab shows one file under its own header (web/files/tab.ts). */
-.files-tab { flex: 1; min-height: 0; overflow: auto; }
-.files-tab .files-detail-title { display: flex; align-items: center; gap: var(--space-2); }
-.files-tab .files-name { flex: 1; margin: 0; font-size: 0.84375rem; }
+/* A dock tab shows one file under an Explorer tab's header (web/files/tab.ts). */
 .files-tab .files-jump-status:empty { display: none; }
-.files-tab .report-comments { margin-inline: var(--space-4); }
 .files-tab .files-state button { margin-inline-start: var(--space-3); }
 /* A drawn box comment is a highlight mark laid over its image or PDF page. */
 .report-box-frame { position: relative; cursor: crosshair; user-select: none; -webkit-user-select: none;
