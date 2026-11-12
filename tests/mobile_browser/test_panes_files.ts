@@ -1010,7 +1010,9 @@ export const tests: BrowserTest[] = [
         await page
           .getByRole("button", { name: "Open review.diff in Files" })
           .click();
-        const diff = page.locator(".files-detail .files-diff");
+        const diff = (
+          width === 1280 ? page.locator(".files-tab") : page
+        ).locator(".files-detail .files-diff");
         await diff.locator(".diff-row.add .hljs-keyword").first().waitFor();
         expect(await diff.locator(".diff-row.del").count()).toBeGreaterThan(0);
         expect(
@@ -1053,10 +1055,11 @@ export const tests: BrowserTest[] = [
           await page.screenshot({
             path: `${process.env.SCREENSHOT_DIR}/files-diff-${width}.png`,
           });
+        if (width === 1280)
+          await page.locator('.rail-btn[data-pane="files"]').click();
         for (const name of ["review.patch", "review.txt"]) {
-          const back = page.getByRole("button", { name: "All files" });
           if (width === 1280) await showDockTab(page, "Files");
-          if (await back.isVisible()) await back.click();
+          else await page.getByRole("button", { name: "All files" }).click();
           await page
             .getByRole("button", { name: `Open ${name}`, exact: true })
             .click();
@@ -1123,7 +1126,10 @@ export const tests: BrowserTest[] = [
           .getByRole("button", { name: "Open report.md in Files" })
           .click();
         const pane = page.locator('.pane-col[data-pane="files"]');
-        const detail = pane;
+        const detail =
+          width === 1280
+            ? page.locator(".files-tab", { hasText: "report.md" })
+            : pane;
         await detail.locator(".files-markdown h1").waitFor({ timeout: 15_000 });
         expect(await detail.locator(".files-markdown h1").innerText()).toBe(
           "Weekly report",
@@ -1231,7 +1237,8 @@ export const tests: BrowserTest[] = [
               (element: any) => element === element.ownerDocument.activeElement,
             ),
           ).toBe(true);
-          await pane.locator(".pane-body").focus();
+          const tab = page.locator("#dock .dv-tab", { hasText: "report.md" });
+          await tab.focus();
           await page.keyboard.press("c");
           expect(
             await input.evaluate(
@@ -1239,11 +1246,8 @@ export const tests: BrowserTest[] = [
             ),
           ).toBe(true);
           expect(await input.inputValue()).toBe("Explain the report");
-          expect(await pane.locator(".report-comment").count()).toBe(0);
-          await pane.locator(".pane-body").focus();
-          await page.keyboard.press("z");
-          expect(await pane.getAttribute("aria-modal")).toBe("true");
-          await popover.waitFor();
+          expect(await detail.locator(".report-comment").count()).toBe(0);
+          await tab.focus();
           await page.keyboard.press("c");
           expect(
             await input.evaluate(
@@ -1253,14 +1257,14 @@ export const tests: BrowserTest[] = [
           await page.keyboard.press("c");
           expect(await input.inputValue()).toBe("Explain the reportc");
           await page.keyboard.press("Backspace");
-          await pane.locator(".pane-body").focus();
-          await page.keyboard.press("z");
         }
         await popover.getByRole("button", { name: "Comment" }).click();
-        expect(await pane.locator("mark.report-cmark").textContent()).toBe(
+        expect(await detail.locator("mark.report-cmark").textContent()).toBe(
           "Weekly report",
         );
-        await detail.getByRole("button", { name: "All files" }).click();
+        if (width === 1280)
+          await page.locator('.rail-btn[data-pane="files"]').click();
+        else await detail.getByRole("button", { name: "All files" }).click();
         const card = pane.locator(".files-card", { hasText: "report.md" });
         await card.waitFor();
         expect(await card.locator(".files-markdown").count()).toBe(0);
@@ -1299,21 +1303,24 @@ export const tests: BrowserTest[] = [
         });
         await chip.waitFor({ timeout: 15_000 });
         await chip.click();
-        return page.locator('.pane-col[data-pane="files"]');
+        return page.locator(".files-tab", {
+          has: page.locator(`.files-detail[aria-label="${name}"]`),
+        });
       };
-      let detail = await open("chart.svg");
+      await open("chart.svg");
       await page
         .locator("dialog.image-popout")
         .getByRole("button", { name: "Open in Files" })
         .click();
-      const svg = detail.locator(".files-detail img");
+      const pane = page.locator('.pane-col[data-pane="files"]');
+      const svg = pane.locator(".files-detail img");
       await svg.waitFor({ timeout: 15_000 });
       await splitDockTab(page, "Files");
       await page.waitForFunction(
         (el: any) => el.complete && el.naturalWidth === 40,
         await svg.elementHandle(),
       );
-      detail = await open("tone.wav");
+      let detail = await open("tone.wav");
       const audio = detail.locator("audio.files-media");
       await audio.waitFor();
       await page.waitForFunction(
@@ -1324,8 +1331,12 @@ export const tests: BrowserTest[] = [
       const video = detail.locator("video.files-media");
       await video.waitFor();
       expect(await video.getAttribute("src")).toEndWith("/preview");
-      await detail.getByRole("button", { name: "All files" }).click();
-      const card = page.locator(".files-card", { hasText: "tone.wav" });
+      detail = await open("chart.svg");
+      await detail.locator(".files-detail img").waitFor();
+      expect(await page.locator("dialog.image-popout").count()).toBe(0);
+      await showDockTab(page, "Files");
+      await pane.getByRole("button", { name: "All files" }).click();
+      const card = pane.locator(".files-card", { hasText: "tone.wav" });
       await card.waitFor();
       expect(await card.locator("audio, .files-preview-note").count()).toBe(0);
       expect(errors).toEqual([]);
@@ -1361,12 +1372,19 @@ export const tests: BrowserTest[] = [
         });
         await chip.waitFor({ timeout: 15_000 });
         await chip.click();
-        return page.locator('.pane-col[data-pane="files"]');
+        return page.locator(".files-tab", {
+          has: page.locator(`.files-detail[aria-label="${name}"]`),
+        });
+      };
+      const close = async (name: string) => {
+        const tab = page.locator("#dock .dv-tab", { hasText: name });
+        await tab.locator(".dv-default-tab-action").click();
+        await tab.waitFor({ state: "detached" });
       };
       expect(pdfRequests).toEqual([]);
       const initialWorker = page.waitForEvent("worker", { timeout: 10_000 });
       let detail = await open("slides.pdf");
-      await splitDockTab(page, "Files");
+      await splitDockTab(page, "slides.pdf");
       const pages = detail.locator(".files-pdf-page");
       await detail
         .getByRole("img", { name: "Page 2 of 2" })
@@ -1394,14 +1412,11 @@ export const tests: BrowserTest[] = [
       const firstClosed = page
         .workers()[0]
         .waitForEvent("close", { timeout: 10_000 });
-      await detail.getByRole("button", { name: "All files" }).click();
+      await close("slides.pdf");
       await firstClosed;
       expect(page.workers()).toHaveLength(0);
       const reopened = page.waitForEvent("worker", { timeout: 10_000 });
-      await page
-        .getByRole("button", { name: "Open slides.pdf" })
-        .first()
-        .click();
+      detail = await open("slides.pdf");
       await detail.getByRole("img", { name: "Page 1 of 2" }).waitFor();
       const reopenedWorker = await reopened;
       expect(page.workers()).toHaveLength(1);
@@ -1412,6 +1427,7 @@ export const tests: BrowserTest[] = [
         timeout: 10_000,
       });
       const notesWorker = page.waitForEvent("worker", { timeout: 10_000 });
+      await close("slides.pdf");
       detail = await open("notes-ja.pdf");
       expect((await cmap).status()).toBe(200);
       await page.waitForFunction(
@@ -1422,6 +1438,7 @@ export const tests: BrowserTest[] = [
       await replaced;
       await notesWorker;
       expect(page.workers()).toHaveLength(1);
+      await close("notes-ja.pdf");
       detail = await open("long.pdf");
       const last = detail.getByRole("img", { name: "Page 16 of 16" });
       await last.waitFor({ timeout: 15_000 });
@@ -1460,6 +1477,7 @@ export const tests: BrowserTest[] = [
       const brokenWorker = page
         .waitForEvent("worker", { timeout: 10_000 })
         .then((worker) => worker.waitForEvent("close", { timeout: 10_000 }));
+      await close("long.pdf");
       detail = await open("broken.pdf");
       await detail
         .getByText("Couldn’t show this PDF. Download it to open it.")
@@ -1601,10 +1619,12 @@ export const tests: BrowserTest[] = [
       ).toBe(0);
       await page.unroute(listing);
       await chip.click();
-      await pane
-        .locator(".files-detail h1", { hasText: later.name })
+      await page
+        .locator(".files-tab .files-detail h1", { hasText: later.name })
         .waitFor({ timeout: 15_000 });
-      await pane.getByRole("button", { name: "All files" }).click();
+      await showDockTab(page, "Files");
+      await pane.locator(".files-card", { hasText: later.name }).waitFor();
+      expect(await pane.locator(".files-detail").count()).toBe(0);
       await page.route(`**/api/conversations/${demo}/files?*`, (route) =>
         route.fulfill({ status: 500, body: "{}" }),
       );
@@ -1710,10 +1730,10 @@ export const tests: BrowserTest[] = [
       await page
         .getByRole("button", { name: "Open large.bin in Files" })
         .click();
-      const pane = page.locator('.pane-col[data-pane="files"]');
-      expect(
-        await source(pane.getByRole("link", { name: "Download" })),
-      ).toEqual(["http", "large.bin"]);
+      const tab = page.locator(".files-tab", { hasText: "large.bin" });
+      expect(await source(tab.getByRole("link", { name: "Download" }))).toEqual(
+        ["http", "large.bin"],
+      );
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -1734,12 +1754,12 @@ export const tests: BrowserTest[] = [
       });
       await chips.nth(2).waitFor({ timeout: 15_000 });
       await chips.first().click();
-      const pane = page.locator('.pane-col[data-pane="files"]');
-      const heading = pane.locator(".files-detail .files-markdown h1");
+      const tab = page.locator(".files-tab");
+      const heading = tab.locator(".files-detail .files-markdown h1");
       await heading.waitFor({ timeout: 15_000 });
       expect(await heading.innerText()).toBe("Draft 1");
-      await pane.getByLabel("File options", { exact: true }).click();
-      const menu = pane.getByRole("combobox", { name: "Version" });
+      await tab.getByLabel("File options", { exact: true }).click();
+      const menu = tab.getByRole("combobox", { name: "Version" });
       const options = await menu
         .locator("option")
         .evaluateAll((items: any[]) =>
@@ -1755,10 +1775,14 @@ export const tests: BrowserTest[] = [
         ["1", false, true],
       ]);
       await menu.selectOption({ index: 0 });
-      await pane
+      await tab
         .locator(".files-detail .files-markdown h1", { hasText: "Draft 3" })
         .waitFor();
-      await pane.getByRole("button", { name: "All files" }).click();
+      const dockTab = page.locator("#dock .dv-tab", { hasText: "report.md" });
+      await dockTab.locator(".dv-default-tab-action").click();
+      await tab.waitFor({ state: "detached" });
+      await page.locator('.rail-btn[data-pane="files"]').click();
+      const pane = page.locator('.pane-col[data-pane="files"]');
       const card = pane.locator(".files-card");
       await card.first().waitFor();
       expect(await card.count()).toBe(1);
@@ -1766,7 +1790,6 @@ export const tests: BrowserTest[] = [
         "3 versions",
       );
       await card.getByRole("button", { name: "Open report.md" }).click();
-      const tab = page.locator(".files-tab");
       await tab
         .locator(".files-detail .files-markdown h1", { hasText: "Draft 3" })
         .waitFor();
@@ -1872,12 +1895,9 @@ export const tests: BrowserTest[] = [
       await chip("notes.txt").waitFor();
       await chip("plan.md").click();
       await page
-        .locator(
-          '.pane-col[data-pane="files"] .files-detail .files-markdown h1',
-          {
-            hasText: "Plan",
-          },
-        )
+        .locator(".files-tab .files-detail .files-markdown h1", {
+          hasText: "Plan",
+        })
         .waitFor({ timeout: 15_000 });
       expect(errors).toEqual([]);
     } finally {
@@ -1982,7 +2002,7 @@ export const tests: BrowserTest[] = [
       .getByRole("button", { name: "Open review.diff in Files" })
       .click();
     await page
-      .locator(".files-detail .files-diff .diff-row.add")
+      .locator(".files-tab .files-detail .files-diff .diff-row.add")
       .first()
       .waitFor();
     await dispatchArtifactSelection(page, "mouse", "++ new");
@@ -1992,13 +2012,12 @@ export const tests: BrowserTest[] = [
     expect(
       await page.locator(".files-detail mark.report-cmark").textContent(),
     ).toBe("++ new");
+    await page.locator('.rail-btn[data-pane="files"]').click();
     for (const [name, marks] of [
       ["review.patch", 0],
       ["review.diff", 1],
     ] as const) {
       await showDockTab(page, "Files");
-      const back = page.getByRole("button", { name: "All files" });
-      if (await back.isVisible()) await back.click();
       await page
         .getByRole("button", { name: `Open ${name}`, exact: true })
         .click();
@@ -2009,11 +2028,11 @@ export const tests: BrowserTest[] = [
         .first()
         .waitFor();
       await page.waitForFunction(
-        (marks) =>
+        ([name, marks]) =>
           (globalThis as any).document.querySelectorAll(
-            ".files-detail mark.report-cmark",
+            `.files-detail[aria-label="${name}"] mark.report-cmark`,
           ).length === marks,
-        marks,
+        [name, marks] as const,
       );
     }
     expect(await page.locator(".report-comment blockquote").textContent()).toBe(
@@ -2252,12 +2271,14 @@ export const tests: BrowserTest[] = [
     await page.goto(`${base}#agent=${fixture.demo}`, {
       waitUntil: "domcontentloaded",
     });
-    await page.locator('.rail-btn[data-pane="files"]').click();
-    let pane = page.locator('.pane-col[data-pane="files"]');
-    await pane.locator(".files-card").first().waitFor();
     await page
       .locator('#messages img[alt="browser-image.png"][src$="/thumbnail"]')
       .dispatchEvent("click");
+    await page
+      .locator("dialog.image-popout")
+      .getByRole("button", { name: "Open in Files" })
+      .click();
+    let pane = page.locator('.pane-col[data-pane="files"]');
     await pane
       .locator('.files-detail[aria-label="browser-image.png"]')
       .waitFor();

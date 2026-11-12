@@ -420,7 +420,8 @@ function allFiles(value: CacheEntry): SessionFile[] {
   return [...visibleFiles(value).values()];
 }
 
-/** Open one attached file's detail view in this conversation's Files pane. */
+/** Open one attached file: its dock tab on desktop, else the detail view in
+ * this conversation's Files pane. */
 export async function showFileInPane(
   cid: string,
   attachmentId: string,
@@ -436,6 +437,7 @@ export async function showFileInPane(
   // Spec: With a side window up, an image opens in Files there, not popped out.
   if (file && imageHref(cid, file) && !sideWindowOpen())
     return openImage(cid, file);
+  if (file && openFileTab(cid, file)) return;
   selections.set(cid, { id: attachmentId });
   if (paneEl?.isConnected && shownId === cid) {
     paneEl._filesHash = undefined;
