@@ -296,12 +296,28 @@ export const tests: BrowserTest[] = [
         await page.screenshot({
           path: `${process.env.RECURSE_AGENT_TMPDIR}/files-newest-first-${width}.png`,
         });
-        await pane
-          .getByRole("button", { name: "Open report.md", exact: true })
-          .click();
-        await pane
-          .locator(".files-markdown h1", { hasText: "Updated report" })
-          .waitFor();
+        const open = pane.getByRole("button", {
+          name: "Open report.md",
+          exact: true,
+        });
+        await open.click();
+        const shown = (
+          width === 1280 ? page.locator(".files-tab") : pane
+        ).locator(".files-markdown h1", { hasText: "Updated report" });
+        await shown.waitFor();
+        if (width === 1280) {
+          const tab = page.locator("#dock .dv-tab", { hasText: "report.md" });
+          expect(await tab.count()).toBe(1);
+          await showDockTab(page, "Files");
+          expect(await pane.locator(".files-detail").count()).toBe(0);
+          await open.click();
+          await shown.waitFor();
+          expect(await tab.count()).toBe(1);
+          await page.reload({ waitUntil: "domcontentloaded" });
+          await showDockTab(page, "report.md");
+          await shown.waitFor();
+          expect(await tab.count()).toBe(1);
+        }
         expect(errors).toEqual([]);
       } finally {
         await context.close();
@@ -541,17 +557,34 @@ export const tests: BrowserTest[] = [
       await textCard.locator("pre, .files-preview-placeholder").count(),
     ).toBe(0);
     const firstPreview = previewHolds.next();
-    await textCard
-      .getByRole("button", { name: "Open browser-notes.txt" })
-      .click();
-    const detail = pane;
+    const openNotes = textCard.getByRole("button", {
+      name: "Open browser-notes.txt",
+    });
+    await openNotes.click();
+    const detail = page.locator(".files-tab", {
+      has: page.locator('.files-detail[aria-label="browser-notes.txt"]'),
+    });
     await detail.locator(".files-preview-placeholder").waitFor();
     await firstPreview;
     expect(heldPreviews).toHaveLength(1);
     const head = (await detail.locator(".files-detail-head").boundingBox())!;
     expect(head.height).toBeLessThanOrEqual(56);
-    for (const name of ["All files", "Jump to message", "Delete"])
+    for (const name of ["Jump to message", "Delete"])
       expect(await detail.getByRole("button", { name }).count()).toBe(1);
+    expect(
+      await detail.getByRole("button", { name: "All files" }).count(),
+    ).toBe(0);
+    const notesTab = page.locator("#dock .dv-tab", {
+      hasText: "browser-notes.txt",
+    });
+    expect(await notesTab.count()).toBe(1);
+    await splitDockTab(page, "browser-notes.txt");
+    expect(await cards.count()).toBe(2);
+    expect(await pane.locator(".files-detail").count()).toBe(0);
+    await openNotes.click();
+    await detail.locator(".files-preview-placeholder").waitFor();
+    expect(await notesTab.count()).toBe(1);
+    expect(heldPreviews).toHaveLength(1);
     const previewRefreshBefore = (await page.evaluate(
       "window.__filesFetchOrder.filter(item => item === 'list').length",
     )) as number;
@@ -616,7 +649,6 @@ export const tests: BrowserTest[] = [
       .locator(".file-jump-target", { hasText: "Browser files source message" })
       .waitFor();
     await showDockTab(page, "Files");
-    await detail.getByRole("button", { name: "All files" }).click();
     const failed: Route[] = [];
     const failUrl = `**/api/conversations/${fixture.demo}/files?*`;
     await page.route(failUrl, (route) => {
@@ -652,18 +684,13 @@ export const tests: BrowserTest[] = [
     await pane.locator(".files-card").first().waitFor();
     expect(await pane.isVisible()).toBeTrue();
     await imageCard.locator(".files-thumb").click();
-    const popout = page.locator("dialog.image-popout");
-    await popout.waitFor({ state: "visible" });
-    await popout.getByRole("button", { name: "Close image" }).click();
-    await popout.waitFor({ state: "hidden" });
+    await page
+      .locator('.files-tab .files-detail[aria-label="browser-image.png"] img')
+      .waitFor();
+    expect(await page.locator("dialog.image-popout").count()).toBe(0);
+    await showDockTab(page, "Files");
     expect(await imageCard.isVisible()).toBeTrue();
     expect(await pane.locator(".files-detail").count()).toBe(0);
-    await imageCard.locator(".files-thumb").click();
-    await popout.getByRole("button", { name: "Open in Files" }).click();
-    await pane
-      .locator('.files-detail[aria-label="browser-image.png"]')
-      .waitFor();
-    await pane.getByRole("button", { name: "All files" }).click();
     const heldRequests = heldRoutes();
     const held = heldRequests.routes;
     const filesUrl = `**/api/conversations/${fixture.demo}/files?*`;
@@ -713,6 +740,12 @@ export const tests: BrowserTest[] = [
       "!document.querySelector('.pane-col[data-pane=\\\"files\\\"]')",
       { timeout: 15_000 },
     );
+    await page
+      .locator(".files-tab", {
+        hasText: "This file is no longer in this conversation.",
+      })
+      .first()
+      .waitFor({ state: "attached" });
     expect(
       await page.evaluate(
         `document.activeElement?.closest('.agent')?.dataset.id === ${JSON.stringify(fixture.demo)}`,
@@ -850,10 +883,11 @@ export const tests: BrowserTest[] = [
       await pane.locator(".files-card").first().getAttribute("aria-label"),
     ).toBe(last);
     await pane.locator(".files-thumb").first().click();
-    await viewer.getByRole("button", { name: "Open in Files" }).click();
-    expect(await position.textContent()).toBe("3 of 3");
+    await page
+      .locator(`.files-tab .files-detail[aria-label="${last}"]`)
+      .waitFor();
     await page.waitForFunction(
-      "document.querySelector('.files-detail img')?.naturalWidth > 0",
+      "document.querySelector('.files-tab .files-detail img')?.naturalWidth > 0",
     );
     if (process.env.RECURSE_BROWSER_SCREENSHOT_DIR)
       await page.screenshot({
@@ -1020,12 +1054,16 @@ export const tests: BrowserTest[] = [
             path: `${process.env.SCREENSHOT_DIR}/files-diff-${width}.png`,
           });
         for (const name of ["review.patch", "review.txt"]) {
-          await page.getByRole("button", { name: "All files" }).click();
+          const back = page.getByRole("button", { name: "All files" });
+          if (width === 1280) await showDockTab(page, "Files");
+          if (await back.isVisible()) await back.click();
           await page
             .getByRole("button", { name: `Open ${name}`, exact: true })
             .click();
           await page
-            .locator(".files-detail .files-diff .hljs-keyword")
+            .locator(
+              `.files-detail[aria-label="${name}"] .files-diff .hljs-keyword`,
+            )
             .first()
             .waitFor();
         }
@@ -1227,7 +1265,9 @@ export const tests: BrowserTest[] = [
         await card.waitFor();
         expect(await card.locator(".files-markdown").count()).toBe(0);
         await card.getByRole("button", { name: "Open report.md" }).click();
-        await pane.locator(".files-detail .files-markdown h1").waitFor();
+        await (width === 1280 ? page.locator(".files-tab") : pane)
+          .locator(".files-detail .files-markdown h1")
+          .waitFor();
         expect(remote).toEqual([]);
         expect(errors).toEqual([]);
       } finally {
@@ -1726,8 +1766,16 @@ export const tests: BrowserTest[] = [
         "3 versions",
       );
       await card.getByRole("button", { name: "Open report.md" }).click();
-      await pane
+      const tab = page.locator(".files-tab");
+      await tab
         .locator(".files-detail .files-markdown h1", { hasText: "Draft 3" })
+        .waitFor();
+      await tab.getByLabel("File options", { exact: true }).click();
+      await tab
+        .getByRole("combobox", { name: "Version" })
+        .selectOption({ index: 2 });
+      await tab
+        .locator(".files-detail .files-markdown h1", { hasText: "Draft 1" })
         .waitFor();
       expect(errors).toEqual([]);
     } finally {
@@ -1868,7 +1916,8 @@ export const tests: BrowserTest[] = [
       await pane
         .getByRole("button", { name: "Open browser-notes.txt" })
         .click();
-      const text = pane.locator(".files-detail pre", {
+      const view = mobile ? pane : page.locator(".files-tab");
+      const text = view.locator(".files-detail pre", {
         hasText: "bounded browser text preview",
       });
       await text.waitFor();
@@ -1895,10 +1944,10 @@ export const tests: BrowserTest[] = [
       await popover.waitFor();
       await popover.locator("textarea").fill(`Explain this at ${width}`);
       await popover.getByRole("button", { name: "Comment" }).click();
-      const card = pane.locator(".report-comment");
+      const card = view.locator(".report-comment");
       await card.waitFor();
       expect(await card.locator("blockquote").textContent()).toBe("bounded");
-      expect(await pane.locator("mark.report-cmark").textContent()).toBe(
+      expect(await view.locator("mark.report-cmark").textContent()).toBe(
         "bounded",
       );
       if (process.env.RECURSE_BROWSER_SCREENSHOT_DIR)
@@ -1908,7 +1957,7 @@ export const tests: BrowserTest[] = [
       const delivered = page.waitForRequest((request) =>
         request.url().endsWith(`/api/conversations/${fixture.demo}/deliver`),
       );
-      await pane.getByRole("button", { name: "Submit comments" }).click();
+      await view.getByRole("button", { name: "Submit comments" }).click();
       const content = (await delivered).postDataJSON().content as string;
       expect(content).toMatch(
         new RegExp(
@@ -1916,7 +1965,7 @@ export const tests: BrowserTest[] = [
         ),
       );
       await card.waitFor({ state: "detached" });
-      expect(await pane.locator("mark.report-cmark").count()).toBe(0);
+      expect(await view.locator("mark.report-cmark").count()).toBe(0);
       expect(errors).toEqual([]);
       await context.close();
     }
@@ -1947,12 +1996,16 @@ export const tests: BrowserTest[] = [
       ["review.patch", 0],
       ["review.diff", 1],
     ] as const) {
-      await page.getByRole("button", { name: "All files" }).click();
+      await showDockTab(page, "Files");
+      const back = page.getByRole("button", { name: "All files" });
+      if (await back.isVisible()) await back.click();
       await page
         .getByRole("button", { name: `Open ${name}`, exact: true })
         .click();
       await page
-        .locator(".files-detail .files-diff .diff-row.add")
+        .locator(
+          `.files-detail[aria-label="${name}"] .files-diff .diff-row.add`,
+        )
         .first()
         .waitFor();
       await page.waitForFunction(
@@ -1977,7 +2030,11 @@ export const tests: BrowserTest[] = [
     );
     await page.getByRole("button", { name: "Submit comments" }).click();
     await page.locator("[data-comment-send]").getByRole("status").waitFor();
-    await page.locator(".report-bar").waitFor({ state: "hidden" });
+    await page
+      .locator(
+        '.files-tab:has(.files-detail[aria-label="review.diff"]) .report-bar',
+      )
+      .waitFor({ state: "hidden" });
     release();
     expect((await delivered).ok()).toBeTrue();
     expect(errors).toEqual([]);
@@ -2197,11 +2254,13 @@ export const tests: BrowserTest[] = [
     });
     await page.locator('.rail-btn[data-pane="files"]').click();
     let pane = page.locator('.pane-col[data-pane="files"]');
-    await pane.getByRole("button", { name: "Open browser-image.png" }).click();
+    await pane.locator(".files-card").first().waitFor();
     await page
-      .locator("dialog.image-popout")
-      .getByRole("button", { name: "Open in Files" })
-      .click();
+      .locator('#messages img[alt="browser-image.png"][src$="/thumbnail"]')
+      .dispatchEvent("click");
+    await pane
+      .locator('.files-detail[aria-label="browser-image.png"]')
+      .waitFor();
     const drawImageBox = async () => {
       await page.waitForFunction(
         "document.querySelector('.files-detail img')?.naturalWidth > 0",

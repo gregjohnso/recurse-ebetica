@@ -151,11 +151,10 @@ export const tests: BrowserTest[] = [
       await page.waitForFunction(
         "document.querySelector('#conv-title')?.textContent === 'Published quadrant image'",
       );
-      await page.locator('.rail-btn[data-pane="files"]').click();
-      const files = page.locator('.pane-col[data-pane="files"]');
-      await files
-        .getByRole("button", { name: "Open quadrants.png", exact: true })
-        .click();
+      const thumbnail = page
+        .locator("#messages .agent-attachment-preview")
+        .first();
+      await thumbnail.click();
       const pane = page.locator(".image-popout");
       await pane
         .locator(".files-detail img")
@@ -235,9 +234,7 @@ export const tests: BrowserTest[] = [
       );
       await page.keyboard.press("Escape");
       await pane.waitFor({ state: "detached" });
-      await files
-        .getByRole("button", { name: "Open quadrants.png", exact: true })
-        .click();
+      await thumbnail.click();
       await pane
         .locator(".files-detail img")
         .evaluate((image: any) => image.decode());

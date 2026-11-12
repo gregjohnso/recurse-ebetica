@@ -1,31 +1,22 @@
 // Page bounded owner metadata newest-first; load previews only when visible.
 // Share inert reply rendering; cache text in a bounded LRU, images in browser.
 // Image dialogs leave their history step before opening Files; share originals.
-// Viewers navigate oldest-first; background availability probes are throttled.
+// Viewers go oldest-first; probes are throttled; desktop rows open dock tabs.
 import { html, nothing, render, type TemplateResult } from "lit";
 import {
   ATTACHMENT_FILE_ICON,
   BACK_ICON as BACK,
-  FILE_DELETE_ICON,
-  FILE_DOWNLOAD_ICON,
   FILES_ICON,
   CLOSE_ICON,
-  JUMP_ICON as JUMP,
-  MORE_ICON,
   NEXT_ICON as NEXT,
-  PEN_ICON,
   PREVIOUS_ICON as PREVIOUS,
 } from "./icons.js";
 import { repeat } from "lit/directives/repeat.js";
-import { keyed } from "lit/directives/keyed.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { mountPdf, releasePdfs } from "./pdf-view.js";
 import { backendFor } from "./backends/backend.js";
-import { attachmentSize } from "./agent-attachments.js";
-import { jumpToFile, jumpToMessage } from "./conversation/navigation.js";
 import { scrollToLatest } from "./conversation/controls.js";
-import { canDraw, drawOn } from "./image-preview/drawing.js";
-import { installImageZoom } from "./image-preview/zoom.js";
+import { drawOn } from "./image-preview/drawing.js";
 import { installImageCommentLayout } from "./image-preview/comments-layout.js";
 import {
   closeDrawingEditor,
@@ -33,14 +24,10 @@ import {
   drawingEditorOpen,
 } from "./image-preview/editor.js";
 import { state } from "./state.js";
-import { commentMount, type CommentPane } from "./artifacts/artifact-state.js";
-import { renderComments } from "./artifacts/comment-bar.js";
+import { commentMount } from "./artifacts/artifact-state.js";
 import {
-  claimComments,
   closeSelectionCommentFromKeyboard,
   handleCommentShortcut,
-  reanchor,
-  syncSelectionDraft,
 } from "./artifacts/selection-comments.js";
 import {
   fetchPaneData,
@@ -50,17 +37,33 @@ import {
   syncPanes,
 } from "./panes.js";
 import { panePowerbar, renderPowerbarControls } from "./panes/powerbar.js";
-import { renderDocumentMarkdown } from "./document-markdown.js";
 import { installBoxComments, touchDrewBox } from "./files/box-comments.js";
-import { diffPending, diffPreview, isDiff } from "./files/diff-preview.js";
+import {
+  detailBody,
+  detailHeader,
+  downloadHref,
+  DOWNLOAD_ICON,
+  DRAW_ICON,
+  drawImage,
+  iconButton,
+  imageHref,
+  metaLine,
+  previewTemplate,
+  provideFilesStore,
+  syncComments,
+  syncDraw,
+  textPreviewHref,
+  unavailableLabel,
+  urlImages,
+  type DetailHost,
+} from "./files/detail.js";
+import { openFileTab, repaintFileTabs } from "./files/tab.js";
 import {
   currentFilesRequest,
   ensureFilePreview,
-  fileKindLabel,
   filesPaneAvailable,
   filesRefreshDue,
   mergeSessionFiles,
-  rendersAsMarkdown,
   retainFilePreview,
   selectedFile,
   SettledTurnFile,
@@ -72,6 +75,9 @@ import {
 import type { PaneContext, Turn } from "./types.js";
 
 const PANE_ID = "files";
+const BACK_ICON = unsafeHTML(BACK);
+const PREVIOUS_ICON = unsafeHTML(PREVIOUS);
+const NEXT_ICON = unsafeHTML(NEXT);
 const FILES_PAGE_SIZE = 100;
 const MAX_CLIENT_SOURCES = 40;
 const MAX_CONVERSATION_CACHES = 12;
@@ -108,12 +114,10 @@ interface CacheEntry {
   refreshPending: boolean;
 }
 
-interface FilesEl extends HTMLElement {
+interface FilesEl extends DetailHost {
   _filesHash?: string;
   _filesObserver?: IntersectionObserver;
-  _markdownAbort?: AbortController;
   _filesSwipe?: boolean;
-  _rs?: CommentPane["_rs"];
 }
 
 const cache = new Map<string, CacheEntry>();
@@ -289,7 +293,8 @@ function renderImage(): void {
         ${iconButton(
           "Draw",
           DRAW_ICON,
-          () => drawOn(detailImage(), closeImage),
+          (event) =>
+            drawOn(drawImage(event.currentTarget as Element), closeImage),
           "files-draw",
         )}
         ${!allFiles(entry(cid)).some((listed) => listed.key === file.key)
@@ -316,7 +321,7 @@ function renderImage(): void {
         data-file-key=${file.key}
         aria-label=${file.name}
       >
-        ${previewTemplate(cid, file, true)}
+        ${previewTemplate(cid, file, body)}
       </article>
       <aside class="image-comment-sidebar" aria-label="Image comments">
         <h2 class="image-comment-heading">Comments</h2>
@@ -441,6 +446,7 @@ export async function showFileInPane(
 
 function selectFile(cid: string, selection: FileSelection | null): void {
   const file = selection && selectedFile(allFiles(entry(cid)), selection);
+  if (file && openFileTab(cid, file)) return;
   if (file && imageHref(cid, file)) return openImage(cid, file);
   if (selection) selections.set(cid, selection);
   else selections.delete(cid);
@@ -465,23 +471,6 @@ function stepFile(cid: string, delta: -1 | 1): boolean {
   paneEl?.scrollTo({ top: 0 });
   return true;
 }
-
-function detailImage(): HTMLImageElement | null {
-  return (
-    (popout?.body ?? paneEl)?.querySelector<HTMLImageElement>(
-      ".files-detail img",
-    ) ?? null
-  );
-}
-
-function syncDraw(): void {
-  const draw =
-    popout?.body.querySelector(".files-draw") ??
-    (paneEl && panePowerbar(paneEl).querySelector(".files-draw"));
-  if (canDraw(detailImage())) draw?.removeAttribute("aria-disabled");
-  else draw?.setAttribute("aria-disabled", "true");
-}
-document.addEventListener("recurse:attachment-availability", syncDraw);
 
 document.addEventListener("keydown", (event) => {
   if (
@@ -649,6 +638,7 @@ function repaint(): void {
   if (paneEl && shownId) renderPane(paneEl, shownId);
   syncPanes();
   renderImage();
+  repaintFileTabs();
 }
 
 // The owned collection changed outside the conversation record (a
@@ -827,15 +817,6 @@ function badge(ctx: PaneContext): string | number | null {
   return value.complete && !value.capped ? count : `${count}+`;
 }
 
-function downloadHref(cid: string, file: SessionFile): string | null {
-  const url = urlImages.get(file);
-  if (url) return url;
-  if (!file.id || file.unavailable) return null;
-  return backendFor(cid).url(
-    `/api/conversations/${encodeURIComponent(cid)}/attachments/${encodeURIComponent(file.id)}`,
-  );
-}
-
 async function downloadImage(cid: string, file: SessionFile): Promise<void> {
   const href = downloadHref(cid, file);
   if (!href) return;
@@ -868,9 +849,6 @@ async function downloadImage(cid: string, file: SessionFile): Promise<void> {
   link.remove();
 }
 
-/** Viewer-only images by URL (Explorer files): no stored copy or comments. */
-const urlImages = new WeakMap<SessionFile, string>();
-
 /** Open the image at `url` (from conversation `cid`) in the image viewer. */
 export function viewImage(cid: string, name: string, url: string): void {
   const file: SessionFile = {
@@ -887,42 +865,20 @@ export function viewImage(cid: string, name: string, url: string): void {
   openImage(cid, file);
 }
 
-function imageHref(cid: string, file: SessionFile): string | null {
-  const url = urlImages.get(file);
-  if (url) return url;
-  const base = downloadHref(cid, file);
-  if (!base || file.preview !== "image") return null;
-  // Invariant: The bytes route forces octet-stream + nosniff (never renders);
-  // raster display goes through the inline-only preview capability.
-  return `${base}/preview`;
-}
-
-function mediaHref(cid: string, file: SessionFile): string | null {
-  const base = downloadHref(cid, file);
-  if (!base || (file.preview !== "audio" && file.preview !== "video"))
-    return null;
-  return `${base}/preview`;
-}
-
-function textPreviewHref(cid: string, file: SessionFile): string | null {
-  if (!file.id || file.preview !== "text" || file.unavailable) return null;
-  return backendFor(cid).url(
-    `/api/conversations/${encodeURIComponent(cid)}/files/${file.storage}/${encodeURIComponent(file.id)}/preview`,
-  );
-}
-
 function retainPreview(id: string, key: string): void {
   const value = entry(id);
-  const detailKey =
-    shownId === id
-      ? paneEl?.querySelector<HTMLElement>(".files-detail")?.dataset.fileKey
-      : undefined;
+  // Invariant: Previews on screen (the pane's detail, dock tabs) stay loaded.
+  const shown = new Set(
+    [
+      ...document.querySelectorAll<HTMLElement>(".files-detail[data-file-key]"),
+    ].map((detail) => detail.dataset.fileKey!),
+  );
   value.previewLru = retainFilePreview(
     value.previews,
     value.previewLru,
     key,
     MAX_TEXT_PREVIEW_CACHES,
-    detailKey,
+    shown,
   );
 }
 
@@ -955,7 +911,7 @@ function loadTextPreview(id: string, file: SessionFile): void {
         truncated?: unknown;
         related_files?: Record<string, unknown>;
       };
-      if (shownId !== id || value.previews.get(file.key) !== preview) return;
+      if (value.previews.get(file.key) !== preview) return;
       if (payload.kind !== "text" || typeof payload.text !== "string")
         throw new Error("invalid preview");
       preview.status = "ready";
@@ -978,14 +934,14 @@ function loadTextPreview(id: string, file: SessionFile): void {
     })
     .finally(() => {
       preview.controller = undefined;
-      if (shownId === id) repaint();
+      repaint();
     });
 }
 
-async function deleteFile(cid: string, file: SessionFile): Promise<void> {
+async function deleteFile(cid: string, file: SessionFile): Promise<boolean> {
   const href = downloadHref(cid, file);
-  if (!href) return;
-  if (!confirm(`Delete ${file.name}? This cannot be undone.`)) return;
+  if (!href) return false;
+  if (!confirm(`Delete ${file.name}? This cannot be undone.`)) return false;
   const value = entry(cid);
   try {
     const response = await backendFor(cid).api(href, { method: "DELETE" });
@@ -993,7 +949,7 @@ async function deleteFile(cid: string, file: SessionFile): Promise<void> {
   } catch {
     value.failedDeletion = file;
     repaint();
-    return;
+    return false;
   }
   if (value.failedDeletion?.key === file.key) value.failedDeletion = null;
   value.files.delete(file.key);
@@ -1003,306 +959,58 @@ async function deleteFile(cid: string, file: SessionFile): Promise<void> {
     (candidate) => candidate !== file.key,
   );
   repaint();
+  return true;
 }
 
-function previewTemplate(
-  cid: string,
-  file: SessionFile,
-  detail = false,
-): unknown {
-  const image = imageHref(cid, file);
-  const preview = cache.get(cid)?.previews.get(file.key);
-  if (image) {
-    // Invariant: The list shows the thread-sized thumbnail; detail views load
-    // the original, which box comments, crops and drawing measure.
-    const img = html`<img
-      class="files-image"
-      alt=${file.name}
-      src=${detail ? image : image.replace(/\/preview$/, "/thumbnail")}
-      loading=${detail ? "eager" : "lazy"}
-      decoding="async"
-      @load=${(event: Event) => {
-        syncDraw();
-        if (detail) {
-          const image = event.target as HTMLImageElement;
-          image
-            .closest<HTMLElement>(".files-image-frame")
-            ?.style.setProperty(
-              "--image-aspect",
-              String(image.naturalWidth / image.naturalHeight),
-            );
-          installImageZoom(image);
-        }
-      }}
-    />`;
-    // Invariant: Box marks are appended beside the image, so another file gets
-    // a fresh frame instead of inheriting them.
-    return detail
-      ? keyed(
-          file.key,
-          html`<div class="image-zoom-viewport">
-            <div class="files-image-frame report-doc report-box-frame">
-              ${img}
-            </div>
-          </div>`,
-        )
-      : img;
-  }
-  const media = mediaHref(cid, file);
-  if (media)
-    return file.preview === "audio"
-      ? html`<audio
-          class="files-media"
-          controls
-          preload="metadata"
-          src=${media}
-          aria-label=${file.name}
-        ></audio>`
-      : html`<video
-          class="files-media"
-          controls
-          playsinline
-          preload="metadata"
-          src=${media}
-          aria-label=${file.name}
-        ></video>`;
-  const pdf = file.preview === "pdf" ? downloadHref(cid, file) : null;
-  if (pdf)
-    return html`<div class="files-pdf report-doc" data-files-pdf=${pdf}></div>`;
-  if (file.preview !== "text")
-    return html`<div class="files-preview-note">
-      No preview for this kind of file. Download it to open it.
-    </div>`;
-  if (preview?.status === "evicted")
-    return html`<button
-      class="files-preview-placeholder"
-      type="button"
-      @click=${() => reloadPreview(cid, file.key)}
-    >
-      Reload preview
-    </button>`;
-  if (!textPreviewHref(cid, file))
-    return html`<div class="files-preview-note">
-      Preview available after the queued message appears.
-    </div>`;
-  // Invariant: Comment marks rewrite the preview's text nodes, so another
-  // file gets fresh DOM rather than Lit updating those nodes in place.
-  if (preview?.status === "ready")
-    return keyed(
-      file.key,
-      html`<div class="files-text-wrap">
-        ${isDiff(file, preview.text ?? "")
-          ? diffPreview(preview)
-          : rendersAsMarkdown(file)
-            ? markdownPreview(
-                cid,
-                file,
-                preview.text ?? "",
-                preview.relatedFiles,
-              )
-            : html`<pre class="report-doc">${preview.text}</pre>`}
-        ${preview.truncated
-          ? html`<span class="files-preview-note">Preview truncated.</span>`
-          : nothing}
-      </div>`,
-    );
-  if (preview?.status === "missing")
-    return html`<div class="files-preview-note">Preview unavailable.</div>`;
-  return html`<div
-    class="files-preview-placeholder"
-    data-files-text=${file.key}
-    aria-label=${`Text preview for ${file.name}`}
-  >
-    ${preview?.status === "loading"
-      ? "Loading preview…"
-      : "Preview loads when visible."}
-  </div>`;
-}
-
-function versionLabel(file: SessionFile, number: number, latest: boolean) {
-  const when = file.created_at
-    ? new Date(file.created_at * 1000).toLocaleString([], {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : "";
-  return [`Version ${number}`, when, latest ? "latest" : ""]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-// The detail view's version menu: picking one shows that version in place.
-function versionMenu(cid: string, file: SessionFile, versions: SessionFile[]) {
-  if (versions.length < 2) return nothing;
-  return html`<div class="files-versions">
-    <select
-      aria-label="Version"
-      @change=${(event: Event) => {
-        const key = (event.currentTarget as HTMLSelectElement).value;
-        selections.set(cid, { key, latest: key === versions[0]!.key });
-        repaint();
-        if (paneEl)
-          panePowerbar(paneEl)
-            .querySelector<HTMLElement>(".files-versions select")
-            ?.focus();
-      }}
-    >
-      ${versions.map(
-        (version, index) =>
-          html`<option
-            value=${version.key}
-            .selected=${version.key === file.key}
-          >
-            ${versionLabel(version, versions.length - index, index === 0)}
-          </option>`,
-      )}
-    </select>
-  </div>`;
-}
-
-const BACK_ICON = unsafeHTML(BACK);
-const JUMP_ICON = unsafeHTML(JUMP);
-const DOWNLOAD_ICON = unsafeHTML(FILE_DOWNLOAD_ICON);
-const PREVIOUS_ICON = unsafeHTML(PREVIOUS);
-const NEXT_ICON = unsafeHTML(NEXT);
-const DRAW_ICON = unsafeHTML(PEN_ICON);
-const TRASH_ICON = unsafeHTML(FILE_DELETE_ICON);
-
-function markdownPreview(
-  cid: string,
-  file: SessionFile,
-  text: string,
-  relatedFiles?: Record<string, string>,
-): HTMLElement {
-  const body = document.createElement("div");
-  body.className = "files-markdown artifact-doc report-doc";
-  const controller = new AbortController();
-  if (paneEl) paneEl._markdownAbort = controller;
-  const sibling = (path: string): SessionFile | undefined => {
-    let name: string;
-    try {
-      name = decodeURIComponent(
-        new URL(
-          path,
-          new URL(file.name, "https://files.invalid/"),
-        ).pathname.slice(1),
-      );
-    } catch {
-      return undefined;
-    }
-    return versionGroups(allFiles(entry(cid))).find(
-      (group) => group[0]!.name === name,
-    )?.[0];
-  };
-  renderDocumentMarkdown(body, text, {
-    title: file.name,
-    signal: controller.signal,
-    onImageOpen: (path) => {
-      if (relatedFiles === undefined) {
-        const found = sibling(path);
-        if (found) openImage(cid, found);
-        return;
-      }
-      const id = Object.hasOwn(relatedFiles, path) ? relatedFiles[path] : null;
-      if (!id) return;
-      openImage(
-        cid,
-        allFiles(entry(cid)).find((listed) => listed.id === id) ?? {
-          key: `published:${id}`,
-          storage: "published",
-          id,
-          name: path.split("/").pop() || path,
-          size: 0,
-          media_type: "image/*",
-          preview: "image",
-          references: 0,
-          sources: [],
-        },
-      );
-    },
-    resolveRelative: (path, image) => {
-      if (relatedFiles !== undefined) {
-        const id = Object.hasOwn(relatedFiles, path)
-          ? relatedFiles[path]
-          : null;
-        if (!id) return null;
-        const url = backendFor(cid).url(
-          `/api/conversations/${encodeURIComponent(cid)}/attachments/${encodeURIComponent(id)}`,
-        );
-        return image ? `${url}/thumbnail` : url;
-      }
-      const found = sibling(path);
-      return found
-        ? image
-          ? (imageHref(cid, found)?.replace(/\/preview$/, "/thumbnail") ?? null)
-          : downloadHref(cid, found)
-        : null;
-    },
-  });
-  return body;
-}
-
-function unavailableLabel(file: SessionFile): string | null {
-  return file.unavailable === "copied"
-    ? "Unavailable in copied conversation"
-    : file.unavailable
-      ? "File unavailable"
-      : null;
-}
-
-function metaLine(file: SessionFile, extra: string[]): string {
-  return [
-    file.media_type || "application/octet-stream",
-    file.size > 0 ? attachmentSize(file.size) : "",
-    fileKindLabel(file.storage),
-    ...extra,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function iconButton(
-  label: string,
-  glyph: unknown,
-  onClick: (event: Event) => void,
-  extraClass = "",
-  disabled = false,
-): TemplateResult {
-  return html`<button
-    class=${`icon-btn lg ${extraClass}`}
-    type="button"
-    aria-label=${label}
-    title=${label}
-    aria-disabled=${disabled ? "true" : nothing}
-    @click=${(event: Event) => disabled || onClick(event)}
-  >
-    ${glyph}
-  </button>`;
-}
+provideFilesStore({
+  listing(cid) {
+    const value = entry(cid);
+    return {
+      files: allFiles(value),
+      complete: value.complete,
+      error: value.error,
+      failedDeletion: value.failedDeletion,
+    };
+  },
+  loadMore(cid) {
+    entry(cid).error = null;
+    void loadPage(cid);
+  },
+  preview: (cid, key) => cache.get(cid)?.previews.get(key),
+  loadPreview: loadTextPreview,
+  reloadPreview,
+  openImage,
+  deleteFile,
+  repaint,
+});
 
 const backButton = (cid: string) =>
   iconButton("All files", BACK_ICON, () => selectFile(cid, null), "files-back");
 
-// Jump to the file's first source message, or find one when none is known.
-async function jumpToSource(cid: string, file: SessionFile, event: Event) {
-  const source = file.sources.find((candidate) => candidate.offset !== null);
-  if (source) return void jumpToMessage(cid, source.offset!, source.message_id);
-  const button = event.currentTarget as HTMLButtonElement;
-  const status = button.parentElement!.querySelector(".files-jump-status")!;
-  button.disabled = true;
-  status.textContent = "Finding message…";
-  try {
-    status.textContent = (await jumpToFile(cid, file.id!))
-      ? ""
-      : "Message unavailable";
-  } catch {
-    status.textContent = "Couldn’t find message";
-  } finally {
-    button.disabled = false;
-  }
+// Previous and next file over the pane's detail view, oldest to newest.
+function fileNav(cid: string, index: number, total: number): unknown {
+  if (total < 2) return nothing;
+  return html`<div class="files-nav">
+    ${iconButton(
+      "Previous file",
+      PREVIOUS_ICON,
+      () => stepFile(cid, -1),
+      "files-previous",
+      index === 0,
+    )}
+    <span class="files-position">${index + 1} of ${total}</span>
+    ${iconButton(
+      "Next file",
+      NEXT_ICON,
+      () => stepFile(cid, 1),
+      "files-next",
+      index === total - 1,
+    )}
+  </div>`;
 }
 
-// The whole row, including thumbnail, opens the detail view.
+// The whole row, including thumbnail, opens the file: a dock tab on desktop.
+// The detail view replaces the list on phones.
 function rowTemplate(
   cid: string,
   file: SessionFile,
@@ -1338,147 +1046,6 @@ function rowTemplate(
       >
     </button>
   </article>`;
-}
-
-// The detail view: one header row (back, name, actions) and one row with
-// previous/next and metadata over a preview that fills the rest of the pane.
-function detailTemplate(
-  cid: string,
-  file: SessionFile,
-  versions: SessionFile[],
-  position: { index: number; total: number },
-): TemplateResult {
-  const href = downloadHref(cid, file);
-  const unavailable = unavailableLabel(file);
-  const jump =
-    file.sources.some((source) => source.offset !== null) ||
-    (!file.sources.length && file.id && !unavailable);
-  const references = file.references > 1 ? `${file.references} references` : "";
-  renderPowerbarControls(
-    paneEl!,
-    html`<header class="files-detail-head">
-      ${backButton(cid)}
-      <div class="files-detail-title">
-        <h3 class="files-name" title=${file.name}>${file.name}</h3>
-        ${versions.length > 1
-          ? html`<details class="pane-powerbar-overflow">
-              <summary aria-label="File options" title="File options">
-                ${unsafeHTML(MORE_ICON)}
-              </summary>
-              <div class="menu form pane-powerbar-menu">
-                ${versionMenu(cid, file, versions)}
-              </div>
-            </details>`
-          : nothing}
-      </div>
-      <div class="files-actions">
-        <span class="files-jump-status" role="status"></span>
-        ${imageHref(cid, file) && !unavailable
-          ? iconButton(
-              "Draw",
-              DRAW_ICON,
-              () => drawOn(detailImage()),
-              "files-draw",
-            )
-          : nothing}
-        ${jump
-          ? iconButton("Jump to message", JUMP_ICON, (event) =>
-              jumpToSource(cid, file, event),
-            )
-          : nothing}
-        ${href
-          ? html`<a
-              class="icon-btn lg"
-              href=${href}
-              download=${file.name}
-              data-bytes=${file.size}
-              aria-label="Download"
-              title="Download"
-              >${DOWNLOAD_ICON}</a
-            >`
-          : nothing}
-        ${downloadHref(cid, file)
-          ? iconButton("Delete", TRASH_ICON, () => void deleteFile(cid, file))
-          : nothing}
-      </div>
-    </header>`,
-    true,
-  );
-  return html`<article
-      class="files-detail"
-      data-file-key=${file.key}
-      aria-label=${file.name}
-    >
-      <div class="files-detail-bar">
-        ${position.total > 1
-          ? html`<div class="files-nav">
-              ${iconButton(
-                "Previous file",
-                PREVIOUS_ICON,
-                () => stepFile(cid, -1),
-                "files-previous",
-                position.index === 0,
-              )}
-              <span class="files-position"
-                >${position.index + 1} of ${position.total}</span
-              >
-              ${iconButton(
-                "Next file",
-                NEXT_ICON,
-                () => stepFile(cid, 1),
-                "files-next",
-                position.index === position.total - 1,
-              )}
-            </div>`
-          : nothing}
-        <span class="files-meta">${metaLine(file, [references])}</span>
-      </div>
-      ${unavailable
-        ? html`<div class="files-unavailable" role="status">
-            ${unavailable}
-          </div>`
-        : previewTemplate(cid, file, true)}
-    </article>
-    <div class="report-comments"></div>
-    <div class="report-bar"></div>`;
-}
-
-// Spec: A shown text preview takes selection comments exactly like an Artifact
-// version: staged in the comment bar, submitted to this conversation.
-function syncComments(element: FilesEl, cid: string, file: SessionFile | null) {
-  syncSelectionDraft();
-  const pending = file && diffPending(cache.get(cid)?.previews.get(file.key));
-  if (pending)
-    void pending.then(() => {
-      if (paneEl === element && shownId === cid) repaint();
-    });
-  const doc = file?.id && element.querySelector(".report-doc") ? file : null;
-  // Invariant: Mutated in place: an in-flight send clears the flags on the
-  // object it started with.
-  element._rs ??= {
-    deleting: false,
-    sending: false,
-    sendFailed: false,
-    sendSeq: 0,
-    agentId: cid,
-    selId: null,
-    contentInfo: null,
-  };
-  Object.assign(element._rs, {
-    agentId: cid,
-    selId: doc?.id ?? null,
-    contentInfo: doc
-      ? { noun: "file", id: doc.id!, title: doc.name, version: doc.key }
-      : null,
-  });
-  const pane = element as CommentPane;
-  if (!doc) {
-    if (commentMount.current === pane) commentMount.current = null;
-    return;
-  }
-  claimComments(pane);
-  reanchor(pane, doc.id!);
-  renderComments(pane);
 }
 
 function observePreviews(element: FilesEl, id: string): void {
@@ -1570,19 +1137,27 @@ function renderPane(element: FilesEl, id: string): void {
         </div>`
       : nothing;
   if (selections.has(id)) {
+    const versions = groups.find((group) => group.includes(shown!)) ?? [];
+    if (shown)
+      renderPowerbarControls(
+        element,
+        detailHeader(id, shown, versions, {
+          back: backButton(id),
+          pick: (key) => {
+            selections.set(id, { key, latest: key === versions[0]?.key });
+            repaint();
+          },
+        }),
+        true,
+      );
+    const index = groups.length - 1 - groups.indexOf(versions);
     render(
       shown
-        ? html`${errorBanner}${detailTemplate(
+        ? html`${errorBanner}${detailBody(
             id,
             shown,
-            groups.find((group) => group.includes(shown)) ?? [shown],
-            {
-              index:
-                groups.length -
-                1 -
-                groups.findIndex((group) => group.includes(shown)),
-              total: groups.length,
-            },
+            element,
+            fileNav(id, index, groups.length),
           )}`
         : value.error
           ? html`${backButton(id)}${errorBanner}`

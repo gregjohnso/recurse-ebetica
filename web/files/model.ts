@@ -109,12 +109,12 @@ export function retainFilePreview(
   lru: string[],
   key: string,
   limit: number,
-  protectedKey?: string,
+  shownKeys: ReadonlySet<string> = new Set(),
 ): string[] {
   const next = lru.filter((candidate) => candidate !== key);
   next.push(key);
   while (next.length > limit) {
-    const index = next.findIndex((candidate) => candidate !== protectedKey);
+    const index = next.findIndex((candidate) => !shownKeys.has(candidate));
     if (index < 0) break;
     const [oldest] = next.splice(index, 1);
     if (!oldest) break;

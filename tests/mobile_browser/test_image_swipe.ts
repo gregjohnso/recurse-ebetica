@@ -68,6 +68,7 @@ export const tests: BrowserTest[] = [
       .click();
     await pane.locator(".files-detail").waitFor();
     await pane.getByRole("button", { name: "All files", exact: true }).click();
+    await page.setViewportSize({ width: 320, height: 844 });
     await pane.locator(".files-thumb").first().click();
     await viewer
       .locator(".files-image")
@@ -84,7 +85,6 @@ export const tests: BrowserTest[] = [
     await page.keyboard.press("Escape");
     await viewer.waitFor({ state: "detached" });
     expect(page.url()).toBe(url);
-    await page.setViewportSize({ width: 320, height: 844 });
     await pane.locator(".files-thumb").first().click();
     await viewer
       .getByRole("button", { name: "Close image", exact: true })

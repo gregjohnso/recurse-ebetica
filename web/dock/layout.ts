@@ -1,7 +1,7 @@
 // Checks a saved dock layout before dockview restores it. Stored layouts are
-// untrusted browser data: only bounded, well-formed grids whose windows are
-// the chat, known panels or at most MAX_FILE_TABS `file:<path>` tabs pass;
-// anything else falls back to the default layout.
+// untrusted browser data: only bounded, well-formed grids of the chat, known
+// panels or at most MAX_FILE_TABS file tabs (Explorer `file:<path>`, Files
+// `files:<key>`) pass; anything else falls back to the default layout.
 import type { DockLayout, DockSpot, DockSpots } from "./host.js";
 
 /** Largest stored layout, in JSON characters. */
@@ -13,6 +13,13 @@ const MAX_GROUPS = 32;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+
+const FILE_TAB = /^files?:/;
+/** Whether file tab `id` names a path or key of an allowed length. */
+const fileTab = (id: string): boolean => {
+  const length = id.length - FILE_TAB.exec(id)![0].length;
+  return length >= 1 && length <= MAX_FILE_PATH_CHARS;
+};
 
 /** `value` as a layout to restore, or null when it fails any check. */
 export function validDockLayout(
@@ -33,10 +40,8 @@ export function validDockLayout(
     let files = 0;
     for (const [id, panel] of Object.entries(panels)) {
       if (!isObject(panel) || panel.id !== id) return null;
-      if (id.startsWith("file:")) {
-        if (id.length - 5 < 1 || id.length - 5 > MAX_FILE_PATH_CHARS)
-          return null;
-        if (++files > MAX_FILE_TABS) return null;
+      if (FILE_TAB.test(id)) {
+        if (!fileTab(id) || ++files > MAX_FILE_TABS) return null;
       } else if (!known(id)) return null;
     }
     let groups = 0;
@@ -77,10 +82,7 @@ export function validDockSpots(
 ): DockSpots {
   const spots: DockSpots = {};
   if (!isObject(value)) return spots;
-  const allowed = (id: string) =>
-    id.startsWith("file:")
-      ? id.length > 5 && id.length - 5 <= MAX_FILE_PATH_CHARS
-      : known(id);
+  const allowed = (id: string) => (FILE_TAB.test(id) ? fileTab(id) : known(id));
   for (const [id, spot] of Object.entries(value).slice(-MAX_DOCK_SPOTS)) {
     if (!allowed(id) || !isObject(spot)) continue;
     const { ref, direction, index, size } = spot;
