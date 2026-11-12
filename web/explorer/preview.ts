@@ -330,55 +330,57 @@ function renderPreview(
   const folder = parentPath(shown.path);
   render(
     html`<div class="explorer-preview">
-      <div class="explorer-preview-bar">
-        <span class="explorer-preview-name" title=${shown.path}
-          >${baseName(shown.path)}</span
-        >
-        ${isHtml(shown.path) && shown.kind === "text"
-          ? html`<button
-              class="explorer-action explorer-view-toggle"
-              type="button"
-              aria-pressed=${element._htmlSource ? "true" : "false"}
-              @click=${() => {
-                element._htmlSource = !element._htmlSource;
-                renderPreview(element, shown, handlers);
-              }}
-            >
-              ${element._htmlSource ? "Preview" : "Source"}
-            </button>`
-          : nothing}
-        ${mark
-          ? actionButton("Show changes", CHANGES_ICON, () =>
-              showChanges(mark.diffPath),
-            )
-          : nothing}
-        ${actionButton("Copy path", COPY_ICON, () =>
-          copyPath(absolutePath(tree, shown.path)),
-        )}
-        ${actionButton("Insert path into message", MESSAGE_ICON, () =>
-          insertPath(shown.path),
-        )}
-        ${shown.status === "ready"
-          ? html`<a
-              class="icon-btn explorer-action"
-              href=${raw}
-              download=${baseName(shown.path)}
-              title="Download"
-              aria-label="Download"
-              >${icon(FILE_DOWNLOAD_ICON)}</a
-            >`
-          : nothing}
-        ${actionButton("Close preview", CLOSE_ICON, () => handlers.close())}
-      </div>
-      <div class="explorer-preview-meta" title=${shown.path}>
-        ${folder
-          ? html`<span class="explorer-preview-folder">${folder}/</span>`
-          : nothing}
-        ${shown.status === "ready" && shown.size !== undefined
-          ? html`<span
-              >${folder ? "\u00a0· " : ""}${attachmentSize(shown.size)}</span
-            >`
-          : nothing}
+      <div class="explorer-preview-head">
+        <div class="explorer-preview-bar">
+          <span class="explorer-preview-name" title=${shown.path}
+            >${baseName(shown.path)}</span
+          >
+          ${isHtml(shown.path) && shown.kind === "text"
+            ? html`<button
+                class="explorer-action explorer-view-toggle"
+                type="button"
+                aria-pressed=${element._htmlSource ? "true" : "false"}
+                @click=${() => {
+                  element._htmlSource = !element._htmlSource;
+                  renderPreview(element, shown, handlers);
+                }}
+              >
+                ${element._htmlSource ? "Preview" : "Source"}
+              </button>`
+            : nothing}
+          ${mark
+            ? actionButton("Show changes", CHANGES_ICON, () =>
+                showChanges(mark.diffPath),
+              )
+            : nothing}
+          ${actionButton("Copy path", COPY_ICON, () =>
+            copyPath(absolutePath(tree, shown.path)),
+          )}
+          ${actionButton("Insert path into message", MESSAGE_ICON, () =>
+            insertPath(shown.path),
+          )}
+          ${shown.status === "ready"
+            ? html`<a
+                class="icon-btn explorer-action"
+                href=${raw}
+                download=${baseName(shown.path)}
+                title="Download"
+                aria-label="Download"
+                >${icon(FILE_DOWNLOAD_ICON)}</a
+              >`
+            : nothing}
+          ${actionButton("Close preview", CLOSE_ICON, () => handlers.close())}
+        </div>
+        <div class="explorer-preview-meta" title=${shown.path}>
+          ${folder
+            ? html`<span class="explorer-preview-folder">${folder}/</span>`
+            : nothing}
+          ${shown.status === "ready" && shown.size !== undefined
+            ? html`<span
+                >${folder ? "\u00a0· " : ""}${attachmentSize(shown.size)}</span
+              >`
+            : nothing}
+        </div>
       </div>
       ${content(shown, element, handlers)}
       ${handlers.comments

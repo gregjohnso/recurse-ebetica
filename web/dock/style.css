@@ -146,3 +146,8 @@ body.pointer-held #dock .dv-sash:not(.disabled):hover::after { background: trans
 #dock .explorer-preview-name, #dock .explorer-preview-bar .explorer-action[aria-label="Close preview"] {
   display: none; }
 #dock .explorer-preview-meta { min-height: 32px; align-items: center; }
+/* The metadata row and its actions stay at the top while the file scrolls. */
+#dock .explorer-preview-head { position: sticky; top: 0; z-index: var(--z-raised);
+  margin-bottom: var(--space-3); background: var(--dv-group-view-background-color); }
+#dock .explorer-preview-head::after { content: ""; display: block; clear: both; }
+#dock .explorer-preview-head > .explorer-preview-meta { margin-bottom: 0; }

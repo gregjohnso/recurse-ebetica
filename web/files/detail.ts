@@ -531,13 +531,15 @@ export function tabHeader(
       ? `Version ${versions.length - index} of ${versions.length}`
       : "";
   const meta = metaLine(file, [references(file), version]);
-  return html`<div class="explorer-preview-bar">
+  return html`<div class="explorer-preview-head">
+    <div class="explorer-preview-bar">
       ${versionOptions(file, versions, actions.pick)}
       ${fileActions(cid, file, actions, "explorer-action")}
     </div>
     <div class="explorer-preview-meta" title=${meta}>
       <span class="files-meta">${meta}</span>
-    </div>`;
+    </div>
+  </div>`;
 }
 
 /** The pane's bar over a detail view: `nav`, then the file's metadata. */
