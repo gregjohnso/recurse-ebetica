@@ -638,10 +638,18 @@ export const tests: BrowserTest[] = [
       expect(title.width).toBeGreaterThanOrEqual(44);
       expect(box.width).toBeGreaterThan(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
-      if (width === 320)
+      if (width === 320) {
         expect(
           await line.evaluate((el) => el.scrollWidth > el.clientWidth),
         ).toBe(true);
+        const cut = await line.evaluate((el) => {
+          const outer = el.getBoundingClientRect();
+          const path = el.firstElementChild!.getBoundingClientRect();
+          return { start: path.left - outer.left, end: outer.right - path.right };
+        });
+        expect(cut.start).toBeLessThan(0);
+        expect(Math.abs(cut.end)).toBeLessThanOrEqual(1);
+      }
       await page.keyboard.press("Escape");
       await page.keyboard.press("t");
       await page.keyboard.press("t");

@@ -39,7 +39,12 @@ export function showConversationCwd(conv: Conversation | null): void {
       if (mine !== request) return;
       const cwd = typeof body?.cwd === "string" ? body.cwd : "";
       if (!cwd && !line.hidden) return;
-      line.textContent = shortCwd(cwd);
+      // Invariant: The line is right-to-left so a long path loses its start,
+      // not its end; the left-to-right span keeps the path itself in order.
+      const path = document.createElement("span");
+      path.dir = "ltr";
+      path.textContent = shortCwd(cwd);
+      line.replaceChildren(path);
       line.title = cwd;
       line.setAttribute("aria-label", `Working directory: ${cwd}`);
       line.hidden = !cwd;
