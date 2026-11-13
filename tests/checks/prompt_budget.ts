@@ -104,7 +104,12 @@ export async function renderPromptBudget(): Promise<PromptBudget> {
           { convs: [], live: {} },
           cwd,
           await prompts.captureMemoryPrompt(row),
-          await loadPromptResources(repo, join(root, "pi-agent"), []),
+          await loadPromptResources(
+            repo,
+            join(root, "pi-agent"),
+            [],
+            join(root, "home"),
+          ),
         ),
     });
     faux.setResponses([fauxAssistantMessage("Prompt captured.")]);

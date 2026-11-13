@@ -45,10 +45,11 @@ function worker() {
 test(
   "a slow read leaves the event loop free and returns the same resources",
   async () => {
-    const { repo, agentDir } = roots();
+    const { root, repo, agentDir } = roots();
     const { worker: made, fallbacks } = worker();
-    const value = await made.load(repo, agentDir, []);
-    expect(value).toEqual(await loadPromptResources(repo, agentDir, []));
+    const home = join(root, "home");
+    const value = await made.load(repo, agentDir, [], home);
+    expect(value).toEqual(await loadPromptResources(repo, agentDir, [], home));
     expect(value.contextFiles.map((file) => file.content)).toContain(
       "Repo rules.\n",
     );

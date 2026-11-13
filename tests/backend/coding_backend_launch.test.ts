@@ -153,6 +153,7 @@ describe("skill discovery", () => {
       await listSkills(join(ROOT, "empty-agent"), {
         cwd: ROOT,
         skillPaths: [skill],
+        home: ROOT,
       }),
     ).toEqual([
       { name: "inspection", description: "Inspect a fixture" },

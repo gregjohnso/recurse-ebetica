@@ -1018,11 +1018,13 @@ export class DurableHost {
     cwd: string,
     agentDir: string,
     skillPaths: string[],
+    home?: string,
   ): Promise<PromptResources> {
     const { PromptResourcesWorker, loadPromptResources } =
       await import("./prompt_resources.ts");
 
-    if (this.closing) return loadPromptResources(cwd, agentDir, skillPaths);
+    if (this.closing)
+      return loadPromptResources(cwd, agentDir, skillPaths, home);
     this.promptWorker ??= new PromptResourcesWorker((error) =>
       this.deps.log(
         "durable_prompt_resources_fallback",
@@ -1030,7 +1032,7 @@ export class DurableHost {
         WARNING,
       ),
     );
-    return this.promptWorker.load(cwd, agentDir, skillPaths);
+    return this.promptWorker.load(cwd, agentDir, skillPaths, home);
   }
 
   /** The /view page of a Durable conversation. */

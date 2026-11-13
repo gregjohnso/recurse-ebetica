@@ -85,7 +85,7 @@ test("Durable sections are byte-identical to Pi's custom-prompt path", async () 
     );
     state = {
       ...(await snapshot()),
-      ...(await loadPromptResources(repo, agent, [skill])),
+      ...(await loadPromptResources(repo, agent, [skill], root)),
     };
     expect(
       state.contextFiles.some((file) => file.path === join(repo, "AGENTS.md")),

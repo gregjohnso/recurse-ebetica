@@ -205,6 +205,19 @@ that particular agent; agent-tree memories are shared between all agents in
 that tree. Agents use ordinary file reads and writes to save and recall
 memories, and see the titles before every reply.
 
+### Skills
+
+A skill is a folder containing a `SKILL.md` with a name and description in YAML
+frontmatter, followed by instructions. Agents see each skill's name,
+description and path, and read the instructions when a task matches.
+
+Put shared skills in `~/.agents/skills/` and project skills in `.agents/skills/`.
+Project skills load from the agent's working folder and each parent folder up
+to the Git root, or the filesystem root outside a repository; a nearer
+folder wins when two skills share a name. Pi's agent-directory `skills/`, the
+working folder's `.pi/skills/` and Recurse's settings skill also load. Changes
+appear on the next model request.
+
 ### Environment
 
 An agent can set environment variables for its own commands: an API key a

@@ -378,6 +378,78 @@ test("settings and Artifacts stay out of initial requests and remain discoverabl
   expect(JSON.stringify(capture.request)).toContain("describeTool");
 });
 
+// Feature: #0 Agent Skills load from the working folder's parents up to the Git root and from the user's folder.
+test("skills in parent folders reach the request and nearer folders win a name clash", async () => {
+  const { root, env } = await world();
+  const repo = join(root, "target");
+  const nested = join(repo, "src", "nested");
+  mkdirSync(nested, { recursive: true });
+  const git = Bun.spawn(["git", "init", repo], {
+    stdout: "ignore",
+    stderr: "pipe",
+  });
+  expect(await git.exited).toBe(0);
+  const put = (dir: string, name: string, description: string) => {
+    mkdirSync(join(dir, name), { recursive: true });
+    writeFileSync(
+      join(dir, name, "SKILL.md"),
+      `---\nname: ${name}\ndescription: ${description}\n---\nFull instructions for ${name}.\n`,
+    );
+  };
+  const found = [
+    [join(repo, ".agents", "skills"), "repo-skill"],
+    [join(repo, "src", ".agents", "skills"), "parent-skill"],
+    [join(nested, ".agents", "skills"), "cwd-skill"],
+    [join(env.HOME!, ".agents", "skills"), "user-skill"],
+  ];
+  for (const [dir, name] of found) put(dir!, name!, `Use ${name}.`);
+  put(join(root, ".agents", "skills"), "outside-repo", "Use outside-repo.");
+  put(join(repo, ".agents", "skills"), "shared", "Repo copy of shared.");
+  put(join(nested, ".agents", "skills"), "shared", "Nearest copy of shared.");
+  put(join(env.HOME!, ".agents", "skills"), "shared", "User copy of shared.");
+  seedPiModelList(join(root, "data", "config"));
+  const instance = await build(env);
+  const faux = fauxProvider({ tokensPerSecond: 20_000 });
+  const models = createModels();
+  models.setProvider(faux.provider);
+  depsOf(instance.durable).models = models;
+  depsOf(instance.durable).settings = () => ["faux/faux-1", "off"];
+  await ready(instance);
+  const cid = String(
+    (await instance.create.create({ title: "Parent skills", workdir: nested }))
+      .id,
+  );
+  faux.setResponses([fauxAssistantMessage("Skills captured.")]);
+  const opened = await instance.durable.open(cid);
+  await instance.delivery.deliver(cid, "Check available workflows", {
+    origin: "operator",
+    messageId: "parent-skills",
+  });
+  await opened.conversation.waitForIdle(BACKGROUND_CONTEXT);
+  await durableUntil(() => faux.getPendingResponseCount() === 0);
+  const system = JSON.stringify(
+    (await instance.durable.prompt(cid)).system_messages,
+  );
+  for (const [dir, name] of found) {
+    expect(system).toContain(`<name>${name}</name>`);
+    expect(system).toContain(join(dir!, name!, "SKILL.md"));
+    expect(system).not.toContain(`Full instructions for ${name}.`);
+  }
+  expect(system).toContain(join(nested, ".agents", "skills", "shared"));
+  expect(system).toContain("Nearest copy of shared.");
+  expect(system).not.toContain("Repo copy of shared.");
+  expect(system).not.toContain("User copy of shared.");
+  expect(system).not.toContain("outside-repo");
+  expect(system).toContain("<name>recurse-settings</name>");
+  const listed = (await instance.agentTools.skillsFor(cid))?.[0];
+  for (const [, name] of found)
+    expect(listed).toContainEqual(expect.objectContaining({ name }));
+  expect(listed).toContainEqual({
+    name: "shared",
+    description: "Nearest copy of shared.",
+  });
+});
+
 // Regression: #2852 publications persist; #2951 unreadable lookups recover.
 test("native publications remain in Files after scratch removal and restart", async () => {
   const { root, env } = await world();
