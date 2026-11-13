@@ -400,6 +400,17 @@ html[data-embed] #main { margin: 0; height: 100%; border-radius: 0; box-shadow: 
 .artifact-doc .content pre, .artifact-doc .content table, .artifact-plain { display: block;
   max-width: 100%; overflow-x: auto; }
 .artifact-doc .content table { border-collapse: collapse; }
+/* Documents use GitHub's README heading scale; chat replies stay compact. */
+.artifact-doc .content :is(h1, h2, h3, h4, h5, h6) { margin: var(--space-6) 0 var(--space-5);
+  font-weight: 600; line-height: 1.25; }
+.artifact-doc .content :is(h1, h2) { padding-bottom: var(--space-2); border-bottom: 1px solid var(--border); }
+.artifact-doc .content h1 { font-size: 2em; }
+.artifact-doc .content h2 { font-size: 1.5em; }
+.artifact-doc .content h3 { font-size: 1.25em; }
+.artifact-doc .content h4 { font-size: 1em; }
+.artifact-doc .content h5 { font-size: .875em; }
+.artifact-doc .content h6 { font-size: .85em; color: var(--muted); }
+.artifact-doc .content > :first-child { margin-top: 0; }
 .artifact-doc .content img, .artifact-image { max-width: 100%; max-height: none; height: auto;
   border: 0; margin: 0; }
 .artifact-image-placeholder { display: block; box-sizing: border-box;
