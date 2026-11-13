@@ -151,3 +151,12 @@ body.pointer-held #dock .dv-sash:not(.disabled):hover::after { background: trans
   margin-bottom: var(--space-3); background: var(--dv-group-view-background-color); }
 #dock .explorer-preview-head::after { content: ""; display: block; clear: both; }
 #dock .explorer-preview-head > .explorer-preview-meta { margin-bottom: 0; }
+/* A Files tab's image fills the tab below its header, fitted inside, so
+   zooming and panning use the whole tab; comments below it shrink it. */
+#dock .files-tab .explorer-preview:has(> .files-detail > .image-zoom-viewport) {
+  box-sizing: border-box; min-height: 100%; display: flex; flex-direction: column;
+  padding-bottom: 0; }
+#dock .files-tab .files-detail:has(> .image-zoom-viewport) { flex: 1; display: flex; min-height: 0; }
+#dock .files-tab .image-zoom-viewport { flex: 1; min-width: 0; min-height: 240px;
+  container-type: size; }
+#dock .files-tab .image-zoom-viewport .files-image { max-height: 100cqh; }

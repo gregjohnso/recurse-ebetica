@@ -64,9 +64,8 @@ function navigationPng(
   background: [number, number, number],
   digit: number,
   noisy = false,
+  [width, height] = [800, 500],
 ): ImageBytes {
-  const width = 800;
-  const height = 500;
   const pixels = new Uint8Array(width * height * 3);
   let seed = digit;
   const jitter = () =>
@@ -89,7 +88,11 @@ function navigationPng(
   for (const segment of digits[digit]) {
     const [x1, y1, x2, y2] = segments[segment];
     for (let y = y1; y < y2; y++)
-      pixels.fill(255, (y * width + x1) * 3, (y * width + x2) * 3);
+      pixels.fill(
+        255,
+        (y * width + x1) * 3,
+        (y * width + Math.min(x2, width)) * 3,
+      );
   }
   const concatBytes = (...parts: Uint8Array[]): ImageBytes => {
     const result = new Uint8Array(
@@ -128,7 +131,18 @@ function navigationPng(
   }
   return concatBytes(
     Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk("IHDR", Uint8Array.from([0, 0, 3, 32, 0, 0, 1, 244, 8, 2, 0, 0, 0])),
+    chunk(
+      "IHDR",
+      Uint8Array.from([
+        ...[24, 16, 8, 0].map((shift) => (width >>> shift) & 255),
+        ...[24, 16, 8, 0].map((shift) => (height >>> shift) & 255),
+        8,
+        2,
+        0,
+        0,
+        0,
+      ]),
+    ),
     chunk(
       "IDAT",
       imageBytes(
@@ -1206,6 +1220,19 @@ const routes: Record<string, (request: Request) => Promise<Json>> = {
       await create(cid, "Published versions", rootAgentId());
       for (const draft of [1, 2, 3])
         await publishTurn(cid, "report.md", `# Draft ${draft}\n`);
+    }
+    return { demo: cid };
+  },
+  "seed-portrait-versions": async () => {
+    const cid = "files-portrait-versions";
+    if (load(cid) === null) {
+      await create(cid, "Portrait versions", rootAgentId());
+      for (const digit of [1, 2])
+        await publishTurn(
+          cid,
+          "figure.png",
+          navigationPng([210, 55, 100 * digit], digit, false, [500, 900]),
+        );
     }
     return { demo: cid };
   },

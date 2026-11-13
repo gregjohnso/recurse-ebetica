@@ -27,6 +27,25 @@ async function renderedText(target: Locator): Promise<string> {
   return target.innerText();
 }
 
+async function expectZoomFillsTab(tab: Locator): Promise<void> {
+  const viewport = tab.locator(".image-zoom-viewport");
+  const frame = tab.locator(".files-image-frame");
+  const fitted = (await frame.boundingBox())!;
+  await viewport.dblclick();
+  await tab.locator('.image-zoom-viewport[data-zoomed="true"]').waitFor();
+  const tabBox = (await tab.boundingBox())!;
+  const zoomed = (await viewport.boundingBox())!;
+  expect(
+    Math.abs(zoomed.y + zoomed.height - (tabBox.y + tabBox.height)),
+  ).toBeLessThan(4);
+  expect((await frame.boundingBox())!.height).toBeGreaterThan(
+    fitted.height * 1.5,
+  );
+  await tab.getByRole("button", { name: "Fit image", exact: true }).click();
+  await tab.locator('.image-zoom-viewport[data-zoomed="false"]').waitFor();
+  expect(await frame.boundingBox()).toEqual(fitted);
+}
+
 interface Fixture {
   demo: string;
   empty: string;
@@ -834,7 +853,7 @@ export const tests: BrowserTest[] = [
     expect(staleErrors).toEqual([]);
     await staleContext.close();
   },
-  // Regression: #2736 image viewer navigation counts up towards newer files; #0 a zoomed image fills its file tab.
+  // Regression: #2736 image viewer navigation counts up towards newer files; #0 a zoomed wide or tall image, any version, fills its file tab.
   async function test_files_image_navigation(browser, base) {
     const fixture = (await postFixture(
       base,
@@ -895,25 +914,44 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_BROWSER_SCREENSHOT_DIR}/files-viewer-desktop.png`,
       });
-    const tab = page.locator(".files-tab", {
-      has: page.locator(`.files-detail[aria-label="${last}"]`),
-    });
-    const zoomViewport = tab.locator(".image-zoom-viewport");
-    const frame = tab.locator(".files-image-frame");
-    const fitted = (await frame.boundingBox())!;
-    await zoomViewport.dblclick();
-    await tab.locator('.image-zoom-viewport[data-zoomed="true"]').waitFor();
-    const tabBox = (await tab.boundingBox())!;
-    const zoomedBox = (await zoomViewport.boundingBox())!;
-    expect(
-      Math.abs(zoomedBox.y + zoomedBox.height - (tabBox.y + tabBox.height)),
-    ).toBeLessThan(4);
-    expect((await frame.boundingBox())!.height).toBeGreaterThan(
-      fitted.height * 1.5,
+    await expectZoomFillsTab(
+      page.locator(".files-tab", {
+        has: page.locator(`.files-detail[aria-label="${last}"]`),
+      }),
     );
-    await tab.getByRole("button", { name: "Fit image", exact: true }).click();
-    await tab.locator('.image-zoom-viewport[data-zoomed="false"]').waitFor();
-    expect(await frame.boundingBox()).toEqual(fitted);
+    const portrait = await postFixture(base, "seed-portrait-versions");
+    await page.locator(`.agent[data-id="${portrait.demo}"]`).click();
+    await page.locator('.rail-btn[data-pane="files"]').click();
+    await page
+      .locator('.pane-col[data-pane="files"] .files-thumb')
+      .first()
+      .click();
+    const figure = page.locator(".files-tab", {
+      has: page.locator('.files-detail[aria-label="figure.png"]'),
+    });
+    await figure.getByLabel("File options", { exact: true }).click();
+    await figure
+      .getByRole("combobox", { name: "Version" })
+      .selectOption({ index: 1 });
+    await figure
+      .locator(".explorer-preview-meta", { hasText: "Version 1 of 2" })
+      .waitFor();
+    await page.waitForFunction(
+      "document.querySelector('.files-tab .files-detail img')?.naturalHeight === 900",
+    );
+    const [frameBox, viewportBox] = await Promise.all(
+      [".files-image-frame", ".image-zoom-viewport"].map(
+        async (selector) => (await figure.locator(selector).boundingBox())!,
+      ),
+    );
+    expect(
+      Math.max(
+        frameBox.width / viewportBox.width,
+        frameBox.height / viewportBox.height,
+      ),
+    ).toBeCloseTo(1, 2);
+    expect(frameBox.width).toBeLessThan(500);
+    await expectZoomFillsTab(figure);
     expect(errors).toEqual([]);
     await context.close();
   },
