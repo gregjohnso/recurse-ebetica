@@ -834,7 +834,7 @@ export const tests: BrowserTest[] = [
     expect(staleErrors).toEqual([]);
     await staleContext.close();
   },
-  // Regression: #2736 image viewer navigation counts up towards newer files.
+  // Regression: #2736 image viewer navigation counts up towards newer files; #0 a zoomed image fills its file tab.
   async function test_files_image_navigation(browser, base) {
     const fixture = (await postFixture(
       base,
@@ -895,6 +895,25 @@ export const tests: BrowserTest[] = [
       await page.screenshot({
         path: `${process.env.RECURSE_BROWSER_SCREENSHOT_DIR}/files-viewer-desktop.png`,
       });
+    const tab = page.locator(".files-tab", {
+      has: page.locator(`.files-detail[aria-label="${last}"]`),
+    });
+    const zoomViewport = tab.locator(".image-zoom-viewport");
+    const frame = tab.locator(".files-image-frame");
+    const fitted = (await frame.boundingBox())!;
+    await zoomViewport.dblclick();
+    await tab.locator('.image-zoom-viewport[data-zoomed="true"]').waitFor();
+    const tabBox = (await tab.boundingBox())!;
+    const zoomedBox = (await zoomViewport.boundingBox())!;
+    expect(
+      Math.abs(zoomedBox.y + zoomedBox.height - (tabBox.y + tabBox.height)),
+    ).toBeLessThan(4);
+    expect((await frame.boundingBox())!.height).toBeGreaterThan(
+      fitted.height * 1.5,
+    );
+    await tab.getByRole("button", { name: "Fit image", exact: true }).click();
+    await tab.locator('.image-zoom-viewport[data-zoomed="false"]').waitFor();
+    expect(await frame.boundingBox()).toEqual(fitted);
     expect(errors).toEqual([]);
     await context.close();
   },
