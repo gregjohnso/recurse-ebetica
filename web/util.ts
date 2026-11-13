@@ -4,7 +4,6 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { mathExtension } from "./math.js";
-import { PERSON_ICON } from "./icons.js";
 export { PERSON_ICON } from "./icons.js";
 import { parseMessageMarkdown } from "./util/message-markdown.js";
 import { strikethrough } from "./util/strikethrough.js";
@@ -26,9 +25,8 @@ export const md = (t: string, message = false): string =>
 export const messageMarkdownFragment = (t: string): DocumentFragment =>
   DOMPurify.sanitize(markdownHtml(t, true), { RETURN_DOM_FRAGMENT: true });
 
-// "3 👤" markup for a subagent count; "" when there are none.
-export const kidsBadge = (n: number): string =>
-  n > 0 ? `${n} ${PERSON_ICON}` : "";
+// The subagent count as badge text; "" when there are none.
+export const kidsBadge = (n: number): string => (n > 0 ? String(n) : "");
 
 export function relTime(ts: number): string {
   const s = Math.max(0, Date.now() / 1000 - ts);
