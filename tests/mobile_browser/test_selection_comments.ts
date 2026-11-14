@@ -515,6 +515,31 @@ async function checkArtifactCommentSend(
           ).toBe(scroll);
           expect(loads).toEqual([]);
           expect(contentRequests).toEqual([]);
+          if (mobile && submit === "button") {
+            const again = `Second round ${moves}`;
+            await page.locator(".report-doc p").nth(52).selectText();
+            await popover.waitFor();
+            const box = (await popover.boundingBox())!;
+            expect(box.x).toBeGreaterThanOrEqual(0);
+            expect(box.x + box.width).toBeLessThanOrEqual(412);
+            expect(box.y + box.height).toBeLessThanOrEqual(844);
+            await popover.locator("textarea").fill(again);
+            await popover
+              .getByRole("button", { name: "Comment", exact: true })
+              .click();
+            const second = page.waitForResponse((response: any) =>
+              response
+                .url()
+                .endsWith(`/api/conversations/${rootAgentId()}/deliver`),
+            );
+            await page
+              .getByRole("button", { name: "Submit comments", exact: true })
+              .click();
+            expect((await second).ok()).toBe(true);
+            expect(deliveries).toHaveLength(2);
+            expect(deliveries[1]).toContain(again);
+            await page.locator(".msg.user", { hasText: again }).waitFor();
+          }
           expect(errors).toEqual([]);
         } finally {
           await context.close();

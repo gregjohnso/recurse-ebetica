@@ -328,7 +328,9 @@ export function createDockHost(
   api.onDidMovePanel(refocus);
   container.addEventListener("dragend", refocus);
   // Invariant: A drag-selection stays in the window (or the copyable path)
-  // where the press began; divider highlights wait for the release.
+  // where the press began; divider highlights wait for the release. The
+  // release lifts the limit, so keyboard and script selections reach every
+  // window, and the finished selection keeps its ends.
   let scope: Element | null = null;
   container.addEventListener(
     "pointerdown",
@@ -346,6 +348,9 @@ export function createDockHost(
       const release = new AbortController();
       const end = () => {
         document.body.classList.remove("pointer-held");
+        container.classList.remove("dock-scoped");
+        scope?.classList.remove("dock-select-scope");
+        scope = null;
         release.abort();
       };
       for (const type of ["pointerup", "pointercancel"])
