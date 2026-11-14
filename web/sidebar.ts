@@ -2,7 +2,7 @@
 // Keyed forest rows preserve DOM/scroll; tree_projection owns reveal policy.
 // Rename/swipe gestures freeze repaint until completion.
 // Rows keep title, badges and time on one line; models stay in the composer.
-import { startDraft } from "./composer.js";
+import { focusComposerAtEnd, startDraft } from "./composer.js";
 import { sharedTrees, reloadChangedTreeLink } from "./shared-trees.js";
 import { copyText } from "./tool_details.js";
 import { remoteSectionHeader } from "./backends/discovery.js";
@@ -403,7 +403,11 @@ function rowT(
       touchActionHandled = false;
       return;
     }
-    if (n.id !== state.selectedId && !guardLeaveComments()) return;
+    if (n.id === state.selectedId) {
+      showOpenConversation(n.id);
+      return;
+    }
+    if (!guardLeaveComments()) return;
     state.cursorId = n.id;
     selectAgent(n.id);
   };
@@ -687,6 +691,16 @@ export function selectAgent(
   if (treeFocused) focusAgentTree();
   syncHistoryToSelection();
   refreshUpBtn();
+}
+
+/** Shows the already-open conversation's chat without reading it again. */
+function showOpenConversation(id: string): void {
+  if (state.cursorId !== id) {
+    state.cursorId = id;
+    renderSidebar();
+  }
+  if (phoneNavigation()) syncHistoryToSelection();
+  else focusComposerAtEnd();
 }
 
 // Climbs the live routing parent via goUp; browser Back remains a separate

@@ -4,6 +4,7 @@ import {
   captureErrors,
   postFixture,
   runBrowserTests,
+  showAgentList,
   type BrowserTest,
 } from "./common";
 
@@ -22,6 +23,18 @@ const dockLayout = (page: Page) =>
       )
       .sort(),
   );
+
+const conversationReads = (page: Page, cid: string): string[] => {
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.headers()["x-recurse-trace"] &&
+      request.url().includes(`/api/conversations/${cid}`)
+    )
+      reads.push(request.url());
+  });
+  return reads;
+};
 
 export const tests: BrowserTest[] = [
   // Feature: #0 Explorer HTML files render in the offline sandbox, with their source a toggle away
@@ -211,6 +224,19 @@ export const tests: BrowserTest[] = [
     await readme.click();
     await readmeDoc.waitFor();
     expect(await tabs.count()).toBe(4);
+    const reloads = conversationReads(page, cid);
+    await page.locator(".agent.selected", { hasText: "Explorer demo" }).click();
+    await page.waitForFunction(
+      () => (globalThis as any).document.activeElement?.id === "input",
+    );
+    expect(await page.locator("#input").isVisible()).toBe(true);
+    expect(await readmeDoc.isVisible()).toBe(false);
+    expect(
+      await page.locator(".dv-tab.dv-active-tab", { hasText: "Chat" }).count(),
+    ).toBe(1);
+    expect(reloads).toEqual([]);
+    await tabs.filter({ hasText: "README.md" }).click();
+    await readmeDoc.waitFor();
     await panels.first().click();
     await page.locator("#explorer").waitFor({ state: "detached" });
     expect(await dockLayout(page)).toEqual([["Chat", "guide.md", "README.md"]]);
@@ -406,6 +432,23 @@ export const tests: BrowserTest[] = [
     await phonePane.locator("h1", { hasText: "Demo project" }).waitFor();
     await phonePane.locator("a", { hasText: "guide" }).click();
     await phonePane.locator("h1", { hasText: "Explorer guide" }).waitFor();
+    await mobile.locator("#menu-btn").click();
+    await phonePane.waitFor({ state: "hidden" });
+    await showAgentList(mobile);
+    const phoneReloads = conversationReads(mobile, cid);
+    await mobile
+      .locator(".agent.selected", { hasText: "Explorer demo" })
+      .click();
+    await mobile.locator("html:not(.phone-list) #sidebar[inert]").waitFor({
+      state: "attached",
+    });
+    expect(
+      await mobile
+        .locator("#conv-title", { hasText: "Explorer demo" })
+        .isVisible(),
+    ).toBe(true);
+    expect(await phonePane.isVisible()).toBe(false);
+    expect(phoneReloads).toEqual([]);
     expect(phoneErrors).toEqual([]);
     await phone.close();
   },
