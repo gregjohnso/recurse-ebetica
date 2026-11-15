@@ -1511,9 +1511,13 @@ const rowOf = (e: Event): HTMLElement | null =>
   (e.target as HTMLElement | null)?.closest<HTMLElement>(".agent") || null;
 let touchActionHandled = false;
 let longPressTimer = 0;
-// Hold opens the action menu; left swipe deletes; native scrolling keeps pan-y.
+// Hold opens the action menu. Like Mail, a right swipe expands a row's
+// subagents, a short left swipe collapses them and a long one deletes the
+// agent; native scrolling keeps pan-y.
 const SWIPE_START = 12;
-const DISMISS_MIN = 90;
+const FOLD_MIN = 48;
+const EXPAND_MAX = 96;
+const DISMISS_MIN = 150;
 interface Swipe {
   row: HTMLElement;
   id: string | undefined;
@@ -1522,13 +1526,14 @@ interface Swipe {
   dx: number;
   active: boolean;
   armed: boolean;
+  fold: "expand" | "collapse" | null;
 }
 let swipe: Swipe | null = null;
 let pressAt = [0, 0];
 
 function resetRow(row: HTMLElement | null, animate: boolean): void {
   if (!row) return;
-  row.classList.remove("swiping", "dismiss-armed");
+  row.classList.remove("swiping", "dismiss-armed", "fold-armed");
   if (animate)
     row.style.transition =
       "transform var(--motion-move) ease, opacity var(--motion-move) ease";
@@ -1566,6 +1571,7 @@ listEl.addEventListener(
       dx: 0,
       active: false,
       armed: false,
+      fold: null,
     };
     touchActionHandled = false;
     // Invariant: Holding opens the row's action menu, Rename last; the row's
@@ -1619,9 +1625,24 @@ listEl.addEventListener(
       } else return;
     }
     e.preventDefault();
-    swipe.dx = Math.min(0, dx);
+    const expanded = swipe.row.getAttribute("aria-expanded");
+    swipe.dx = Math.min(expanded === "false" ? EXPAND_MAX : 0, dx);
     swipe.row.style.transform = `translateX(${swipe.dx}px)`;
-    swipe.row.style.opacity = String(Math.max(0.35, 1 + swipe.dx / 260));
+    swipe.row.style.opacity = String(
+      Math.max(0.35, 1 + Math.min(0, swipe.dx) / 260),
+    );
+    const fold =
+      swipe.dx >= FOLD_MIN
+        ? "expand"
+        : expanded === "true" &&
+            swipe.dx <= -FOLD_MIN &&
+            -swipe.dx < DISMISS_MIN
+          ? "collapse"
+          : null;
+    if (fold !== swipe.fold) {
+      swipe.fold = fold;
+      swipe.row.classList.toggle("fold-armed", fold !== null);
+    }
     const armed = -swipe.dx >= DISMISS_MIN;
     if (armed !== swipe.armed) {
       swipe.armed = armed;
@@ -1637,7 +1658,24 @@ function endSwipe(): void {
   const s = swipe;
   swipe = null;
   if (!s.active) return;
-  if (s.armed) {
+  if (s.fold && s.id) {
+    // Invariant: The fold applies on release and the row springs back; the
+    // follow-up tap does not open the conversation.
+    touchActionHandled = true;
+    s.row.classList.remove("fold-armed");
+    resetRow(s.row, true);
+    if (s.fold === "expand") {
+      if (folds.collapsedAgent() === s.id) folds.unfoldAgent();
+      folds.keepSubagentsOpen(s.id);
+    } else folds.foldAgent(s.id);
+    renderSidebar();
+    const node = state.nodes[s.id];
+    if (node)
+      announceNode(
+        node,
+        s.fold === "expand" ? "Expanded subagents" : "Collapsed subagents",
+      );
+  } else if (s.armed) {
     // Invariant: Slide the row out, then delete optimistically (the teardown
     // runs on the backend). touchActionHandled keeps the follow-up tap from
     // opening it.

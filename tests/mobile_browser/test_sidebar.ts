@@ -879,6 +879,66 @@ export const tests: BrowserTest[] = [
     await context.close();
   },
 
+  // Feature: #0 on phones a right swipe expands a row's subagents, a short left swipe collapses them and a long one still deletes.
+  async function test_sidebar_phone_swipe_folds(browser, base) {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const ids = await seedSections(context, base);
+    const page = await context.newPage();
+    const errors = captureErrors(page);
+    await gotoRoot(page, base);
+    await page.locator("#menu-btn").click();
+    await page.waitForFunction(
+      () =>
+        (globalThis as any).document
+          .querySelector("#sidebar")
+          .getBoundingClientRect().x === 0,
+    );
+    const touch = await context.newCDPSession(page);
+    const send = (
+      type: "touchStart" | "touchMove" | "touchEnd",
+      x?: number,
+      y?: number,
+    ) =>
+      touch.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: x === undefined ? [] : [{ x, y: y! }],
+      });
+    const swipeRow = async (id: string, dx: number) => {
+      const target = page.locator(`.agent[data-id="${id}"]`);
+      await target.scrollIntoViewIfNeeded();
+      const box = (await target.boundingBox())!;
+      const x = box.x + box.width / 2,
+        y = box.y + box.height / 2;
+      await send("touchStart", x, y);
+      for (const step of [0.25, 0.5, 0.75, 1])
+        await send("touchMove", x + dx * step, y);
+      await send("touchEnd");
+    };
+    const parent = page.locator(`.agent[data-id="${ids.fresh}"]`);
+    const child = page.locator(`.agent[data-id="${ids.child}"]`);
+    await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
+    const hash = await page.evaluate(() => (globalThis as any).location.hash);
+    await swipeRow(ids.fresh, 80);
+    await browserExpect(parent).toHaveAttribute("aria-expanded", "true");
+    await child.waitFor();
+    expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
+      hash,
+    );
+    await swipeRow(ids.fresh, -90);
+    await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
+    await child.waitFor({ state: "detached" });
+    expect(await parent.count()).toBe(1);
+    const stale = page.locator(`.agent[data-id="${ids.stale}"]`);
+    await swipeRow(ids.stale, -170);
+    await stale.waitFor({ state: "detached" });
+    expect(errors).toEqual([]);
+    await context.close();
+  },
+
   // Feature: #0 a finished turn the operator has not opened shows a yellow star.
   async function test_sidebar_needs_input_star(browser, base) {
     const { agent } = await postFixture(base, "seed-durable-clear");
