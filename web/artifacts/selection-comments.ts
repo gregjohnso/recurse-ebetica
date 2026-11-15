@@ -549,7 +549,16 @@ function onSelectionPointerCancel(
   event: PointerEvent,
 ): void {
   source.pointerIds.delete(event.pointerId);
-  invalidateSelectionSequence(source);
+  endCancelledSequence(source);
+}
+// Spec: Safari ends a long-press that selected text with pointercancel and
+// touchcancel instead of touchend; a selection changed during the touch is
+// offered, while a cancel that only began a scroll stays blocked.
+function endCancelledSequence(source: SelectionSource): void {
+  if (!source.changed) return invalidateSelectionSequence(source);
+  if (selectionInteractionActive(source)) return;
+  source.changed = false;
+  scheduleSelectionOffer(source);
 }
 function onSelectionTouchStart(source: SelectionSource): void {
   if (!selectionInteractionActive(source)) source.changed = false;
@@ -567,7 +576,7 @@ function onSelectionTouchEnd(source: SelectionSource): void {
 }
 function onSelectionTouchCancel(source: SelectionSource): void {
   source.touch = false;
-  invalidateSelectionSequence(source);
+  endCancelledSequence(source);
 }
 function onSelectionScroll(source: SelectionSource): void {
   invalidateSelectionSequence(source);

@@ -539,6 +539,60 @@ async function checkArtifactCommentSend(
             expect(deliveries).toHaveLength(2);
             expect(deliveries[1]).toContain(again);
             await page.locator(".msg.user", { hasText: again }).waitFor();
+            if (!(await paragraph.isVisible()))
+              await page.evaluate((id: string) => {
+                (globalThis as any).location.hash = `#artifact=${id}`;
+              }, item.id);
+            const held = page.locator(".report-doc p").nth(54);
+            await held.scrollIntoViewIfNeeded();
+            await held.evaluate((element: any) => {
+              const browser = globalThis as any;
+              const touch = new browser.Touch({
+                identifier: 1,
+                target: element,
+                clientX: 20,
+                clientY: 20,
+              });
+              element.dispatchEvent(
+                new browser.TouchEvent("touchstart", {
+                  bubbles: true,
+                  touches: [touch],
+                  changedTouches: [touch],
+                }),
+              );
+              element.dispatchEvent(
+                new browser.PointerEvent("pointerdown", {
+                  bubbles: true,
+                  pointerId: 7,
+                  pointerType: "touch",
+                }),
+              );
+              const range = browser.document.createRange();
+              range.selectNodeContents(element);
+              const selection = browser.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
+            });
+            await page.evaluate(
+              () => new Promise((resolve) => setTimeout(resolve, 50)),
+            );
+            await held.evaluate((element: any) => {
+              const browser = globalThis as any;
+              element.dispatchEvent(
+                new browser.PointerEvent("pointercancel", {
+                  bubbles: true,
+                  pointerId: 7,
+                  pointerType: "touch",
+                }),
+              );
+              element.dispatchEvent(
+                new browser.TouchEvent("touchcancel", { bubbles: true }),
+              );
+            });
+            await popover.waitFor();
+            await popover
+              .getByRole("button", { name: "Cancel", exact: true })
+              .click();
           }
           expect(errors).toEqual([]);
         } finally {
