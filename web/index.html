@@ -91,7 +91,23 @@
   /* swiped far enough that releasing will dismiss it — flag it red, like .armed */
   .agent.dismiss-armed { background: color-mix(in srgb, var(--danger) 14%, transparent); border-color: var(--danger); }
   .agent.dismiss-armed .title { color: var(--danger); }
-  .agent.fold-armed { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); }
+  /* Phone swipe trays (web/sidebar/swipe-tray.ts): round Mail-style actions in
+     the space a slid row leaves; the outermost action hugs the screen edge. */
+  .swipe-tray { position: fixed; z-index: calc(var(--z-drawer) + 4); display: flex; align-items: center;
+    overflow: hidden; }
+  .swipe-tray[hidden] { display: none; }
+  .swipe-tray[data-side="left"] { justify-content: flex-start; }
+  .swipe-tray[data-side="right"] { justify-content: flex-end; }
+  .swipe-action { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+    width: 72px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 0.625rem; line-height: 1.2; }
+  .swipe-action-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+    background: color-mix(in srgb, var(--muted) 45%, var(--panel)); color: var(--on-media); }
+  .swipe-action-icon svg { width: 16px; height: 16px; }
+  .swipe-action:is([data-action="Expand"], [data-action="Collapse"], [data-action="Read"],
+    [data-action="Unread"]) .swipe-action-icon { background: var(--accent); }
+  .swipe-action:is([data-action="Pin"], [data-action="Unpin"]) .swipe-action-icon { background: var(--warn); }
+  .swipe-action:is([data-action="Archive"], [data-action="Unarchive"]) .swipe-action-icon {
+    background: color-mix(in srgb, var(--accent) 55%, var(--danger)); }
   .agent:hover { background: var(--panel-2); }
   .agent.selected { background: var(--row-selected); border-color: var(--row-selected-border); }
   .agent.cursor { border-color: var(--row-cursor); outline: var(--focus-width) solid var(--row-cursor); outline-offset: calc(-1 * var(--focus-width)); }

@@ -1,11 +1,14 @@
 // Which conversations need the operator: idle ones they messaged whose latest
 // turn finished after they last looked. Seen marks are per browser, keyed by
 // conversation id, and hold the `replied_at` last seen while it was open and
-// visible. Replies from before this browser first ran never count.
+// visible. Replies from before this browser first ran never count. Marks the
+// operator sets by hand (swipe "Unread") also need them until they open it.
 import type { TreeNode } from "./types.js";
 
 const KEY = "recurse.seenReplies";
+const UNREAD_KEY = "recurse.markedUnread";
 const MAX_SEEN = 2000;
+const MAX_UNREAD = 500;
 
 interface Seen {
   since: number;
@@ -28,20 +31,61 @@ addEventListener("storage", (event: StorageEvent) => {
   } catch {}
 });
 
-/** Whether `node` finished a turn its operator has not looked at yet. */
+const unread = new Set<string>();
+try {
+  const stored: unknown = JSON.parse(localStorage.getItem(UNREAD_KEY) || "[]");
+  if (Array.isArray(stored))
+    for (const id of stored.slice(-MAX_UNREAD))
+      if (typeof id === "string") unread.add(id);
+} catch {}
+function saveUnread(): void {
+  try {
+    localStorage.setItem(UNREAD_KEY, JSON.stringify([...unread]));
+  } catch {}
+}
+
+/** Whether `node` finished a turn its operator has not looked at yet, or
+ * the operator marked it unread. */
 export function needsInput(node: TreeNode): boolean {
   const replied = node.replied_at ?? 0;
   return (
-    node.status === "idle" &&
-    !!node.operator_message_at &&
-    replied > Math.max(seen.since, seen.at[node.id] ?? 0)
+    unread.has(node.id) ||
+    (node.status === "idle" &&
+      !!node.operator_message_at &&
+      replied > Math.max(seen.since, seen.at[node.id] ?? 0))
   );
+}
+
+/** Show `id` as needing the operator until they open it. */
+export function markUnread(id: string): void {
+  unread.delete(id);
+  unread.add(id);
+  for (const old of unread) {
+    if (unread.size <= MAX_UNREAD) break;
+    unread.delete(old);
+  }
+  saveUnread();
+}
+
+/** Clear `node`'s unread state without opening it. */
+export function markRead(node: TreeNode): void {
+  if (unread.delete(node.id)) saveUnread();
+  recordSeen(node);
+}
+
+/** Opening a conversation clears a hand-set unread mark. */
+export function noteOpened(id: string): void {
+  if (unread.delete(id)) saveUnread();
 }
 
 /** Record that the operator is looking at `node` now. */
 export function markSeen(node: TreeNode): void {
+  if (!document.hidden) recordSeen(node);
+}
+
+function recordSeen(node: TreeNode): void {
   const replied = node.replied_at ?? 0;
-  if (document.hidden || !replied || seen.at[node.id] === replied) return;
+  if (!replied || seen.at[node.id] === replied) return;
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || "null");
     if (stored?.at) seen.at = { ...stored.at, ...seen.at };

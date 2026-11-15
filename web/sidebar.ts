@@ -27,7 +27,10 @@ import {
 } from "./state.js";
 import { $, listEl, titleEl, inputEl } from "./dom.js";
 import {
+  COLLAPSE_ALL_ICON,
+  EXPAND_ALL_ICON,
   MESSAGE_ICON,
+  MORE_ICON,
   NEEDS_INPUT_ICON,
   NEW_ICON,
   SAFETY_OFF_ICON,
@@ -40,7 +43,13 @@ import {
   queuedDescription,
   queuedLabel,
 } from "./agent-status.js";
-import { markSeen, needsInput } from "./needs-input.js";
+import {
+  markRead,
+  markSeen,
+  markUnread,
+  needsInput,
+  noteOpened,
+} from "./needs-input.js";
 import "./spin-sync.js";
 import {
   abandonBackgroundWarming,
@@ -105,7 +114,20 @@ import type { TreeNode } from "./types.js";
 import type { Action, Section } from "./sidebar/arrangement.js";
 import { SIDEBAR_CHANGE, shownTags } from "./sidebar/actions.js";
 import * as folds from "./sidebar/agent-folds.js";
-import { holdOpen, moveHold, openHold, releaseHold } from "./sidebar/hold.js";
+import {
+  holdOpen,
+  moveHold,
+  openHold,
+  releaseHold,
+  type HoldItem,
+} from "./sidebar/hold.js";
+import {
+  hideTray,
+  paintTray,
+  trayContains,
+  trayOpen,
+  trayWidth,
+} from "./sidebar/swipe-tray.js";
 import {
   arrange,
   isFolded,
@@ -507,7 +529,7 @@ export function activeAgentRowT(
 export function renderSidebar(): void {
   // Invariant: Repainting during imperative rename/swipe would destroy input or
   // overwrite live gesture classes. Freeze until the interaction completes.
-  if (renaming || (swipe && swipe.active) || dragActive) return;
+  if (renaming || (swipe && swipe.active) || dragActive || trayOpen()) return;
   const shown = state.nodes[state.selectedId];
   if (shown) markSeen(shown);
   if (
@@ -630,6 +652,7 @@ export function selectAgent(
   skipComposerSnapshot = false,
 ): void {
   if (id !== state.selectedId) disarmDelete();
+  noteOpened(id);
   if (id !== state.cursorId || id !== state.selectedId)
     window.dispatchEvent(new Event("recurse:selection-change"));
   const treeFocused = listEl.contains(document.activeElement);
@@ -1511,13 +1534,12 @@ const rowOf = (e: Event): HTMLElement | null =>
   (e.target as HTMLElement | null)?.closest<HTMLElement>(".agent") || null;
 let touchActionHandled = false;
 let longPressTimer = 0;
-// Hold opens the action menu. Like Mail, a right swipe expands a row's
-// subagents, a short left swipe collapses them and a long one deletes the
-// agent; native scrolling keeps pan-y.
+// Hold opens the action menu. Like Mail, a swipe slides a row aside to reveal
+// round actions: right reveals Expand/Collapse and Read/Unread, left reveals More,
+// Pin and Archive, and a long left swipe archives. Native scrolling keeps pan-y.
 const SWIPE_START = 12;
-const FOLD_MIN = 48;
-const EXPAND_MAX = 96;
-const DISMISS_MIN = 150;
+const TRAY_OVERSHOOT = 24;
+const FULL_SWIPE = 0.6;
 interface Swipe {
   row: HTMLElement;
   id: string | undefined;
@@ -1525,15 +1547,93 @@ interface Swipe {
   y0: number;
   dx: number;
   active: boolean;
-  armed: boolean;
-  fold: "expand" | "collapse" | null;
+  rect: DOMRect | null;
+  left: HoldItem[];
+  right: HoldItem[];
+  full: boolean;
 }
 let swipe: Swipe | null = null;
 let pressAt = [0, 0];
+let trayRow: HTMLElement | null = null;
+
+/** The swipe trays' actions for agent `id`, built from its hold-menu items. */
+function swipeTrays(id: string, row: HTMLElement) {
+  const items = rowHoldItems(actionsById.get(id) ?? [], id, () =>
+    startRename(id),
+  );
+  const pick = (pattern: RegExp) =>
+    items.filter((item) => pattern.test(item.label));
+  const expanded = row.getAttribute("aria-expanded");
+  const left: HoldItem[] = [];
+  if (expanded)
+    left.push({
+      label: expanded === "false" ? "Expand" : "Collapse",
+      icon: expanded === "false" ? EXPAND_ALL_ICON : COLLAPSE_ALL_ICON,
+      run: () => foldRow(id, expanded === "false"),
+    });
+  const node = state.nodes[id];
+  if (node) {
+    const isUnread = needsInput(node);
+    left.push({
+      label: isUnread ? "Read" : "Unread",
+      icon: MESSAGE_ICON,
+      run: () => {
+        if (isUnread) markRead(node);
+        else markUnread(id);
+        renderSidebar();
+      },
+    });
+  }
+  const right: HoldItem[] = [
+    {
+      label: "More",
+      icon: MORE_ICON,
+      run: (anchor) =>
+        openHold(items, anchor.left + anchor.width / 2, anchor.top),
+    },
+    ...pick(/^(pin|unpin)$/i),
+    ...pick(/^(archive|unarchive)$/i),
+  ];
+  return { left, right };
+}
+
+function foldRow(id: string, expand: boolean): void {
+  if (expand) {
+    if (folds.collapsedAgent() === id) folds.unfoldAgent();
+    folds.keepSubagentsOpen(id);
+  } else folds.foldAgent(id);
+  renderSidebar();
+  const node = state.nodes[id];
+  if (node)
+    announceNode(node, expand ? "Expanded subagents" : "Collapsed subagents");
+}
+
+// Invariant: Like Mail, any touch outside an open tray only closes it; the
+// row touched to close it does not open or start a swipe.
+let trayClosedBy: Event | null = null;
+document.addEventListener(
+  "touchstart",
+  (e: TouchEvent) => {
+    if (!trayOpen() || trayContains(e.target)) return;
+    if (rowOf(e)) touchActionHandled = true;
+    trayClosedBy = e;
+    closeTray();
+  },
+  { capture: true, passive: true },
+);
+
+/** Slide the open row back, hide its tray and repaint the frozen list. */
+function closeTray(): void {
+  hideTray();
+  const row = trayRow;
+  trayRow = null;
+  resetRow(row, true);
+  renderSidebar();
+}
 
 function resetRow(row: HTMLElement | null, animate: boolean): void {
   if (!row) return;
-  row.classList.remove("swiping", "dismiss-armed", "fold-armed");
+  row.classList.remove("swiping", "dismiss-armed");
   if (animate)
     row.style.transition =
       "transform var(--motion-move) ease, opacity var(--motion-move) ease";
@@ -1546,6 +1646,7 @@ listEl.addEventListener(
   "touchstart",
   (e: TouchEvent) => {
     if (renaming || e.touches.length > 1) return;
+    if (e === trayClosedBy || trayContains(e.target)) return;
     const t = e.touches[0];
     const header = (e.target as HTMLElement | null)?.closest<HTMLElement>(
       ".tree-section-header",
@@ -1570,8 +1671,10 @@ listEl.addEventListener(
       y0: t.clientY,
       dx: 0,
       active: false,
-      armed: false,
-      fold: null,
+      rect: null,
+      left: [],
+      right: [],
+      full: false,
     };
     touchActionHandled = false;
     // Invariant: Holding opens the row's action menu, Rename last; the row's
@@ -1621,32 +1724,35 @@ listEl.addEventListener(
         }
         swipe.active = true;
         swipe.row.style.transition = "";
+        swipe.rect = swipe.row.getBoundingClientRect();
+        Object.assign(swipe, swipeTrays(swipe.id, swipe.row));
         swipe.row.classList.add("swiping");
       } else return;
     }
     e.preventDefault();
-    const expanded = swipe.row.getAttribute("aria-expanded");
-    swipe.dx = Math.min(expanded === "false" ? EXPAND_MAX : 0, dx);
+    const rect = swipe.rect!;
+    const items = dx > 0 ? swipe.left : swipe.right;
+    const room = trayWidth(items);
+    swipe.dx =
+      dx > 0
+        ? Math.min(dx, room + TRAY_OVERSHOOT)
+        : Math.max(dx, -rect.width * 0.85);
     swipe.row.style.transform = `translateX(${swipe.dx}px)`;
-    swipe.row.style.opacity = String(
-      Math.max(0.35, 1 + Math.min(0, swipe.dx) / 260),
+    paintTray(
+      rect,
+      dx > 0 ? "left" : "right",
+      items,
+      Math.min(Math.abs(swipe.dx), Math.max(room, Math.abs(swipe.dx))),
+      false,
+      closeTray,
     );
-    const fold =
-      swipe.dx >= FOLD_MIN
-        ? "expand"
-        : expanded === "true" &&
-            swipe.dx <= -FOLD_MIN &&
-            -swipe.dx < DISMISS_MIN
-          ? "collapse"
-          : null;
-    if (fold !== swipe.fold) {
-      swipe.fold = fold;
-      swipe.row.classList.toggle("fold-armed", fold !== null);
-    }
-    const armed = -swipe.dx >= DISMISS_MIN;
-    if (armed !== swipe.armed) {
-      swipe.armed = armed;
-      swipe.row.classList.toggle("dismiss-armed", armed);
+    const full =
+      dx < 0 &&
+      -swipe.dx >= rect.width * FULL_SWIPE &&
+      swipe.right.some((item) => /^archive$/i.test(item.label));
+    if (full !== swipe.full) {
+      swipe.full = full;
+      swipe.row.classList.toggle("dismiss-armed", full);
     }
   },
   { passive: false },
@@ -1658,37 +1764,45 @@ function endSwipe(): void {
   const s = swipe;
   swipe = null;
   if (!s.active) return;
-  if (s.fold && s.id) {
-    // Invariant: The fold applies on release and the row springs back; the
-    // follow-up tap does not open the conversation.
+  const items = s.dx > 0 ? s.left : s.right;
+  const room = trayWidth(items);
+  if (s.full && s.id) {
+    // Invariant: A long left swipe archives like Mail: the row slides out and
+    // the Archive action runs; the follow-up tap does not open it.
     touchActionHandled = true;
-    s.row.classList.remove("fold-armed");
-    resetRow(s.row, true);
-    if (s.fold === "expand") {
-      if (folds.collapsedAgent() === s.id) folds.unfoldAgent();
-      folds.keepSubagentsOpen(s.id);
-    } else folds.foldAgent(s.id);
-    renderSidebar();
-    const node = state.nodes[s.id];
-    if (node)
-      announceNode(
-        node,
-        s.fold === "expand" ? "Expanded subagents" : "Collapsed subagents",
-      );
-  } else if (s.armed) {
-    // Invariant: Slide the row out, then delete optimistically (the teardown
-    // runs on the backend). touchActionHandled keeps the follow-up tap from
-    // opening it.
-    touchActionHandled = true;
-    const w = s.row.offsetWidth || 320;
+    hideTray();
+    const archive = s.right.find((item) => /^archive$/i.test(item.label))!;
+    const anchor = s.row.getBoundingClientRect();
     s.row.classList.remove("dismiss-armed");
     s.row.style.transition =
       "transform var(--motion-fast) ease, opacity var(--motion-fast) ease";
-    s.row.style.transform = `translateX(-${w}px)`;
+    s.row.style.transform = `translateX(-${s.rect?.width ?? 320}px)`;
     s.row.style.opacity = "0";
-    setTimeout(() => killAgent(s.id), 150);
+    setTimeout(() => {
+      archive.run(anchor);
+      resetRow(s.row, false);
+      renderSidebar();
+    }, 150);
+  } else if (items.length && Math.abs(s.dx) >= room / 2 && s.rect) {
+    // Invariant: Past half the tray, the row stays aside with its actions
+    // showing until a tap; the release does not open it.
+    touchActionHandled = true;
+    const shift = s.dx > 0 ? room : -room;
+    s.row.style.transition = "transform var(--motion-fast) ease";
+    s.row.style.transform = `translateX(${shift}px)`;
+    trayRow = s.row;
+    paintTray(
+      s.rect,
+      s.dx > 0 ? "left" : "right",
+      items,
+      room,
+      true,
+      closeTray,
+    );
   } else {
+    hideTray();
     resetRow(s.row, true);
+    renderSidebar();
   }
 }
 listEl.addEventListener("touchend", (e: TouchEvent) => {
@@ -1707,7 +1821,10 @@ listEl.addEventListener("contextmenu", (e) => {
 listEl.addEventListener("touchcancel", () => {
   // Invariant: A cancelled hold keeps its menu open for a tap.
   clearTimeout(longPressTimer);
-  if (swipe && swipe.active) resetRow(swipe.row, true);
+  if (swipe && swipe.active) {
+    hideTray();
+    resetRow(swipe.row, true);
+  }
   swipe = null;
 });
 

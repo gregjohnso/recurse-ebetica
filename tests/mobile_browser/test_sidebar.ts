@@ -879,8 +879,8 @@ export const tests: BrowserTest[] = [
     await context.close();
   },
 
-  // Feature: #0 on phones a right swipe expands a row's subagents, a short left swipe collapses them and a long one still deletes.
-  async function test_sidebar_phone_swipe_folds(browser, base) {
+  // Feature: #0 on phones a swipe reveals Mail-style actions: right Expand/Collapse and Read/Unread, left More, Pin and Archive; a long left swipe archives.
+  async function test_sidebar_phone_swipe_actions(browser, base) {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
       isMobile: true,
@@ -911,30 +911,69 @@ export const tests: BrowserTest[] = [
       const target = page.locator(`.agent[data-id="${id}"]`);
       await target.scrollIntoViewIfNeeded();
       const box = (await target.boundingBox())!;
-      const x = box.x + box.width / 2,
+      const x = dx < 0 ? box.x + box.width - 8 : box.x + 8,
         y = box.y + box.height / 2;
       await send("touchStart", x, y);
       for (const step of [0.25, 0.5, 0.75, 1])
         await send("touchMove", x + dx * step, y);
       await send("touchEnd");
     };
+    const tray = page.locator(".swipe-tray:not([hidden])");
+    const action = (label: string) =>
+      tray.getByRole("button", { name: label, exact: true });
+    const actions = () =>
+      tray
+        .locator(".swipe-action")
+        .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
     const parent = page.locator(`.agent[data-id="${ids.fresh}"]`);
     const child = page.locator(`.agent[data-id="${ids.child}"]`);
     await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
     const hash = await page.evaluate(() => (globalThis as any).location.hash);
-    await swipeRow(ids.fresh, 80);
+    await swipeRow(ids.fresh, 120);
+    await action("Expand").waitFor();
+    expect(await actions()).toEqual(["Expand", "Unread"]);
+    for (const box of await tray
+      .locator(".swipe-action")
+      .evaluateAll((els) =>
+        els.map((el) => el.getBoundingClientRect().toJSON()),
+      ))
+      expect(box.x).toBeGreaterThanOrEqual(0);
+    await action("Expand").tap();
     await browserExpect(parent).toHaveAttribute("aria-expanded", "true");
     await child.waitFor();
+    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
     expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
       hash,
     );
-    await swipeRow(ids.fresh, -90);
+    await swipeRow(ids.fresh, 120);
+    await action("Collapse").tap();
     await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
     await child.waitFor({ state: "detached" });
-    expect(await parent.count()).toBe(1);
-    const stale = page.locator(`.agent[data-id="${ids.stale}"]`);
-    await swipeRow(ids.stale, -170);
-    await stale.waitFor({ state: "detached" });
+    await swipeRow(ids.fresh, 120);
+    await action("Unread").tap();
+    await parent.locator(".agent-state.needs-input").waitFor();
+    await swipeRow(ids.fresh, 120);
+    await action("Read").tap();
+    await parent.locator(".agent-state.needs-input").waitFor({
+      state: "detached",
+    });
+    await swipeRow(ids.stale, -130);
+    await action("Archive").waitFor();
+    expect(await actions()).toEqual(["More", "Pin", "Archive"]);
+    const header = (await page
+      .locator(".tree-section-header")
+      .first()
+      .boundingBox())!;
+    await send("touchStart", header.x + 20, header.y + header.height / 2);
+    await send("touchEnd");
+    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
+    expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
+      hash,
+    );
+    await swipeRow(ids.stale, -280);
+    await browserExpect
+      .poll(() => serverTags(context, base, ids.stale))
+      .toMatchObject({ archived: { by: "operator" } });
     expect(errors).toEqual([]);
     await context.close();
   },
