@@ -941,13 +941,17 @@ export const tests: BrowserTest[] = [
     await action("Expand").tap();
     await browserExpect(parent).toHaveAttribute("aria-expanded", "true");
     await child.waitFor();
-    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
+    await page
+      .locator(".swipe-tray:not([hidden])")
+      .waitFor({ state: "detached" });
     expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
       hash,
     );
     await swipeRow(ids.fresh, 300);
     await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
-    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
+    await page
+      .locator(".swipe-tray:not([hidden])")
+      .waitFor({ state: "detached" });
     await child.waitFor({ state: "detached" });
     await swipeRow(ids.fresh, 120);
     await action("Unread").tap();
@@ -966,7 +970,9 @@ export const tests: BrowserTest[] = [
       .boundingBox())!;
     await send("touchStart", header.x + 20, header.y + header.height / 2);
     await send("touchEnd");
-    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
+    await page
+      .locator(".swipe-tray:not([hidden])")
+      .waitFor({ state: "detached" });
     expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
       hash,
     );

@@ -99,16 +99,30 @@
   .swipe-tray[data-side="left"] { justify-content: flex-start; }
   .swipe-tray[data-side="right"] { justify-content: flex-end; }
   /* A full swipe stretches the armed outermost action across the tray. */
-  .swipe-tray.full .swipe-action:not(.armed) { display: none; }
-  .swipe-tray.full .swipe-action.armed { flex: 1; }
+  .swipe-tray.full .swipe-action:not(.armed) { flex-basis: 0; max-width: 0; opacity: 0; }
+  .swipe-tray.full .swipe-action.armed { flex-grow: 1; max-width: 100vw; }
+  .swipe-tray.full .swipe-action.armed .swipe-action-icon { transform: scale(1.1); }
+  @media (prefers-reduced-motion: reduce) {
+    .swipe-tray, .swipe-action, .swipe-action-icon { transition: none; }
+    .swipe-action-icon { transform: none; }
+  }
   .swipe-tray.full[data-side="left"] .swipe-action.armed { align-items: flex-end;
     padding-right: var(--space-5); }
   .swipe-tray.full[data-side="right"] .swipe-action.armed { align-items: flex-start;
     padding-left: var(--space-5); }
-  .swipe-action { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
-    width: 72px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 0.625rem; line-height: 1.2; }
+  .swipe-tray.settle { transition: width var(--motion-move) cubic-bezier(0.25, 1.1, 0.5, 1),
+    left var(--motion-move) cubic-bezier(0.25, 1.1, 0.5, 1); }
+  .swipe-tray.closing { opacity: 0; transition: opacity var(--motion-fast) ease; }
+  .swipe-action { flex: 0 0 72px; max-width: 72px; display: flex; flex-direction: column; align-items: center;
+    gap: var(--space-1); min-width: 0; padding: 0; border: 0; background: none; color: var(--muted);
+    font-size: 0.625rem; line-height: 1.2; overflow: hidden;
+    transition: flex-grow var(--motion-move) cubic-bezier(0.25, 1.1, 0.5, 1),
+      max-width var(--motion-move) cubic-bezier(0.25, 1.1, 0.5, 1), opacity var(--motion-fast) ease; }
   .swipe-action-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
-    background: color-mix(in srgb, var(--muted) 45%, var(--panel)); color: var(--on-media); }
+    background: color-mix(in srgb, var(--muted) 45%, var(--panel)); color: var(--on-media);
+    transform: scale(calc(0.5 + 0.5 * var(--reveal, 1))); opacity: calc(0.25 + 0.75 * var(--reveal, 1));
+    transition: transform var(--motion-fast) cubic-bezier(0.25, 1.1, 0.5, 1); }
+  .swipe-action-label { opacity: var(--reveal, 1); }
   .swipe-action-icon svg { width: 16px; height: 16px; }
   .swipe-action:is([data-action="Expand"], [data-action="Collapse"], [data-action="Read"],
     [data-action="Unread"]) .swipe-action-icon { background: var(--accent); }

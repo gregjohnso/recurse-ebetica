@@ -40,6 +40,13 @@ export function paintTray(
   open = held;
   host.dataset.side = side;
   host.classList.toggle("full", !!full);
+  host.classList.toggle("settle", held);
+  host.classList.remove("closing");
+  // Spec: Buttons grow in as the row reveals them, fully shown at the tray.
+  host.style.setProperty(
+    "--reveal",
+    String(Math.min(1, width / Math.max(1, trayWidth(items)))),
+  );
   host.hidden = false;
   Object.assign(host.style, {
     top: `${rect.top}px`,
@@ -73,10 +80,19 @@ export function paintTray(
   );
 }
 
-export function hideTray(): void {
+let hideTimer = 0;
+/** Hide the tray, fading it out while the row springs back when `animate`. */
+export function hideTray(animate = false): void {
   open = false;
   if (!host) return;
-  host.hidden = true;
-  host.classList.remove("full");
-  render(nothing, host);
+  clearTimeout(hideTimer);
+  const shown = host;
+  const finish = () => {
+    shown.hidden = true;
+    shown.classList.remove("full", "settle", "closing");
+    render(nothing, shown);
+  };
+  if (!animate || shown.hidden) return finish();
+  shown.classList.add("closing");
+  hideTimer = setTimeout(finish, 120) as unknown as number;
 }

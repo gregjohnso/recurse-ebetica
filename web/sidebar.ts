@@ -1537,6 +1537,11 @@ let longPressTimer = 0;
 const SWIPE_START = 12;
 const TRAY_OVERSHOOT = 24;
 const FULL_SWIPE = 0.6;
+/** Past the tray, the row moves this fraction of the finger: a rubber band. */
+const BAND = 0.55;
+// HIG Motion: brief springs that follow the gesture; none under Reduce Motion.
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const SPRING = "var(--motion-move) cubic-bezier(0.25, 1.1, 0.5, 1)";
 interface Swipe {
   row: HTMLElement;
   id: string | undefined;
@@ -1626,7 +1631,7 @@ document.addEventListener(
 
 /** Slide the open row back, hide its tray and repaint the frozen list. */
 function closeTray(): void {
-  hideTray();
+  hideTray(true);
   const row = trayRow;
   trayRow = null;
   resetRow(row, true);
@@ -1636,9 +1641,8 @@ function closeTray(): void {
 function resetRow(row: HTMLElement | null, animate: boolean): void {
   if (!row) return;
   row.classList.remove("swiping", "dismiss-armed");
-  if (animate)
-    row.style.transition =
-      "transform var(--motion-move) ease, opacity var(--motion-move) ease";
+  if (animate && !reducedMotion.matches)
+    row.style.transition = `transform ${SPRING}, opacity var(--motion-move) ease`;
   else row.style.transition = "";
   row.style.transform = "";
   row.style.opacity = "";
@@ -1735,16 +1739,22 @@ listEl.addEventListener(
     const rect = swipe.rect!;
     const items = dx > 0 ? swipe.left : swipe.right;
     const room = trayWidth(items);
-    const reach = rect.width * 0.85;
-    swipe.dx = items.length
-      ? Math.max(-reach, Math.min(reach, dx))
-      : Math.max(-TRAY_OVERSHOOT, Math.min(TRAY_OVERSHOOT, dx));
+    const travel = Math.abs(dx);
+    const shown = items.length
+      ? Math.min(
+          rect.width * 0.9,
+          travel <= room ? travel : room + (travel - room) * BAND,
+        )
+      : Math.min(TRAY_OVERSHOOT, travel * 0.3);
+    swipe.dx = Math.sign(dx) * shown;
     swipe.row.style.transform = `translateX(${swipe.dx}px)`;
     // Spec: As in iOS (performsFirstActionWithFullSwipe), a full swipe arms
     // the outermost action: it stretches across the tray and runs on release.
     const outer = dx > 0 ? items[0] : items[items.length - 1];
-    swipe.full =
-      outer && Math.abs(swipe.dx) >= rect.width * FULL_SWIPE ? outer : null;
+    const full = outer && travel >= rect.width * FULL_SWIPE ? outer : null;
+    if (full && full !== swipe.full)
+      navigator.userActivation?.hasBeenActive && navigator.vibrate?.(8);
+    swipe.full = full;
     swipe.row.classList.toggle(
       "dismiss-armed",
       !!swipe.full && /^archive$/i.test(swipe.full.label),
@@ -1753,7 +1763,7 @@ listEl.addEventListener(
       rect,
       dx > 0 ? "left" : "right",
       items,
-      Math.max(room, Math.abs(swipe.dx)),
+      Math.abs(swipe.dx),
       false,
       closeTray,
       swipe.full,
@@ -1798,7 +1808,7 @@ function endSwipe(): void {
     // showing until a tap; the release does not open it.
     touchActionHandled = true;
     const shift = s.dx > 0 ? room : -room;
-    s.row.style.transition = "transform var(--motion-fast) ease";
+    s.row.style.transition = reducedMotion.matches ? "" : `transform ${SPRING}`;
     s.row.style.transform = `translateX(${shift}px)`;
     trayRow = s.row;
     paintTray(
@@ -1810,7 +1820,7 @@ function endSwipe(): void {
       closeTray,
     );
   } else {
-    hideTray();
+    hideTray(true);
     resetRow(s.row, true);
     renderSidebar();
   }
