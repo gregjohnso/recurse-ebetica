@@ -879,7 +879,7 @@ export const tests: BrowserTest[] = [
     await context.close();
   },
 
-  // Feature: #0 on phones a swipe reveals Mail-style actions: right Expand/Collapse and Read/Unread, left More, Pin and Archive; a long left swipe archives.
+  // Feature: #0 on phones a swipe reveals Mail-style actions: right Expand/Collapse and Read/Unread, left More, Pin and Archive; releasing a full swipe runs the outermost action.
   async function test_sidebar_phone_swipe_actions(browser, base) {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
@@ -945,9 +945,9 @@ export const tests: BrowserTest[] = [
     expect(await page.evaluate(() => (globalThis as any).location.hash)).toBe(
       hash,
     );
-    await swipeRow(ids.fresh, 120);
-    await action("Collapse").tap();
+    await swipeRow(ids.fresh, 300);
     await browserExpect(parent).toHaveAttribute("aria-expanded", "false");
+    expect(await page.locator(".swipe-tray:not([hidden])").count()).toBe(0);
     await child.waitFor({ state: "detached" });
     await swipeRow(ids.fresh, 120);
     await action("Unread").tap();

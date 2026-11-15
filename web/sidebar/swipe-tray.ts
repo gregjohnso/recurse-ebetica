@@ -30,6 +30,7 @@ export function paintTray(
   width: number,
   held: boolean,
   close: () => void,
+  full: HoldItem | null = null,
 ): void {
   if (!host) {
     host = document.createElement("div");
@@ -38,6 +39,7 @@ export function paintTray(
   }
   open = held;
   host.dataset.side = side;
+  host.classList.toggle("full", !!full);
   host.hidden = false;
   Object.assign(host.style, {
     top: `${rect.top}px`,
@@ -50,7 +52,7 @@ export function paintTray(
       (item) =>
         html`<button
           type="button"
-          class="swipe-action"
+          class=${item === full ? "swipe-action armed" : "swipe-action"}
           data-action=${item.label}
           aria-label=${item.label}
           @click=${(event: Event) => {
@@ -75,5 +77,6 @@ export function hideTray(): void {
   open = false;
   if (!host) return;
   host.hidden = true;
+  host.classList.remove("full");
   render(nothing, host);
 }

@@ -1547,7 +1547,8 @@ interface Swipe {
   rect: DOMRect | null;
   left: HoldItem[];
   right: HoldItem[];
-  full: boolean;
+  /** The outermost action a full swipe arms; it runs on release. */
+  full: HoldItem | null;
 }
 /** The row swipe in progress; swipeTrays lists what each side reveals. */
 let swipe: Swipe | null = null;
@@ -1675,7 +1676,7 @@ listEl.addEventListener(
       rect: null,
       left: [],
       right: [],
-      full: false,
+      full: null,
     };
     touchActionHandled = false;
     // Invariant: Holding opens the row's action menu, Rename last; the row's
@@ -1734,27 +1735,29 @@ listEl.addEventListener(
     const rect = swipe.rect!;
     const items = dx > 0 ? swipe.left : swipe.right;
     const room = trayWidth(items);
-    swipe.dx =
-      dx > 0
-        ? Math.min(dx, room + TRAY_OVERSHOOT)
-        : Math.max(dx, -rect.width * 0.85);
+    const reach = rect.width * 0.85;
+    swipe.dx = items.length
+      ? Math.max(-reach, Math.min(reach, dx))
+      : Math.max(-TRAY_OVERSHOOT, Math.min(TRAY_OVERSHOOT, dx));
     swipe.row.style.transform = `translateX(${swipe.dx}px)`;
+    // Spec: As in iOS (performsFirstActionWithFullSwipe), a full swipe arms
+    // the outermost action: it stretches across the tray and runs on release.
+    const outer = dx > 0 ? items[0] : items[items.length - 1];
+    swipe.full =
+      outer && Math.abs(swipe.dx) >= rect.width * FULL_SWIPE ? outer : null;
+    swipe.row.classList.toggle(
+      "dismiss-armed",
+      !!swipe.full && /^archive$/i.test(swipe.full.label),
+    );
     paintTray(
       rect,
       dx > 0 ? "left" : "right",
       items,
-      Math.min(Math.abs(swipe.dx), Math.max(room, Math.abs(swipe.dx))),
+      Math.max(room, Math.abs(swipe.dx)),
       false,
       closeTray,
+      swipe.full,
     );
-    const full =
-      dx < 0 &&
-      -swipe.dx >= rect.width * FULL_SWIPE &&
-      swipe.right.some((item) => /^archive$/i.test(item.label));
-    if (full !== swipe.full) {
-      swipe.full = full;
-      swipe.row.classList.toggle("dismiss-armed", full);
-    }
   },
   { passive: false },
 );
@@ -1768,22 +1771,28 @@ function endSwipe(): void {
   const items = s.dx > 0 ? s.left : s.right;
   const room = trayWidth(items);
   if (s.full && s.id) {
-    // Invariant: A long left swipe archives like Mail: the row slides out and
-    // the Archive action runs; the follow-up tap does not open it.
+    // Invariant: Releasing a full swipe runs its armed action; Archive slides
+    // the row out first, others spring it back. The release does not open it.
     touchActionHandled = true;
     hideTray();
-    const archive = s.right.find((item) => /^archive$/i.test(item.label))!;
+    const action = s.full;
     const anchor = s.row.getBoundingClientRect();
     s.row.classList.remove("dismiss-armed");
-    s.row.style.transition =
-      "transform var(--motion-fast) ease, opacity var(--motion-fast) ease";
-    s.row.style.transform = `translateX(-${s.rect?.width ?? 320}px)`;
-    s.row.style.opacity = "0";
-    setTimeout(() => {
-      archive.run(anchor);
-      resetRow(s.row, false);
+    if (/^archive$/i.test(action.label)) {
+      s.row.style.transition =
+        "transform var(--motion-fast) ease, opacity var(--motion-fast) ease";
+      s.row.style.transform = `translateX(-${s.rect?.width ?? 320}px)`;
+      s.row.style.opacity = "0";
+      setTimeout(() => {
+        action.run(anchor);
+        resetRow(s.row, false);
+        renderSidebar();
+      }, 150);
+    } else {
+      resetRow(s.row, true);
       renderSidebar();
-    }, 150);
+      action.run(anchor);
+    }
   } else if (items.length && Math.abs(s.dx) >= room / 2 && s.rect) {
     // Invariant: Past half the tray, the row stays aside with its actions
     // showing until a tap; the release does not open it.

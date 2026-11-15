@@ -98,6 +98,13 @@
   .swipe-tray[hidden] { display: none; }
   .swipe-tray[data-side="left"] { justify-content: flex-start; }
   .swipe-tray[data-side="right"] { justify-content: flex-end; }
+  /* A full swipe stretches the armed outermost action across the tray. */
+  .swipe-tray.full .swipe-action:not(.armed) { display: none; }
+  .swipe-tray.full .swipe-action.armed { flex: 1; }
+  .swipe-tray.full[data-side="left"] .swipe-action.armed { align-items: flex-end;
+    padding-right: var(--space-5); }
+  .swipe-tray.full[data-side="right"] .swipe-action.armed { align-items: flex-start;
+    padding-left: var(--space-5); }
   .swipe-action { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
     width: 72px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 0.625rem; line-height: 1.2; }
   .swipe-action-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
