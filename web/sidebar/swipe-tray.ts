@@ -21,8 +21,8 @@ export const trayOpen = (): boolean => open;
 export const trayContains = (node: EventTarget | null): boolean =>
   !!host && node instanceof Node && host.contains(node);
 
-/** Show `items` on `side` of `rect` (the row's place), `width` px revealed.
- * `held` keeps it open after the finger lifts; `close` runs before an action. */
+/** Show `items` on `side` of `rect` (the row's place), `width` px revealed;
+ * `held` keeps it open after lifting; `close` runs before an action. */
 export function paintTray(
   rect: DOMRect,
   side: TraySide,

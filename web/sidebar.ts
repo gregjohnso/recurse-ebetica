@@ -1534,9 +1534,6 @@ const rowOf = (e: Event): HTMLElement | null =>
   (e.target as HTMLElement | null)?.closest<HTMLElement>(".agent") || null;
 let touchActionHandled = false;
 let longPressTimer = 0;
-// Hold opens the action menu. Like Mail, a swipe slides a row aside to reveal
-// round actions: right reveals Expand/Collapse and Read/Unread, left reveals More,
-// Pin and Archive, and a long left swipe archives. Native scrolling keeps pan-y.
 const SWIPE_START = 12;
 const TRAY_OVERSHOOT = 24;
 const FULL_SWIPE = 0.6;
@@ -1552,11 +1549,14 @@ interface Swipe {
   right: HoldItem[];
   full: boolean;
 }
+/** The row swipe in progress; swipeTrays lists what each side reveals. */
 let swipe: Swipe | null = null;
 let pressAt = [0, 0];
 let trayRow: HTMLElement | null = null;
 
-/** The swipe trays' actions for agent `id`, built from its hold-menu items. */
+/** The swipe trays' actions for agent `id`, built from its hold-menu items.
+ * Like Mail, a right swipe shows Expand/Collapse and Read/Unread, a left swipe
+ * More, Pin and Archive, and a long left swipe archives. */
 function swipeTrays(id: string, row: HTMLElement) {
   const items = rowHoldItems(actionsById.get(id) ?? [], id, () =>
     startRename(id),
@@ -1608,12 +1608,13 @@ function foldRow(id: string, expand: boolean): void {
     announceNode(node, expand ? "Expanded subagents" : "Collapsed subagents");
 }
 
-// Invariant: Like Mail, any touch outside an open tray only closes it; the
-// row touched to close it does not open or start a swipe.
+/** The touch that closed an open tray, so it does not also start a swipe. */
 let trayClosedBy: Event | null = null;
 document.addEventListener(
   "touchstart",
   (e: TouchEvent) => {
+    // Invariant: Like Mail, a touch outside an open tray only closes it; the
+    // row touched to close it does not open or start a swipe.
     if (!trayOpen() || trayContains(e.target)) return;
     if (rowOf(e)) touchActionHandled = true;
     trayClosedBy = e;

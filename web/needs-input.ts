@@ -1,8 +1,7 @@
-// Which conversations need the operator: idle ones they messaged whose latest
-// turn finished after they last looked. Seen marks are per browser, keyed by
-// conversation id, and hold the `replied_at` last seen while it was open and
-// visible. Replies from before this browser first ran never count. Marks the
-// operator sets by hand (swipe "Unread") also need them until they open it.
+// Conversations needing the operator: idle ones they messaged whose latest turn
+// finished after they last looked, or ones marked unread by hand until opened.
+// Per-browser seen marks hold the `replied_at` last seen while open and
+// visible; replies from before this browser first ran never count.
 import type { TreeNode } from "./types.js";
 
 const KEY = "recurse.seenReplies";
