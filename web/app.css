@@ -517,6 +517,8 @@ mark.report-cmark:hover { background: color-mix(in srgb, var(--highlight) 42%, t
   #panes.on.overlay { position: fixed; inset: 0; margin: 0;
     height: 100%; z-index: calc(var(--z-drawer) + 1);
     width: 100vw; max-width: none; flex: none; }
+  /* The phone list's header holds New and Settings; its foot would repeat New. */
+  #agent-list-foot { display: none; }
   .pane-col { border-left: 0; }
   #panes.overlay .pane-col { position: relative; display: block; overflow-y: auto;
     padding-top: 0; border-radius: 0; box-shadow: none; }
