@@ -429,13 +429,30 @@ export const tests: BrowserTest[] = [
     const phoneReadme = mobile.locator('#explorer [data-path="README.md"]');
     await phoneReadme.click();
     const phonePane = mobile.locator('.pane-col[data-pane="explorer"]');
-    await phonePane.locator("h1", { hasText: "Demo project" }).waitFor();
-    await phonePane.locator("a", { hasText: "guide" }).click();
-    await phonePane.locator("h1", { hasText: "Explorer guide" }).waitFor();
-    expect(await phonePane.locator(".explorer-tree").isVisible()).toBe(false);
-    await phonePane.getByRole("button", { name: "Close preview" }).click();
+    const readmeTab = mobile.locator('.pane-col[data-pane="file:README.md"]');
+    await readmeTab.locator("h1", { hasText: "Demo project" }).waitFor();
+    expect(await phonePane.count()).toBe(0);
+    await readmeTab.locator("a", { hasText: "guide" }).click();
+    const phoneGuide = mobile.locator(
+      '.pane-col[data-pane="file:docs/guide.md"]',
+    );
+    await phoneGuide.locator("h1", { hasText: "Explorer guide" }).waitFor();
+    await mobile.locator("#pane-fab").click();
+    await mobile
+      .locator("#pane-menu-panels .pane-menu-item", { hasText: "README.md" })
+      .click();
+    await readmeTab.locator("h1", { hasText: "Demo project" }).waitFor();
+    await readmeTab
+      .getByRole("button", { name: "Close README.md", exact: true })
+      .click();
     await phoneReadme.waitFor();
-    expect(await phonePane.locator(".explorer-preview-host").count()).toBe(0);
+    await mobile.locator("#pane-fab").click();
+    expect(
+      await mobile
+        .locator("#pane-menu-panels .pane-menu-item")
+        .allTextContents(),
+    ).toContain("guide.md");
+    await mobile.locator("#pane-fab").click();
     await mobile.locator("#menu-btn").click();
     await phonePane.waitFor({ state: "hidden" });
     await showAgentList(mobile);

@@ -1,5 +1,5 @@
 // The Explorer pane shows a read-only tree of the conversation's work folder.
-// A clicked file opens in a dock tab on desktop, else previews over the tree.
+// A clicked file opens in its own tab (full screen on phones).
 // Folders load lazily on expand and re-read on Refresh, opening the pane, a
 // settled turn or a changed cwd (no watcher).
 import { html, nothing, render, type TemplateResult } from "lit";
@@ -259,10 +259,10 @@ function activateRow(tree: ExplorerTree, row: Row, toChild = false): void {
 
 const FILE_TAB = "file:";
 
-/** Open `path` in a dock tab (focusing an open one), else preview it inline. */
+/** Open `path` in its own tab (focusing an open one), else preview inline. */
 function openFile(cid: string, path: string): void {
   treeFor(cid).selected = path;
-  if (openDockPanel(FILE_TAB + path, baseName(path), path)) {
+  if (openDockPanel(FILE_TAB + path, baseName(path), path, true)) {
     closePreview();
     paint();
   } else void openPreview(cid, path);

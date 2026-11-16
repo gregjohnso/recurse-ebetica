@@ -102,6 +102,10 @@ interface DockOnlyPanel {
 type DockPanelFactory = (id: string, agentId: string) => DockOnlyPanel | null;
 const dockKinds = new Map<string, DockPanelFactory>();
 const dockOnly = new Map<string, DockOnlyPanel>();
+type PhoneTab = { title: string; col: HTMLElement; back: string | null };
+/** Phones: dock-only panels shown full screen, listed in the More menu. */
+const phoneTabs = new Map<string, PhoneTab>();
+let phoneTab: string | null = null;
 let paneParking: HTMLElement | null = null;
 let paneVisitAgentId: string | null = null;
 let paneVisitOwnerId: string | null = null;
@@ -510,6 +514,7 @@ export function openPane(id: string, options: OpenPaneOptions = {}): boolean {
     panesEl.innerHTML = "";
     columns.clear();
     mobileActive = id;
+    phoneTab = null;
   }
   open.add(id);
   if (userInitiated) noteUserPaneAction(id, true, options.preserveLastId);
@@ -927,7 +932,7 @@ function layout(): void {
   const docked = !!dock && !mobile;
   panesEl.classList.toggle(
     "on",
-    docked ? dock!.ids().length > 0 : open.size > 0,
+    docked ? dock!.ids().length > 0 : open.size > 0 || !!phoneTab,
   );
   panesEl.classList.toggle("docked", docked);
   const w = mobile || docked ? null : storedPanesWidth();
@@ -943,8 +948,11 @@ function layout(): void {
     if (mobileActive && !open.has(mobileActive)) mobileActive = null;
     if (!mobileActive && open.size) mobileActive = [...open][0];
     for (const col of panesEl.querySelectorAll<HTMLElement>(".pane-col"))
-      col.classList.toggle("mobile-active", col.dataset.pane === mobileActive);
-    const overlay = open.size > 0 && !!mobileActive;
+      col.classList.toggle(
+        "mobile-active",
+        col.dataset.pane === (phoneTab ?? mobileActive),
+      );
+    const overlay = (open.size > 0 && !!mobileActive) || !!phoneTab;
     panesEl.classList.toggle("overlay", overlay);
     backdropEl.classList.toggle(
       "on",
@@ -1020,7 +1028,11 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     "|" +
     $("#sidebar")!.classList.contains("desktop-hidden") +
     "|" +
-    !!dock?.visible(CHAT);
+    !!dock?.visible(CHAT) +
+    "|" +
+    [...phoneTabs.keys()].join(",") +
+    "|" +
+    phoneTab;
   if (hash === railHash) return;
   railHash = hash;
   // Spec: The desktop rail always shows; it holds Agents and Settings.
@@ -1085,6 +1097,21 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     text.textContent = label;
     b.appendChild(text);
     b.onclick = () => openPane(p.id);
+    panelItems.appendChild(b);
+  }
+  if (!mobile) return;
+  for (const [id, tab] of phoneTabs) {
+    const b = document.createElement("button");
+    b.className =
+      "menu-item pane-menu-item" + (phoneTab === id ? " active" : "");
+    b.dataset.pane = id;
+    b.setAttribute("role", "menuitem");
+    b.innerHTML = ATTACHMENT_FILE_ICON;
+    b.querySelector("svg")?.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span");
+    text.textContent = tab.title;
+    b.appendChild(text);
+    b.onclick = () => showPhoneTab(id, tab.title);
     panelItems.appendChild(b);
   }
 }
@@ -1207,6 +1234,7 @@ backdropEl.onclick = () => {
   if (isMobile() && mobileActive) closePane(mobileActive, true, true);
 };
 mq.addEventListener("change", () => {
+  clearPhoneTabs();
   if (isMobile()) unloadDock();
   else loadDock();
   closeMenu();
@@ -1413,6 +1441,7 @@ function dockClosed(id: string): void {
 }
 
 function clearDockOnly(): void {
+  clearPhoneTabs();
   for (const id of [...dockOnly.keys()]) {
     dock?.remove(id);
     dockOnly.get(id)?.dispose();
@@ -1485,6 +1514,7 @@ export function registerDockPanelKind(
 
 /** Close dock-only panel `id`, as its tab's close button does. */
 export function closeDockPanel(id: string): void {
+  if (phoneTabs.has(id)) return closePhoneTab(id, true);
   if (!dockOnly.has(id)) return;
   dock?.remove(id);
   dockClosed(id);
@@ -1495,17 +1525,82 @@ export function sideWindowOpen(): boolean {
   return !!dock && !isMobile() && dock.ids().some((id) => id !== CHAT);
 }
 
-/** Open or focus dock-only panel `id`; false when the dock isn't showing. */
+/** Open or focus dock-only panel `id`; false when the dock isn't showing,
+ * unless `phone` lets a phone show it as a full-screen tab. */
 export function openDockPanel(
   id: string,
   title: string,
   tooltip?: string,
+  phone = false,
 ): boolean {
+  if (isMobile() && phone && !embedded) return showPhoneTab(id, title);
   if (!dock || isMobile()) return false;
   if (!dock.has(id) && !dockElement(id)) return false;
   dock.show({ id, title, tooltip }, dockPlacement());
   layout();
   return true;
+}
+
+/** Show dock-only panel `id` full screen on a phone, replacing the open pane;
+ * closing it returns to the pane it was opened from. */
+function showPhoneTab(id: string, title: string): boolean {
+  let tab = phoneTabs.get(id);
+  if (!tab) {
+    const element = dockElement(id);
+    if (!element) return false;
+    const col = document.createElement("div");
+    col.className = "pane-col phone-tab";
+    col.dataset.pane = id;
+    col.setAttribute("aria-labelledby", `pane-title-${id}`);
+    const head = createPanePowerbar(
+      id,
+      title,
+      () => toggleFull(id),
+      () => closePhoneTab(id, true),
+    );
+    col.append(head, element);
+    tab = { title, col, back: null };
+    phoneTabs.set(id, tab);
+  }
+  if (phoneTab !== id)
+    tab.back = phoneTab
+      ? (phoneTabs.get(phoneTab)?.back ?? null)
+      : (mobileActive ?? null);
+  for (const openId of [...open]) closePane(openId);
+  for (const other of phoneTabs.values()) other.col.remove();
+  panesEl.append(tab.col);
+  phoneTab = id;
+  tab.col.scrollTop = 0;
+  railHash = "";
+  layout();
+  renderRail(availableFor(buildCtx()));
+  requestAnimationFrame(() =>
+    tab.col.querySelector<HTMLElement>(".pane-title")?.focus({
+      preventScroll: true,
+    }),
+  );
+  return true;
+}
+
+function closePhoneTab(id: string, returnBack: boolean): void {
+  const tab = phoneTabs.get(id);
+  if (!tab) return;
+  phoneTabs.delete(id);
+  tab.col.remove();
+  dockOnly.get(id)?.dispose();
+  dockOnly.delete(id);
+  const shown = phoneTab === id;
+  if (shown) phoneTab = null;
+  if (fullId === id) fullId = null;
+  railHash = "";
+  layout();
+  renderRail(availableFor(buildCtx()));
+  if (shown && returnBack && tab.back)
+    openPane(tab.back, { userInitiated: false });
+}
+
+function clearPhoneTabs(): void {
+  for (const id of [...phoneTabs.keys()]) closePhoneTab(id, false);
 }
 
 function restorePanePreference(availableIds: ReadonlySet<string>): boolean {
@@ -1515,6 +1610,7 @@ function restorePanePreference(availableIds: ReadonlySet<string>): boolean {
     paneVisitOwnerId !== currentUiOwnerId() ||
     paneVisitVisibility.kind !== "open" ||
     open.size > 0 ||
+    phoneTab ||
     !availableIds.has(paneVisitVisibility.id)
   )
     return false;
@@ -1575,7 +1671,8 @@ function syncPanesNow(): void {
     agentId: ctx.agentId,
     generation,
     artifactsPaneOpen: open.has(ARTIFACTS_PANE_ID),
-    otherPaneOpen: !dock && [...open].some((id) => id !== ARTIFACTS_PANE_ID),
+    otherPaneOpen:
+      !!phoneTab || (!dock && [...open].some((id) => id !== ARTIFACTS_PANE_ID)),
     ...artifactAutoOpenGuards(),
   });
   if (artifactsAttention !== autoDecision.badged) {
@@ -1606,7 +1703,8 @@ function syncPanesNow(): void {
     agentId: ctx.agentId,
     generation: fileGeneration,
     artifactsPaneOpen: open.has(FILES_PANE_ID),
-    otherPaneOpen: !dock && [...open].some((id) => id !== FILES_PANE_ID),
+    otherPaneOpen:
+      !!phoneTab || (!dock && [...open].some((id) => id !== FILES_PANE_ID)),
     ...artifactAutoOpenGuards(),
   });
   if (filesDecision.open && files && availIds.has(FILES_PANE_ID)) {

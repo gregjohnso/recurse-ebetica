@@ -542,6 +542,10 @@ mark.report-cmark:hover { background: color-mix(in srgb, var(--highlight) 42%, t
   body.pane-chrome-hidden #panes.overlay .pane-powerbar {
     transform: translateY(calc(-100% - var(--mobile-shell-height))); }
   #panes.overlay .pane-col:not(.mobile-active) { display: none; }
+  /* A phone file tab: its title bar names the file and closes the tab. */
+  #panes.overlay .phone-tab > .explorer-preview-host { overflow: visible; }
+  .phone-tab .explorer-preview-name, .phone-tab .explorer-action[aria-label="Close preview"] { display: none; }
+  .phone-tab .explorer-preview-bar { justify-content: flex-end; }
   /* The persistent app shell owns the top of the viewport. Keep the pane
      backdrop below it so Back and the title controls remain hit-testable. */
   #pane-backdrop.on { top: var(--mobile-shell-height); bottom: 0; }
