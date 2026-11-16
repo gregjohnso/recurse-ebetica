@@ -432,6 +432,10 @@ export const tests: BrowserTest[] = [
     await phonePane.locator("h1", { hasText: "Demo project" }).waitFor();
     await phonePane.locator("a", { hasText: "guide" }).click();
     await phonePane.locator("h1", { hasText: "Explorer guide" }).waitFor();
+    expect(await phonePane.locator(".explorer-tree").isVisible()).toBe(false);
+    await phonePane.getByRole("button", { name: "Close preview" }).click();
+    await phoneReadme.waitFor();
+    expect(await phonePane.locator(".explorer-preview-host").count()).toBe(0);
     await mobile.locator("#menu-btn").click();
     await phonePane.waitFor({ state: "hidden" });
     await showAgentList(mobile);

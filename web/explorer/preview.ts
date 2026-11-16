@@ -163,7 +163,7 @@ export function closePreview(keepCid?: string): void {
   changed();
 }
 
-/** Preview `path` from conversation `cid` below the Explorer tree. */
+/** Preview `path` from conversation `cid` in place of the Explorer tree. */
 export async function openPreview(cid: string, path: string): Promise<void> {
   treeFor(cid).selected = path;
   if (inline?.cid !== cid) {

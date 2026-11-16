@@ -1,5 +1,5 @@
 // The Explorer pane shows a read-only tree of the conversation's work folder.
-// A clicked file opens in a dock tab on desktop, else previews below the tree.
+// A clicked file opens in a dock tab on desktop, else previews over the tree.
 // Folders load lazily on expand and re-read on Refresh, opening the pane, a
 // settled turn or a changed cwd (no watcher).
 import { html, nothing, render, type TemplateResult } from "lit";
@@ -228,7 +228,16 @@ function paint(): void {
       ${previewShown(cid) ? previewHost() : nothing}`,
     view,
   );
-  view.classList.toggle("previewing", previewShown(cid));
+  const previewing = previewShown(cid);
+  // Spec: On phones a tapped file fills the Explorer from its top; closing it
+  // returns to the tree scrolled to that file.
+  if (previewing !== view.classList.contains("previewing")) {
+    view.classList.toggle("previewing", previewing);
+    if (previewing) {
+      view.closest(".pane-body")?.scrollTo(0, 0);
+      previewHost()?.scrollTo(0, 0);
+    } else focusCursor();
+  }
 }
 
 function activateRow(tree: ExplorerTree, row: Row, toChild = false): void {
