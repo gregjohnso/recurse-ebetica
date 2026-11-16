@@ -174,6 +174,8 @@ interface SelectionSource {
   blocked: boolean;
   blockedRange: Range | null;
   offerToken: number;
+  /** Timer offering a touch selection that stopped changing. */
+  settle: ReturnType<typeof setTimeout> | undefined;
 }
 
 interface SelectionDraft {
@@ -375,6 +377,7 @@ function createSelectionSource(
     blocked: false,
     blockedRange: null,
     offerToken: 0,
+    settle: undefined,
   };
 }
 function offerSelectionComment(source: SelectionSource): void {
@@ -560,7 +563,21 @@ function endCancelledSequence(source: SelectionSource): void {
   source.changed = false;
   scheduleSelectionOffer(source);
 }
+const TOUCH_SETTLE_MS = 500;
+// Spec: iOS Safari may send neither touchend nor touchcancel after a long-press
+// selection, so a touch selection that stops changing is offered anyway.
+function settleTouchSelection(source: SelectionSource): void {
+  clearTimeout(source.settle);
+  source.settle = setTimeout(() => {
+    if (!source.touch || !source.changed || source.blocked) return;
+    source.touch = false;
+    source.pointerIds.clear();
+    source.changed = false;
+    scheduleSelectionOffer(source);
+  }, TOUCH_SETTLE_MS);
+}
 function onSelectionTouchStart(source: SelectionSource): void {
+  clearTimeout(source.settle);
   if (!selectionInteractionActive(source)) source.changed = false;
   source.blocked = false;
   source.blockedRange = null;
@@ -568,6 +585,7 @@ function onSelectionTouchStart(source: SelectionSource): void {
   source.offerToken++;
 }
 function onSelectionTouchEnd(source: SelectionSource): void {
+  clearTimeout(source.settle);
   source.touch = false;
   if (!selectionInteractionActive(source)) {
     if (source.changed && !source.blocked) scheduleSelectionOffer(source);
@@ -575,6 +593,7 @@ function onSelectionTouchEnd(source: SelectionSource): void {
   }
 }
 function onSelectionTouchCancel(source: SelectionSource): void {
+  clearTimeout(source.settle);
   source.touch = false;
   endCancelledSequence(source);
 }
@@ -588,6 +607,7 @@ function installSelectionInteractions(source: SelectionSource): void {
     if (!source.active) return;
     if (selectionInteractionActive(source)) {
       source.changed = true;
+      if (source.touch) settleTouchSelection(source);
       return;
     }
     if (source.blocked) {

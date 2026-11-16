@@ -133,7 +133,11 @@ document.addEventListener(
 document.addEventListener(
   "pointercancel",
   () => {
+    // Spec: Safari ends a long-press that selected text with pointercancel,
+    // not pointerup, so a cancelled press still offers its selection.
+    if (!pointerSelecting) return;
     pointerSelecting = false;
+    requestAnimationFrame(showOffer);
   },
   true,
 );

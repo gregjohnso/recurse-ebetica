@@ -69,50 +69,64 @@ async function selectContent(
   content: any,
   touch: boolean,
   handles = false,
+  end = "pointerup",
 ): Promise<void> {
   if (!touch) {
     await content.selectText();
     return;
   }
-  const offerHiddenDuringSelection = await page.evaluate((handles: boolean) => {
-    const browser = globalThis as any;
-    const root = browser.document.querySelector(".msg.assistant .content");
-    if (!root) throw new Error("agent content is not rendered");
-    const range = browser.document.createRange();
-    range.selectNodeContents(root);
-    if (handles) {
-      const text = root.querySelector("p").firstChild;
-      const start = text.textContent.indexOf("highlighted");
-      range.setStart(text, start);
-      range.setEnd(text, start + "highlighted".length);
-    }
-    const selection = browser.window.getSelection();
-    selection.removeAllRanges();
-    root.dispatchEvent(
-      new browser.PointerEvent("pointerdown", {
-        bubbles: true,
-        pointerId: 17,
-        pointerType: "touch",
-        isPrimary: true,
-      }),
-    );
-    selection.addRange(range);
-    browser.document.dispatchEvent(
-      new browser.Event("selectionchange", { bubbles: true }),
-    );
-    const offerHidden = browser.document.querySelector(
-      ".selection-comment-offer",
-    ).hidden;
-    root.dispatchEvent(
-      new browser.PointerEvent("pointerup", {
-        bubbles: true,
-        pointerId: 17,
-        pointerType: "touch",
-        isPrimary: true,
-      }),
-    );
-    return offerHidden;
-  }, handles);
+  const offerHiddenDuringSelection = await page.evaluate(
+    ([handles, end]: [boolean, string]) => {
+      const browser = globalThis as any;
+      const root = browser.document.querySelector(".msg.assistant .content");
+      if (!root) throw new Error("agent content is not rendered");
+      const range = browser.document.createRange();
+      range.selectNodeContents(root);
+      if (handles) {
+        const text = root.querySelector("p").firstChild;
+        const start = text.textContent.indexOf("highlighted");
+        range.setStart(text, start);
+        range.setEnd(text, start + "highlighted".length);
+      }
+      const selection = browser.window.getSelection();
+      selection.removeAllRanges();
+      root.dispatchEvent(
+        new browser.PointerEvent("pointerdown", {
+          bubbles: true,
+          pointerId: 17,
+          pointerType: "touch",
+          isPrimary: true,
+        }),
+      );
+      selection.addRange(range);
+      browser.document.dispatchEvent(
+        new browser.Event("selectionchange", { bubbles: true }),
+      );
+      const offerHidden = browser.document.querySelector(
+        ".selection-comment-offer",
+      ).hidden;
+      const finish = () =>
+        root.dispatchEvent(
+          new browser.PointerEvent(end, {
+            bubbles: true,
+            pointerId: 17,
+            pointerType: "touch",
+            isPrimary: true,
+          }),
+        );
+      if (end === "pointerup") {
+        finish();
+        return offerHidden;
+      }
+      return new Promise((resolve) =>
+        setTimeout(() => {
+          finish();
+          resolve(offerHidden);
+        }, 50),
+      );
+    },
+    [handles, end],
+  );
   expect(offerHiddenDuringSelection).toBe(true);
 }
 
@@ -295,6 +309,15 @@ async function runSelectionComment(
         end: element.selectionEnd,
       })),
     ).toEqual({ focused: true, start: quoted.length, end: quoted.length });
+    if (mobile)
+      for (const round of [1, 2]) {
+        await selectContent(page, content, true, false, "pointercancel");
+        await offer.tap();
+        expect(
+          (await composer.inputValue()).split("> The highlighted").length,
+        ).toBe(2 + round);
+      }
+    if (mobile) await composer.fill(quoted);
     await shot(
       page,
       mobile
@@ -588,6 +611,46 @@ async function checkArtifactCommentSend(
               element.dispatchEvent(
                 new browser.TouchEvent("touchcancel", { bubbles: true }),
               );
+            });
+            await popover.waitFor();
+            await popover
+              .getByRole("button", { name: "Cancel", exact: true })
+              .click();
+            const unended = page.locator(".report-doc p").nth(55);
+            await unended.scrollIntoViewIfNeeded();
+            await page.evaluate(
+              () =>
+                new Promise((resolve) =>
+                  requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+            );
+            await unended.evaluate((element: any) => {
+              const browser = globalThis as any;
+              const touch = new browser.Touch({
+                identifier: 2,
+                target: element,
+                clientX: 20,
+                clientY: 20,
+              });
+              element.dispatchEvent(
+                new browser.TouchEvent("touchstart", {
+                  bubbles: true,
+                  touches: [touch],
+                  changedTouches: [touch],
+                }),
+              );
+              element.dispatchEvent(
+                new browser.PointerEvent("pointerdown", {
+                  bubbles: true,
+                  pointerId: 8,
+                  pointerType: "touch",
+                }),
+              );
+              const range = browser.document.createRange();
+              range.selectNodeContents(element);
+              const selection = browser.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
             });
             await popover.waitFor();
             await popover
