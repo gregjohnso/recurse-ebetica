@@ -30,7 +30,10 @@ scroll.addEventListener("touchmove", () => (touched = performance.now()), {
 scroll.addEventListener(
   "scroll",
   () => {
-    const top = scroll.scrollTop;
+    // Spec: iOS rubber-banding scrolls past either end and springs back;
+    // measuring within the real range keeps that bounce from moving them.
+    const end = scroll.scrollHeight - scroll.clientHeight;
+    const top = Math.min(Math.max(scroll.scrollTop, 0), end);
     const delta = top - last;
     last = top;
     // Spec: Only the reader's own scrolling (and its momentum) moves them;
