@@ -20,11 +20,14 @@
 .btn.primary, .settings-section button.primary { border-color: var(--accent);
   background: var(--accent); color: var(--text-on-accent); }
 .btn.quiet { border-color: transparent; color: var(--muted); }
-.btn:hover:not(:disabled),
-.settings-section button:is(.ghost, .secondary):hover:not(:disabled) { background: var(--panel-2); }
-.btn.quiet:hover:not(:disabled) { color: var(--text); }
-.btn.primary:hover:not(:disabled), .settings-section button.primary:hover:not(:disabled) {
-  border-color: var(--accent-hover); background: var(--accent-hover); }
+/* Hover styles only where a pointer hovers; on touch they stick after a tap. */
+@media (hover: hover) {
+  .btn:hover:not(:disabled),
+  .settings-section button:is(.ghost, .secondary):hover:not(:disabled) { background: var(--panel-2); }
+  .btn.quiet:hover:not(:disabled) { color: var(--text); }
+  .btn.primary:hover:not(:disabled), .settings-section button.primary:hover:not(:disabled) {
+    border-color: var(--accent-hover); background: var(--accent-hover); }
+}
 .btn:disabled, .settings-section button:is(.primary, .ghost, .secondary):disabled {
   opacity: .5; cursor: default; }
 .btn:focus-visible { outline: var(--focus-width) solid var(--accent); outline-offset: 2px; }
@@ -72,8 +75,9 @@ button.badge:is(:hover, :focus-visible) { color: var(--text);
   width: 100%; min-height: 44px; margin: 0; padding: var(--space-3) var(--space-4); border: 0;
   border-radius: var(--radius-md); background: none; color: var(--text); font: inherit;
   font-size: 0.84375rem; line-height: 1.35; text-align: start; cursor: pointer; }
-.menu-item:is(:hover, :focus-visible, .hot, [aria-selected="true"]) {
+.menu-item:is(:focus-visible, .hot, [aria-selected="true"]) {
   background: var(--panel-2); outline: none; }
+@media (hover: hover) { .menu-item:hover { background: var(--panel-2); outline: none; } }
 .menu-item svg { flex: none; width: 16px; height: 16px; }
 .menu-label { padding: var(--space-3) var(--space-4) var(--space-2); color: var(--muted); font-size: 0.65625rem;
   font-weight: 600; line-height: 1.3; text-transform: uppercase; letter-spacing: .04em; }
@@ -198,8 +202,10 @@ body.resizing { cursor: col-resize; user-select: none; }
   text-decoration: none; }
 :is(.icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn, .pane-powerbar-overflow > summary) svg {
   width: 16px; height: 16px; }
-:is(.icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn:not([disabled]),
-  .pane-powerbar-overflow > summary):hover { background: var(--panel-2); color: var(--text); }
+@media (hover: hover) {
+  :is(.icon-btn, .pane-head .fs, .pane-head .x, .artifact-icon-btn:not([disabled]),
+    .pane-powerbar-overflow > summary):hover { background: var(--panel-2); color: var(--text); }
+}
 .icon-btn { flex: none; }
 .icon-btn.lg { width: 44px; height: 44px; }
 .pane-head .fs { margin-left: auto; }

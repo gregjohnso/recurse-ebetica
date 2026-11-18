@@ -14,7 +14,7 @@
   padding-left: calc(var(--space-2) + var(--explorer-depth) * 14px); /* space-check: allow */
   border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
   -webkit-user-select: none; user-select: none; }
-.explorer-row:hover { background: var(--panel-2); }
+@media (hover: hover) { .explorer-row:hover { background: var(--panel-2); } }
 .explorer-row.selected { background: var(--row-selected); }
 .explorer-row:focus-visible, .explorer-row[aria-selected="true"]:focus { outline: var(--focus-width) solid var(--row-cursor);
   outline-offset: calc(-1 * var(--focus-width)); }

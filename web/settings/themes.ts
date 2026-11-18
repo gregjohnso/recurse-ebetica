@@ -9,11 +9,23 @@ export function setThemePreview(active: boolean): void {
   themePreviewActive = active;
 }
 
+/** Tint the browser's bars (iOS status bar, Safari toolbar) like the frame. */
+function syncThemeColor(): void {
+  const color = getComputedStyle(document.documentElement)
+    .getPropertyValue("--frame-bg")
+    .trim();
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", color);
+}
+if (typeof document !== "undefined") syncThemeColor();
+
 export function applyTheme(theme: { css: string; version: string }): void {
   const style = document.getElementById("theme");
   if (!style) return;
   style.textContent = theme.css;
   style.dataset.version = theme.version;
+  syncThemeColor();
   window.dispatchEvent(new Event("recurse:theme-changed"));
 }
 
