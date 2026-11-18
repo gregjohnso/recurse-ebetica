@@ -1662,6 +1662,16 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
     /* Keep the context measurement attached to the picker on a phone. The pair
        wraps together rather than squeezing safety or overlapping the composer. */
     #conv-controls { column-gap: var(--space-2); }
+    /* phone-controls.ts moves the controls under the title bar, over the
+       thread; they slide up behind it while the reader scrolls down. */
+    #main { position: relative; }
+    #main > #conv-controls { position: absolute; z-index: var(--z-chrome);
+      top: var(--mobile-shell-height); left: 0; right: 0; max-width: none; margin: 0;
+      padding: 0 var(--space-3); background: var(--bg); border-bottom: 1px solid var(--border);
+      transition: transform var(--motion-fast) ease; }
+    #main > #conv-controls.away { transform: translateY(-100%); }
+    #scroll { padding-top: var(--conv-controls-height, 0px); }
+    #main > #conv-controls #model-trigger svg { transform: rotate(180deg); }
     #conv-controls #safety-row { margin: 0; padding: 0; min-width: 0; }
     #conv-controls #model-controls { margin-block: 0; margin-inline-start: auto;
       margin-inline-end: 0; padding: 0; max-width: 100%; }

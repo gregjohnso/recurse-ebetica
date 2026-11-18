@@ -741,7 +741,7 @@ menu.addEventListener("toggle", () => {
   }
   loadCatalog();
   const rect = trigger.getBoundingClientRect();
-  const above = mode === "conv" || rect.top > innerHeight / 2;
+  const above = rect.top > innerHeight / 2;
   menu.style.maxHeight = `${Math.max(100, (above ? rect.top : innerHeight - rect.bottom) - 20)}px`;
   menu.style.left = `${Math.max(12, Math.min(rect.left + rect.width / 2 - menu.offsetWidth / 2, innerWidth - menu.offsetWidth - 12))}px`;
   menu.style.top = above ? "auto" : `${rect.bottom + 8}px`;

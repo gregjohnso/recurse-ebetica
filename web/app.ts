@@ -158,6 +158,7 @@ import { handleDownloadClick } from "./download.js";
 import { UI_STATUS_EVENT } from "./ui-events.js";
 import "./selection-comments.js";
 import "./comments/touch-selection-edge.js";
+import "./phone-controls.js";
 
 document.addEventListener("click", handleDownloadClick, true);
 document.addEventListener("error", thumbnailFallback, true);
