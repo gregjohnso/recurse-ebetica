@@ -999,14 +999,13 @@ function renderRail(avail: PaneDef[], ctx = buildCtx()): void {
     $("#share-link-btn")!,
   ];
   // Spec: Phone menu order: Delete, Take control, divider, Share. Desktop:
-  // Delete sits right of Settings at the agent list's foot.
-  const foot = $("#agent-list-foot")!;
-  if (actions[0].parentElement !== (mobile ? menuEl : foot)) {
+  // Delete sits at the bottom of the right rail.
+  if (actions[0].parentElement !== (mobile ? menuEl : railEl)) {
     if (mobile) {
       $("#pane-menu-divider")!.before(actions[0], actions[1]);
       $("#pane-menu-divider")!.after(actions[2]);
     } else {
-      foot.append(actions[0]);
+      railEl.append(actions[0]);
       railEl.prepend(actions[1], actions[2]);
     }
     for (const action of actions) {

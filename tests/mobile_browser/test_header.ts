@@ -51,7 +51,7 @@ export const tests: BrowserTest[] = [
       const actions = page.locator("#pane-rail > button");
       expect(
         await actions.evaluateAll((els) => els.map((el) => el.id)),
-      ).toEqual(["takeover-btn", "share-link-btn"]);
+      ).toEqual(["takeover-btn", "share-link-btn", "trash-btn"]);
       const edge = (await page.locator("#pane-rail").boundingBox())!;
       expect(edge.x + edge.width).toBeGreaterThanOrEqual(width);
       const first = page.locator("#pane-rail [data-pane]").first();
@@ -124,10 +124,7 @@ export const tests: BrowserTest[] = [
         .waitFor({ state: "attached" });
       expect(await page.locator("#pane-menu #trash-btn").count()).toBe(1);
       await page.setViewportSize({ width, height: 915 });
-      await page
-        .locator("#agent-list-foot #trash-btn")
-        .waitFor({ state: "attached" });
-      expect(await page.locator("#agent-list-foot #trash-btn").count()).toBe(1);
+      await page.locator("#pane-rail > #trash-btn").waitFor();
       await page.locator("#up-top").click();
       await page.locator("#takeover-btn.on").waitFor({ state: "hidden" });
       await page.locator('#pane-rail [data-pane="report"]').waitFor();
@@ -150,9 +147,9 @@ export const tests: BrowserTest[] = [
       expect(shareBox).not.toBeNull();
       expect(parentGeometry.agentsY).toBe(shareBox!.y + shareBox!.height);
       expect(parentGeometry.y).toBeGreaterThan(parentGeometry.agentsBottom);
-      expect(
-        await page.locator("#agent-list-foot #trash-btn").isVisible(),
-      ).toBe(true);
+      expect(await page.locator("#pane-rail > #trash-btn").isVisible()).toBe(
+        true,
+      );
       if (dir)
         await page.screenshot({
           path: `${dir}/${stage}-${width}-rail-root.png`,
@@ -532,9 +529,6 @@ export const tests: BrowserTest[] = [
         const settings = (await page
           .locator("#agent-list-foot #settings-btn")
           .boundingBox())!;
-        const trash = (await page
-          .locator("#agent-list-foot #trash-btn")
-          .boundingBox())!;
         expect(
           list.y + list.height - (settings.y + settings.height),
         ).toBeLessThan(24);
@@ -542,8 +536,6 @@ export const tests: BrowserTest[] = [
           .locator("#agent-list-foot > #new-side:first-child")
           .boundingBox())!;
         expect(settings.x).toBeGreaterThanOrEqual(plus.x + plus.width);
-        expect(trash.x).toBeGreaterThanOrEqual(settings.x + settings.width);
-        expect(Math.abs(trash.y - settings.y)).toBeLessThan(settings.height);
         expect(Math.abs(plus.y - settings.y)).toBeLessThan(settings.height);
         expect(await page.locator("#new-side").textContent()).toBe("");
         await page.locator("#new-side").click();
@@ -779,11 +771,13 @@ export const tests: BrowserTest[] = [
     const settings = (await page
       .locator("#agent-list-foot #settings-btn")
       .boundingBox())!;
-    const trash = (await page
-      .locator("#agent-list-foot #trash-btn")
-      .boundingBox())!;
+    const trash = page.locator("#pane-rail > #trash-btn");
+    const trashBox = (await trash.boundingBox())!;
     const list = (await sidebar.boundingBox())!;
-    expect(trash.x).toBeGreaterThanOrEqual(settings.x + settings.width);
+    const bottomGap = rail.y + rail.height - trashBox.y - trashBox.height;
+    expect(bottomGap).toBeGreaterThanOrEqual(0);
+    expect(bottomGap).toBeLessThan(24);
+    expect(trashBox.y).toBeGreaterThan((await explorer.boundingBox())!.y);
     expect(list.y + list.height - (settings.y + settings.height)).toBeLessThan(
       24,
     );
@@ -800,6 +794,7 @@ export const tests: BrowserTest[] = [
     await page.keyboard.press("Shift+H");
     await sidebar.waitFor({ state: "hidden" });
     expect(await pane.isVisible()).toBe(true);
+    expect(await trash.isVisible()).toBe(true);
     await page.keyboard.press("Shift+H");
     await sidebar.waitFor();
     await explorer.click();
