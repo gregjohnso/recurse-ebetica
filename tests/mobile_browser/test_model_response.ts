@@ -99,6 +99,39 @@ export const tests: BrowserTest[] = [
       expect(await chip.innerText()).toBe("Downgraded");
       expect((await chip.getAttribute("class")) ?? "").not.toContain("seen");
       await screenshots("after", true);
+      await desktop.setViewportSize({ width: 790, height: 915 });
+      if (!(await desktop.locator("#sidebar").isVisible()))
+        await desktop.keyboard.press("Shift+H");
+      const card = desktop.locator("#composer-shell");
+      await browserExpect
+        .poll(async () => (await card.boundingBox())?.width ?? Infinity)
+        .toBeLessThan(540);
+      const cardBox = (await card.boundingBox())!;
+      const sendBox = (await desktop.locator("#send").boundingBox())!;
+      const desktopControls = desktop.locator("#composer > #conv-controls");
+      const controlsBox = (await desktopControls.boundingBox())!;
+      expect(controlsBox.y).toBeGreaterThan(sendBox.y + sendBox.height);
+      for (const button of await desktopControls
+        .locator("button:visible")
+        .all()) {
+        const box = (await button.boundingBox())!;
+        expect(box.x + box.width).toBeLessThanOrEqual(
+          cardBox.x + cardBox.width,
+        );
+      }
+      for (const [trigger, menu] of [
+        ["#model-trigger", "#model-menu"],
+        ["#downgrade-chip", "#downgrade-popover"],
+      ]) {
+        await desktop.locator(trigger).click();
+        await browserExpect
+          .poll(async () => {
+            const box = await desktop.locator(menu).boundingBox();
+            return !!box && box.y + box.height < cardBox.y;
+          })
+          .toBe(true);
+        await desktop.keyboard.press("Escape");
+      }
       await chip.click();
       const catalog = await (
         await page.request.get(`${base}api/models`)

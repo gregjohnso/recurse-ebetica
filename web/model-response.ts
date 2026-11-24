@@ -115,5 +115,9 @@ chip?.addEventListener("click", () => {
   paint();
   const bounds = chip.getBoundingClientRect();
   popover.style.left = `${Math.max(8, Math.min(bounds.left, innerWidth - 308))}px`;
-  popover.style.bottom = `${innerHeight - bounds.top + 6}px`;
+  const card = chip.closest("#composer-shell");
+  const top = card?.getBoundingClientRect().top ?? bounds.top;
+  const above = !!card || bounds.top > innerHeight / 2;
+  popover.style.top = above ? "auto" : `${bounds.bottom + 6}px`;
+  popover.style.bottom = above ? `${innerHeight - top + 6}px` : "auto";
 });

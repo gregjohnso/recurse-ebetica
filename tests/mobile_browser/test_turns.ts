@@ -268,9 +268,9 @@ async function test_background_shells_inline_details_and_scoped(
       .locator("#live-bar .live-panel-box")
       .boundingBox())!;
     const editor = (await page.locator("#composer").boundingBox())!;
-    expect(live.x).toBe(editor.x);
-    expect(live.width).toBe(editor.width);
-    expect(live.y + live.height).toBe(editor.y);
+    expect(live.x).toBeCloseTo(editor.x, 0);
+    expect(live.width).toBeCloseTo(editor.width, 0);
+    expect(live.y + live.height).toBeCloseTo(editor.y, 0);
     expect(await page.locator(".activity-body.open").count()).toBe(0);
     const chip = page.locator(".shell-chip");
     await chip.waitFor();

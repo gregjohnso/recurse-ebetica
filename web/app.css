@@ -36,13 +36,15 @@
 }
 
 /* The main editor and live status share one card; its buttons sit below the text. */
+html:not([data-embed]) #composer-shell { container: composer / inline-size;
+  --composer-border: var(--border); }
+#composer-shell:has(#composer:focus-within) { --composer-border: var(--accent-dim); }
+#composer-shell:has(#composer.dragover) { --composer-border: var(--accent); }
 html:not([data-embed]) #composer { display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
   gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-3);
-  border-radius: var(--radius-xl); border-color: var(--border); background: var(--panel-2); }
-html:not([data-embed]) #composer:focus-within { border-color: var(--accent-dim); }
-html:not([data-embed]) #composer.dragover { border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  border-radius: var(--radius-xl); border-color: var(--composer-border); background: var(--panel-2); }
+html:not([data-embed]) #composer.dragover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 html:not([data-embed]) #input { grid-area: 1 / 1 / auto / -1; width: 100%; min-width: 0;
   padding: var(--space-2) var(--space-2) 0; }
 html:not([data-embed]) #composer > :is(#attach, #send) { grid-row: 2; margin: 0;
@@ -50,13 +52,17 @@ html:not([data-embed]) #composer > :is(#attach, #send) { grid-row: 2; margin: 0;
 html:not([data-embed]) #composer > #attach { grid-column: 1; }
 html:not([data-embed]) #composer > #send { grid-column: 3; }
 #composer > #conv-controls { grid-area: 2 / 2; min-width: 0; max-width: none; margin: 0; padding: 0; }
+@container composer (max-width: 540px) {
+  #composer > #conv-controls { grid-area: 3 / 1 / auto / -1; }
+  #composer > #conv-controls:has(#downgrade-chip:not([hidden])),
+  #composer > #conv-controls #model-controls { flex-wrap: wrap; }
+}
 html[data-embed] #attach { order: -1; }
 html:not([data-embed]) #live-bar .live-panel-box {
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: none; }
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: none;
+  border-color: var(--composer-border); border-bottom-color: var(--border); }
 html:not([data-embed]) #live-bar:not([hidden], .stale):has(.live-panel-box) ~ #composer {
   border-top-width: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
-html:not([data-embed]) #composer-shell:has(#composer:focus-within) #live-bar .live-panel-box {
-  border-color: var(--accent-dim); border-bottom-color: var(--border); }
 @media (max-width: 700px) {
   html:not([data-embed]) #composer > :is(#attach, #send) { width: 36px; height: 36px;
     border-radius: var(--radius-lg); }

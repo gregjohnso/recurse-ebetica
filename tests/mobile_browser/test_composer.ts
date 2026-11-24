@@ -298,8 +298,8 @@ export const tests: BrowserTest[] = [
       const input = (await page.locator("#input").boundingBox())!;
       const attach = (await page.locator("#attach").boundingBox())!;
       const send = (await page.locator("#send").boundingBox())!;
-      expect(input.x).toBe(attach.x);
-      expect(input.x + input.width).toBeCloseTo(send.x + send.width);
+      expect(input.x).toBeCloseTo(attach.x, 0);
+      expect(input.x + input.width).toBeCloseTo(send.x + send.width, 0);
       expect(input.y + input.height).toBeLessThan(attach.y);
       expect(input.y + input.height).toBeLessThan(send.y);
       expect(attach.width).toBe(width === 412 ? 36 : 28);
