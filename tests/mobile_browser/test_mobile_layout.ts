@@ -641,6 +641,8 @@ export const tests: BrowserTest[] = [
     expect(
       Boolean(finder && finder.x >= 0 && finder.x + finder.width <= 390),
     ).toBeTrue();
+    const topbar = (await page.locator("#topbar").boundingBox())!;
+    expect(finder!.y).toBeCloseTo(topbar.y + topbar.height, 0);
     expect(
       await page.evaluate(() => {
         const browser = globalThis as any;

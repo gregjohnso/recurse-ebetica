@@ -36,8 +36,10 @@
 }
 
 /* The main editor and live status share one card; its buttons sit below the text. */
-html:not([data-embed]) #composer-shell { container: composer / inline-size;
-  --composer-border: var(--border); }
+html:not([data-embed]) #composer-shell { --composer-border: var(--border); }
+@media (min-width: 701px) {
+  html:not([data-embed]) #composer-shell { container: composer / inline-size; }
+}
 #composer-shell:has(#composer:focus-within) { --composer-border: var(--accent-dim); }
 #composer-shell:has(#composer.dragover) { --composer-border: var(--accent); }
 html:not([data-embed]) #composer { display: grid;
