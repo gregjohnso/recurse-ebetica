@@ -264,6 +264,13 @@ async function test_background_shells_inline_details_and_scoped(
     await activity.waitFor();
     expect((await activity.innerText()).startsWith("Thinking")).toBeTrue();
     expect((await activity.getAttribute("title")) ?? "").toBe("Thinking");
+    const live = (await page
+      .locator("#live-bar .live-panel-box")
+      .boundingBox())!;
+    const editor = (await page.locator("#composer").boundingBox())!;
+    expect(live.x).toBe(editor.x);
+    expect(live.width).toBe(editor.width);
+    expect(live.y + live.height).toBe(editor.y);
     expect(await page.locator(".activity-body.open").count()).toBe(0);
     const chip = page.locator(".shell-chip");
     await chip.waitFor();

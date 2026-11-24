@@ -1288,7 +1288,7 @@
   #composer-shell { max-width: 780px; margin: 0 auto; position: relative; }
   /* The running turn's live panel stays above the composer, outside the
      thread, so it is visible at any scroll position and covers nothing. */
-  #live-bar { max-width: 780px; margin: 0 auto var(--space-2); }
+  html[data-embed] #live-bar { margin-bottom: var(--space-2); }
   #live-bar[hidden], #live-bar.stale { display: none; }
   #live-bar :is(.live-thinking-summary, .live-tool-body) { max-height: 30vh;
     overflow-y: auto; -webkit-user-select: text; user-select: text; }
@@ -1343,7 +1343,7 @@
   .agent-option-relation { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
   .agent-option-path { color: var(--muted); font: 0.65625rem/1.35 var(--font-mono); white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; }
-  #composer button, .composer-box button { flex: none; width: 28px; height: 28px; margin-bottom: var(--space-2);
+  #composer > :is(#attach, #send), .composer-box:not(#composer) button { flex: none; width: 28px; height: 28px; margin-bottom: var(--space-2);
     border: 0; border-radius: var(--icon-radius, var(--radius-md)); cursor: pointer;
     display: flex; align-items: center; justify-content: center; }
   /* Touch targets extend beyond the visible controls without sizing the row. */
@@ -1360,7 +1360,7 @@
       border-radius: 20px; } /* radius-check: allow half the one-line height */
     #composer:focus-within, .composer-box:focus-within { border-color: var(--input-border); }
     #input, .composer-input { line-height: 1.35; padding: var(--space-2) 0; }
-    #composer button, .composer-box button { margin-bottom: 1px; border-radius: 50%; }
+    #composer > :is(#attach, #send), .composer-box:not(#composer) button { margin-bottom: 1px; border-radius: 50%; }
   }
   #send, .composer-send { background: var(--accent); color: var(--text-on-accent); }
   @media (hover: hover) { #send:hover, .composer-send:hover { background: var(--accent-hover); } }
@@ -1882,46 +1882,12 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
   <div id="thread-loading" role="status" aria-live="polite"></div>
   <div id="scroll"><div id="messages"></div></div>
   <div id="composer-wrap">
-    <div id="live-bar" hidden></div>
     <button id="scroll-btn" aria-label="Scroll to latest">
       <svg data-icon="SCROLL_DOWN_ICON"></svg>
     </button>
-    <!-- Safety and model choice share one aligned row when space permits. On a
-         very narrow screen they wrap in this same accessible reading order. -->
-    <div id="conv-controls">
-      <div id="safety-row">
-        <button id="safety-btn" type="button" role="switch" aria-checked="true"
-          title="Review each action for safety before it runs"
-          aria-label="Safety review, on">
-          <span class="track"><span class="knob"></span></span>
-          <span class="lbl">Safety review</span>
-          <span id="safety-unavailable" role="status" hidden>Unavailable</span>
-        </button>
-      </div>
-      <button id="downgrade-chip" type="button" popovertarget="downgrade-popover" hidden><svg data-icon="DOWNGRADE_ICON"></svg>Downgraded</button>
-      <div id="downgrade-popover" class="menu form" popover="auto" role="dialog" aria-label="Provider model downgrade"></div>
-      <div id="model-controls">
-        <button id="context-indicator" type="button" aria-haspopup="dialog"
-          aria-controls="context-surface" aria-expanded="false" disabled>
-          <span id="context-mini" aria-hidden="true"></span>
-          <span id="context-token-label"></span>
-        </button>
-        <div id="model-row">
-          <button id="model-trigger" type="button" popovertarget="model-menu" aria-keyshortcuts="e Shift+M"
-            aria-expanded="false" title="Choose effort level (e or Shift+M)" aria-label="Choose effort level"><span class="model-name"></span><svg data-icon="CHEVRON_UP_ICON"></svg></button>
-          <div id="model-menu" class="menu form" popover="auto" tabindex="-1" role="dialog" aria-label="Effort level">
-            <div id="effort-slider">
-              <input id="effort-range" type="range" min="1" max="5" step="1" value="3" aria-label="Effort level">
-              <span id="effort-value" aria-hidden="true"></span>
-            </div>
-            <p id="effort-model" role="status" aria-live="polite"></p>
-            <p id="effort-current" hidden></p>
-          </div>
-        </div>
-      </div>
-    </div>
     <div id="attachments"></div>
     <div id="composer-shell">
+      <div id="live-bar" hidden></div>
       <div id="agent-finder" class="menu" data-agent-finder role="group" aria-label="Agent finder">
         <label class="sr-only" for="agent-finder-query">Find an agent</label>
         <input id="agent-finder-query" class="text-field" type="text" role="combobox" placeholder="Find an agent…"
@@ -1933,11 +1899,45 @@ color: var(--warn); font-size: 0.65625rem; line-height: 1; }
       <div id="composer" class="composer-box">
         <div id="skill-menu" class="menu" role="listbox" aria-label="Commands and skills"></div>
         <input id="file-input" type="file" multiple hidden>
-        <button id="attach" title="Attach file">
-        <svg data-icon="ATTACH_ICON"></svg>
-      </button>
         <textarea id="input" rows="1" maxlength="100000" autocomplete="off" placeholder="Message this agent…" class="composer-input"
           aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false"></textarea>
+        <button id="attach" type="button" title="Attach file" aria-label="Attach file">
+          <svg data-icon="ATTACH_ICON"></svg>
+        </button>
+        <!-- Safety and model choice share one aligned row when space permits. On a
+             very narrow screen they wrap in this same accessible reading order. -->
+        <div id="conv-controls">
+          <div id="safety-row">
+            <button id="safety-btn" type="button" role="switch" aria-checked="true"
+              title="Review each action for safety before it runs"
+              aria-label="Safety review, on">
+              <span class="track"><span class="knob"></span></span>
+              <span class="lbl">Safety review</span>
+              <span id="safety-unavailable" role="status" hidden>Unavailable</span>
+            </button>
+          </div>
+          <button id="downgrade-chip" type="button" popovertarget="downgrade-popover" hidden><svg data-icon="DOWNGRADE_ICON"></svg>Downgraded</button>
+          <div id="downgrade-popover" class="menu form" popover="auto" role="dialog" aria-label="Provider model downgrade"></div>
+          <div id="model-controls">
+            <button id="context-indicator" type="button" aria-haspopup="dialog"
+              aria-controls="context-surface" aria-expanded="false" disabled>
+              <span id="context-mini" aria-hidden="true"></span>
+              <span id="context-token-label"></span>
+            </button>
+            <div id="model-row">
+              <button id="model-trigger" type="button" popovertarget="model-menu" aria-keyshortcuts="e Shift+M"
+                aria-expanded="false" title="Choose effort level (e or Shift+M)" aria-label="Choose effort level"><span class="model-name"></span><svg data-icon="CHEVRON_UP_ICON"></svg></button>
+              <div id="model-menu" class="menu form" popover="auto" tabindex="-1" role="dialog" aria-label="Effort level">
+                <div id="effort-slider">
+                  <input id="effort-range" type="range" min="1" max="5" step="1" value="3" aria-label="Effort level">
+                  <span id="effort-value" aria-hidden="true"></span>
+                </div>
+                <p id="effort-model" role="status" aria-live="polite"></p>
+                <p id="effort-current" hidden></p>
+              </div>
+            </div>
+          </div>
+        </div>
         <button id="send" class="composer-send" title="Send" disabled>
           <svg data-icon="SEND_ICON"></svg>
         </button>

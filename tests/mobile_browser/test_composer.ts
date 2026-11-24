@@ -283,7 +283,7 @@ const modelSelectionError: BrowserTest = async (browser, base) => {
 };
 
 export const tests: BrowserTest[] = [
-  async function compactComposerTargets(browser, base) {
+  async function fullWidthComposerTargets(browser, base) {
     for (const width of [412, 1280]) {
       const context = await browser.newContext({
         viewport: { width, height: 844 },
@@ -296,14 +296,16 @@ export const tests: BrowserTest[] = [
       await page.locator("#input").fill("A message");
       const composer = (await page.locator("#composer").boundingBox())!;
       const input = (await page.locator("#input").boundingBox())!;
-      expect(composer.height - input.height).toBeLessThanOrEqual(10);
-      for (const selector of ["#attach", "#send"]) {
-        const button = page.locator(selector);
-        const box = (await button.boundingBox())!;
-        expect(box.width).toBe(28);
-        expect(box.height).toBe(28);
-      }
-      expect(input.x - composer.x).toBeLessThanOrEqual(42);
+      const attach = (await page.locator("#attach").boundingBox())!;
+      const send = (await page.locator("#send").boundingBox())!;
+      expect(input.x).toBe(attach.x);
+      expect(input.x + input.width).toBeCloseTo(send.x + send.width);
+      expect(input.y + input.height).toBeLessThan(attach.y);
+      expect(input.y + input.height).toBeLessThan(send.y);
+      expect(attach.width).toBe(width === 412 ? 36 : 28);
+      expect(send.width).toBe(width === 412 ? 40 : 28);
+      const controlsHost = width === 412 ? "#main" : "#composer";
+      await page.locator(`${controlsHost} > #conv-controls`).waitFor();
       await page.locator("#input").fill("More text\n".repeat(5));
       expect(
         (await page.locator("#composer").boundingBox())!.height,
@@ -645,7 +647,10 @@ export const tests: BrowserTest[] = [
         const cut = await line.evaluate((el) => {
           const outer = el.getBoundingClientRect();
           const path = el.firstElementChild!.getBoundingClientRect();
-          return { start: path.left - outer.left, end: outer.right - path.right };
+          return {
+            start: path.left - outer.left,
+            end: outer.right - path.right,
+          };
         });
         expect(cut.start).toBeLessThan(0);
         expect(Math.abs(cut.end)).toBeLessThanOrEqual(1);

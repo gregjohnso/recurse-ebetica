@@ -35,6 +35,34 @@
   .btn, .btn.sm { min-height: 44px; }
 }
 
+/* The main editor and live status share one card; its buttons sit below the text. */
+html:not([data-embed]) #composer { display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-3);
+  border-radius: var(--radius-xl); border-color: var(--border); background: var(--panel-2); }
+html:not([data-embed]) #composer:focus-within { border-color: var(--accent-dim); }
+html:not([data-embed]) #composer.dragover { border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent); }
+html:not([data-embed]) #input { grid-area: 1 / 1 / auto / -1; width: 100%; min-width: 0;
+  padding: var(--space-2) var(--space-2) 0; }
+html:not([data-embed]) #composer > :is(#attach, #send) { grid-row: 2; margin: 0;
+  border-radius: var(--radius-md); }
+html:not([data-embed]) #composer > #attach { grid-column: 1; }
+html:not([data-embed]) #composer > #send { grid-column: 3; }
+#composer > #conv-controls { grid-area: 2 / 2; min-width: 0; max-width: none; margin: 0; padding: 0; }
+html[data-embed] #attach { order: -1; }
+html:not([data-embed]) #live-bar .live-panel-box {
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: none; }
+html:not([data-embed]) #live-bar:not([hidden], .stale):has(.live-panel-box) ~ #composer {
+  border-top-width: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+html:not([data-embed]) #composer-shell:has(#composer:focus-within) #live-bar .live-panel-box {
+  border-color: var(--accent-dim); border-bottom-color: var(--border); }
+@media (max-width: 700px) {
+  html:not([data-embed]) #composer > :is(#attach, #send) { width: 36px; height: 36px;
+    border-radius: var(--radius-lg); }
+  html:not([data-embed]) #composer > #send { width: 40px; height: 40px; }
+}
+
 /* Attachment admission failures stay above the composer until retry. */
 .attachment-error { display: flex; align-items: flex-start; gap: var(--space-2); width: 100%;
   color: var(--danger); font-size: 0.78125rem; line-height: 1.4; }
