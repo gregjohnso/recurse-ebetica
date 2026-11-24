@@ -35,7 +35,7 @@
   .btn, .btn.sm { min-height: 44px; }
 }
 
-/* The main editor and live status share one card; its buttons sit below the text. */
+/* The main editor and live status share one card. */
 html:not([data-embed]) #composer-shell { --composer-border: var(--border); }
 @media (min-width: 701px) {
   html:not([data-embed]) #composer-shell { container: composer / inline-size; }
@@ -53,7 +53,11 @@ html:not([data-embed]) #composer > :is(#attach, #send) { grid-row: 2; margin: 0;
   border-radius: var(--radius-md); }
 html:not([data-embed]) #composer > #attach { grid-column: 1; }
 html:not([data-embed]) #composer > #send { grid-column: 3; }
-#composer > #conv-controls { grid-area: 2 / 2; min-width: 0; max-width: none; margin: 0; padding: 0; }
+#composer > #conv-controls { grid-area: 2 / 1 / auto / -1; min-width: 0; max-width: none; margin: 0; padding: 0; }
+@media (min-width: 701px) {
+  html:not([data-embed]) #input { grid-area: 1 / 2; align-self: start; }
+  html:not([data-embed]) #composer > :is(#attach, #send) { grid-row: 1; align-self: start; }
+}
 @container composer (max-width: 540px) {
   #composer > #conv-controls:has(#downgrade-chip:not([hidden])),
   #composer > #conv-controls #model-controls { flex-wrap: wrap; }

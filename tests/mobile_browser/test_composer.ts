@@ -283,7 +283,7 @@ const modelSelectionError: BrowserTest = async (browser, base) => {
 };
 
 export const tests: BrowserTest[] = [
-  async function fullWidthComposerTargets(browser, base) {
+  async function composerActionPlacement(browser, base) {
     for (const width of [412, 1280]) {
       const context = await browser.newContext({
         viewport: { width, height: 844 },
@@ -298,10 +298,17 @@ export const tests: BrowserTest[] = [
       const input = (await page.locator("#input").boundingBox())!;
       const attach = (await page.locator("#attach").boundingBox())!;
       const send = (await page.locator("#send").boundingBox())!;
-      expect(input.x).toBeCloseTo(attach.x, 0);
-      expect(input.x + input.width).toBeCloseTo(send.x + send.width, 0);
-      expect(input.y + input.height).toBeLessThan(attach.y);
-      expect(input.y + input.height).toBeLessThan(send.y);
+      if (width === 412) {
+        expect(input.x).toBeCloseTo(attach.x, 0);
+        expect(input.x + input.width).toBeCloseTo(send.x + send.width, 0);
+        expect(input.y + input.height).toBeLessThan(attach.y);
+        expect(input.y + input.height).toBeLessThan(send.y);
+      } else {
+        expect(attach.x + attach.width).toBeLessThan(input.x);
+        expect(input.x + input.width).toBeLessThan(send.x);
+        expect(attach.y).toBeCloseTo(input.y, 0);
+        expect(send.y).toBeCloseTo(input.y, 0);
+      }
       expect(attach.width).toBe(width === 412 ? 36 : 28);
       expect(send.width).toBe(width === 412 ? 40 : 28);
       const controlsHost = width === 412 ? "#main" : "#composer";
@@ -310,6 +317,13 @@ export const tests: BrowserTest[] = [
       expect(
         (await page.locator("#composer").boundingBox())!.height,
       ).toBeGreaterThan(composer.height);
+      if (width === 1280) {
+        const expandedInput = (await page.locator("#input").boundingBox())!;
+        for (const selector of ["#attach", "#send"]) {
+          const button = (await page.locator(selector).boundingBox())!;
+          expect(button.y).toBeCloseTo(expandedInput.y, 0);
+        }
+      }
       await context.close();
     }
   },
