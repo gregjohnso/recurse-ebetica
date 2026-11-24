@@ -107,17 +107,24 @@ export const tests: BrowserTest[] = [
         .poll(async () => (await card.boundingBox())?.width ?? Infinity)
         .toBeLessThan(540);
       const cardBox = (await card.boundingBox())!;
+      const attachBox = (await desktop.locator("#attach").boundingBox())!;
       const sendBox = (await desktop.locator("#send").boundingBox())!;
       const desktopControls = desktop.locator("#composer > #conv-controls");
       const controlsBox = (await desktopControls.boundingBox())!;
-      expect(controlsBox.y).toBeGreaterThan(sendBox.y + sendBox.height);
+      expect(attachBox.y + attachBox.height / 2).toBeCloseTo(
+        sendBox.y + sendBox.height / 2,
+        0,
+      );
+      expect(sendBox.y + sendBox.height / 2).toBeCloseTo(
+        controlsBox.y + controlsBox.height / 2,
+        0,
+      );
       for (const button of await desktopControls
         .locator("button:visible")
         .all()) {
         const box = (await button.boundingBox())!;
-        expect(box.x + box.width).toBeLessThanOrEqual(
-          cardBox.x + cardBox.width,
-        );
+        expect(box.x).toBeGreaterThanOrEqual(attachBox.x + attachBox.width);
+        expect(box.x + box.width).toBeLessThanOrEqual(sendBox.x);
       }
       for (const [trigger, menu] of [
         ["#model-trigger", "#model-menu"],

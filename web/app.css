@@ -55,7 +55,6 @@ html:not([data-embed]) #composer > #attach { grid-column: 1; }
 html:not([data-embed]) #composer > #send { grid-column: 3; }
 #composer > #conv-controls { grid-area: 2 / 2; min-width: 0; max-width: none; margin: 0; padding: 0; }
 @container composer (max-width: 540px) {
-  #composer > #conv-controls { grid-area: 3 / 1 / auto / -1; }
   #composer > #conv-controls:has(#downgrade-chip:not([hidden])),
   #composer > #conv-controls #model-controls { flex-wrap: wrap; }
 }

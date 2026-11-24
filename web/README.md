@@ -14,7 +14,8 @@ conversation and subscribes to its live updates.
   render conversations; [composer.ts](composer.ts), [composer/](composer/)
   and [attachments.ts](attachments.ts) send input and uploads. The main composer
   puts the editor above its buttons and joins the live status to the same card.
-  On phones the safety, token and model controls stay under the title bar.
+  In narrow desktop panes, controls wrap between Attach and Send. On phones
+  the safety, token and model controls stay under the title bar.
 - [sidebar.ts](sidebar.ts), [deep-link.ts](deep-link.ts) and
   [agent-finder.ts](agent-finder.ts) navigate the agent tree.
   [sidebar/](sidebar/) groups local and remote top-level rows into sections with row and
