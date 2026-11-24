@@ -24,7 +24,7 @@ conversation and subscribes to its live updates.
   state and the File pane, which reuses the Files pane's preview renderers.
 - [panes.ts](panes.ts), [artifacts/](artifacts/), [files.ts](files.ts) and
   [diff.ts](diff.ts) provide side panels. On desktop the icon rail sits at the
-  left edge (Agents, the panels, then Settings and Delete at its foot), and
+  right edge, with Delete at the bottom, and
   [dock/](dock/) hosts the chat, open panels and file tabs in dockview (Explorer
   files, and Files entries through [files/tab.ts](files/tab.ts) and the shared
   detail view in [files/detail.ts](files/detail.ts), under an Explorer file
