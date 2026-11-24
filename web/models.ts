@@ -741,11 +741,13 @@ menu.addEventListener("toggle", () => {
   }
   loadCatalog();
   const rect = trigger.getBoundingClientRect();
-  const above = rect.top > innerHeight / 2;
-  menu.style.maxHeight = `${Math.max(100, (above ? rect.top : innerHeight - rect.bottom) - 20)}px`;
+  const card = trigger.closest("#composer-shell");
+  const top = card?.getBoundingClientRect().top ?? rect.top;
+  const above = !!card || rect.top > innerHeight / 2;
+  menu.style.maxHeight = `${Math.max(0, (above ? top : innerHeight - rect.bottom) - 20)}px`;
   menu.style.left = `${Math.max(12, Math.min(rect.left + rect.width / 2 - menu.offsetWidth / 2, innerWidth - menu.offsetWidth - 12))}px`;
   menu.style.top = above ? "auto" : `${rect.bottom + 8}px`;
-  menu.style.bottom = above ? `${innerHeight - rect.top + 8}px` : "auto";
+  menu.style.bottom = above ? `${innerHeight - top + 8}px` : "auto";
   menu.focus();
 });
 
