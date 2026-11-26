@@ -44,6 +44,8 @@ conversation and subscribes to its live updates.
 
 ## Views and connections
 
+Assistant replies and Markdown file and Artifact previews render inline math with `$...$` or `\(...\)` and display math with `$$...$$` or `\[...\]`. Operator messages stay plain text. In Markdown, `\$` escapes a literal dollar sign. See [math.ts](math.ts).
+
 [theme.css](theme.css) holds the design tokens: colours, spacing, radii,
 shadows, motion and layers, as CSS custom properties. Checks in `tests/check.sh web`
 (`tests/checks/*_check.ts`) reject literal values elsewhere, so a theme can change them

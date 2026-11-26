@@ -7,9 +7,13 @@ graph LR
  A[Files] --> B[Artifacts]
 ```
 
-Inline \(x^2\) and display math:
+Inline $x^2$ and display math:
 
-\[E = mc^2\]
+$$
+E = mc^2
+$$
+
+The range $5–$10 and the escaped \$20 stay literal.
 
 ![Local diagram](results/figs/diagram.svg)
 

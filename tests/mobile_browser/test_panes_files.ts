@@ -1201,6 +1201,9 @@ export const tests: BrowserTest[] = [
         await detail.locator(".files-markdown .mermaid-host svg").waitFor();
         await detail.locator(".files-markdown .katex-display .katex").waitFor();
         expect(await detail.locator(".files-markdown .katex").count()).toBe(2);
+        expect(await detail.locator(".files-markdown").innerText()).toContain(
+          "The range $5–$10 and the escaped $20 stay literal.",
+        );
         await detail
           .locator('.files-markdown img[alt="Local diagram"]:not([hidden])')
           .waitFor();

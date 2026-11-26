@@ -25,6 +25,9 @@ const MAX_TEX_LENGTH = 8_192;
 const MAX_RENDERED_LENGTH = 100_000;
 const CLOSE_SCAN_LIMIT = MAX_TEX_LENGTH + 2;
 const MATH_PLACEHOLDER_ATTR = "data-math-placeholder";
+const MATH_CLOSE = { "\\(": "\\)", "\\[": "\\]", $: "$", $$: "$$" } as const;
+const BLOCK_OPENER = /^ {0,3}(\\\[|\$\$)/;
+const BLOCK_START = new RegExp(BLOCK_OPENER.source, "m");
 
 type MathToken = Tokens.Generic & {
   type: "math-block" | "math-inline";
@@ -137,7 +140,11 @@ function closingDelimiter(
     source.length - close.length,
     start + CLOSE_SCAN_LIMIT,
   );
+  const dollar = close[0] === "$";
   for (let i = start; i <= limit; i++) {
+    if (dollar && source[i] === "`" && !isEscaped(source, i)) break;
+    if (close === "$" && source[i] === "\n") break;
+    if (close === "$$" && source.startsWith("\n\n", i)) break;
     if (source.startsWith(close, i) && !isEscaped(source, i)) return i;
   }
   return -1;
@@ -154,35 +161,44 @@ function literal(opener: string): MathToken {
 }
 
 function inlineMath(src: string): MathToken | undefined {
-  const opener = src.startsWith("\\(")
-    ? "\\("
-    : src.startsWith("\\[")
-      ? "\\["
-      : undefined;
+  const opener = /^(\\[([]|\$\$?)/.exec(src)?.[0] as
+    | keyof typeof MATH_CLOSE
+    | undefined;
   if (!opener) return undefined;
-  const close = opener === "\\(" ? "\\)" : "\\]";
+  const close = MATH_CLOSE[opener];
+  // Spec: A single dollar touches its math on both sides and does not close
+  // before a digit (a second price) or another dollar (display math).
+  if (opener === "$" && /\s/.test(src[1] ?? "")) return literal(opener);
   const end = closingDelimiter(src, opener.length, close);
   if (end < 0) return literal(opener);
+  if (
+    opener === "$" &&
+    (/\s/.test(src[end - 1]!) || /[\d$]/.test(src[end + 1] ?? ""))
+  )
+    return literal(opener);
   const raw = src.slice(0, end + close.length);
   const text = src.slice(opener.length, end);
-  if (text.length > MAX_TEX_LENGTH) return literal(opener);
+  if (text.length > MAX_TEX_LENGTH || (opener === "$$" && !text.trim()))
+    return literal(opener);
   return {
     type: "math-inline",
     raw,
     text,
-    displayMode: opener === "\\[",
+    displayMode: opener === "\\[" || opener === "$$",
   };
 }
 
 function blockMath(src: string): MathToken | undefined {
-  const opener = /^ {0,3}\\\[/.exec(src);
+  const opener = BLOCK_OPENER.exec(src);
   if (!opener) return undefined;
   const start = opener[0].length;
-  const end = closingDelimiter(src, start, "\\]");
+  const close = opener[1] === "$$" ? "$$" : "\\]";
+  const end = closingDelimiter(src, start, close);
   if (end < 0) return undefined;
   const text = src.slice(start, end);
-  if (text.length > MAX_TEX_LENGTH) return undefined;
-  let rawEnd = end + 2;
+  if (text.length > MAX_TEX_LENGTH || (close === "$$" && !text.trim()))
+    return undefined;
+  let rawEnd = end + close.length;
   while (rawEnd < src.length && src[rawEnd] === "\n") rawEnd++;
   return {
     type: "math-block",
@@ -193,19 +209,14 @@ function blockMath(src: string): MathToken | undefined {
 }
 
 function findInlineStart(src: string): number | undefined {
-  for (let i = 0; i < src.length - 1; i++) {
-    if (
-      src[i] === "\\" &&
-      (src[i + 1] === "(" || src[i + 1] === "[") &&
-      !isEscaped(src, i)
-    )
-      return i;
+  for (const match of src.matchAll(/\\[([]|\$/g)) {
+    if (!isEscaped(src, match.index)) return match.index;
   }
   return undefined;
 }
 
 function findBlockStart(src: string): number | undefined {
-  return /^ {0,3}\\\[/m.exec(src)?.index;
+  return BLOCK_START.exec(src)?.index;
 }
 
 export function renderMath(

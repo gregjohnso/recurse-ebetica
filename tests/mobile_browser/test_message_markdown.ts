@@ -10,6 +10,37 @@ import {
 } from "./common";
 
 export const tests: BrowserTest[] = [
+  // Feature: #4 dollar-delimited math renders in replies without interpreting prices or code.
+  async function test_dollar_math(browser, base) {
+    const page = await browser.newPage();
+    try {
+      const reply =
+        "Read $x_{i,j}$ and $$y_i = a_{ij} b_j$$. " +
+        "Prices range from $5 to $10. Code `$x$` and `$$y$$` is literal.";
+      await page.request.post(
+        `${base}__browser-test/seed-model-selection-error`,
+        {
+          data: { agent: "dollar-math", model: "fauxordinary/faux-1" },
+        },
+      );
+      await page.goto(`${base}#agent=dollar-math`);
+      const input = page.locator("#input:enabled");
+      await input.fill(`Reply only ${reply}`);
+      await input.press("Enter");
+      const content = page.locator(".msg.assistant .content").last();
+      await browserExpect(content.locator(".katex")).toHaveCount(2);
+      await browserExpect(content.locator(".katex-display")).toHaveCount(1);
+      await browserExpect(content).toContainText(
+        "Prices range from $5 to $10.",
+      );
+      expect(await content.locator("code").allTextContents()).toEqual([
+        "$x$",
+        "$$y$$",
+      ]);
+    } finally {
+      await page.close();
+    }
+  },
   // Regression: #2622 approximation tildes in real replies stay literal.
   async function test_approximation_tildes(browser, base) {
     const page = await browser.newPage({
